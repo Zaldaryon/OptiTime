@@ -1,0 +1,12 @@
+bin/
+obj/
+vs-sourcecode/
+/nul
+nul
+AGENTS.md
+.claude/
+.codex/
+.kiro/
+.amazonq/
+.cursorrules
+tasks/

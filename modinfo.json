@@ -1,0 +1,14 @@
+{
+  "type": "code",
+  "side": "client",
+  "modid": "optitime",
+  "name": "OptiTime",
+  "authors": [
+    "Zaldaryon"
+  ],
+  "description": "Clientside performance optimizations for Vintage Story",
+  "version": "1.4.7",
+  "dependencies": {
+    "game": "1.22.0"
+  }
+}

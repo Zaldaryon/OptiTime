@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>OptiTime</AssemblyName>
+    <Version>1.4.7</Version>
+    <UseAppHost>false</UseAppHost>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <EnableObfuscation>false</EnableObfuscation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="VintagestoryAPI">
+      <HintPath>$(VINTAGE_STORY)\VintagestoryAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="VintagestoryLib">
+      <HintPath>$(VINTAGE_STORY)\VintagestoryLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(VINTAGE_STORY)\Lib\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="modicon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="assets\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Documentation\**" />
+    <EmbeddedResource Remove="Documentation\**" />
+    <None Remove="Documentation\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="vs-sourcecode\**" />
+    <EmbeddedResource Remove="vs-sourcecode\**" />
+    <None Remove="vs-sourcecode\**" />
+  </ItemGroup>
+
+  <Target Name="Package" AfterTargets="Build">
+    <PropertyGroup>
+      <ModName>OptiTime</ModName>
+      <ModsPath Condition="'$(OS)' == 'Windows_NT'">$(APPDATA)\VintagestoryData\Mods</ModsPath>
+      <ModsPath Condition="'$(OS)' != 'Windows_NT'">$(HOME)/.config/VintagestoryData/Mods</ModsPath>
+      <DllPath>$(OutputPath)OptiTime.dll</DllPath>
+    </PropertyGroup>
+    
+    <ItemGroup>
+      <ModFiles Include="$(DllPath)" />
+      <ModFiles Include="modinfo.json" />
+      <ModFiles Include="modicon.png" />
+      <ModFiles Include="assets\**\*" />
+    </ItemGroup>
+    
+    <RemoveDir Directories="bin\temp" />
+    <MakeDir Directories="bin\temp" />
+    <Copy SourceFiles="$(DllPath)" DestinationFolder="bin\temp\" />
+    <Copy SourceFiles="modinfo.json" DestinationFolder="bin\temp\" />
+    <Copy SourceFiles="modicon.png" DestinationFolder="bin\temp\" />
+    <Copy SourceFiles="@(ModFiles)" DestinationFiles="@(ModFiles->'bin\temp\%(Identity)')" Condition="'%(ModFiles.Extension)' != '.dll' and '%(ModFiles.Filename)' != 'modinfo' and '%(ModFiles.Filename)' != 'modicon'" />
+    
+    <ZipDirectory SourceDirectory="bin\temp\" DestinationFile="bin\$(ModName).zip" Overwrite="true" />
+    
+    <MakeDir Directories="$(ModsPath)" Condition="!Exists('$(ModsPath)')" />
+    <Copy SourceFiles="bin\$(ModName).zip" DestinationFolder="$(ModsPath)" />
+    
+    <RemoveDir Directories="bin\temp" />
+    
+    <Message Text="Mod packaged and installed: $(ModsPath)\$(ModName).zip" Importance="high" />
+  </Target>
+</Project>

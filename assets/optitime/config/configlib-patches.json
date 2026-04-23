@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "file": "OptiTime.json",
+  "patches": {},
+  "settings": [
+    {
+      "type": "separator",
+      "title": "optitime:config-title-general"
+    },
+    {
+      "code": "ShaderOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-shader-optimizations",
+      "comment": "optitime:setting-shader-optimizations-tooltip"
+    },
+    {
+      "code": "ParticleViewDistanceScalingEnabled",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-particle-scaling",
+      "comment": "optitime:setting-particle-scaling-tooltip"
+    },
+    {
+      "code": "BackgroundFpsLimiterEnabled",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-background-fps",
+      "comment": "optitime:setting-background-fps-tooltip"
+    },
+    {
+      "code": "PreciseFramePacingEnabled",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-frame-pacing",
+      "comment": "optitime:setting-frame-pacing-tooltip"
+    },
+    {
+      "code": "GuiManagerNoLinqEnabled",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-gui-no-linq",
+      "comment": "optitime:setting-gui-no-linq-tooltip"
+    },
+    {
+      "code": "GuiManagerInputNoLinqEnabled",
+      "type": "boolean",
+      "default": false,
+      "ingui": "optitime:setting-gui-input",
+      "comment": "optitime:setting-gui-input-tooltip"
+    },
+    {
+      "type": "separator",
+      "title": "optitime:config-title-optimizations"
+    },
+    {
+      "code": "AmbientSoundOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-ambientsound",
+      "comment": "optitime:setting-ambientsound-tooltip"
+    },
+    {
+      "code": "ChunkTesselationOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-chunktess",
+      "comment": "optitime:setting-chunktess-tooltip"
+    },
+    {
+      "code": "DynamicLightOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-dynlights",
+      "comment": "optitime:setting-dynlights-tooltip"
+    },
+    {
+      "code": "EntityAnimationOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-entityanim",
+      "comment": "optitime:setting-entityanim-tooltip"
+    },
+    {
+      "code": "FlySoundOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-flysound",
+      "comment": "optitime:setting-flysound-tooltip"
+    },
+    {
+      "code": "GuiManagerOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-guimgr",
+      "comment": "optitime:setting-guimgr-tooltip"
+    },
+    {
+      "code": "HandbookOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-handbook",
+      "comment": "optitime:setting-handbook-tooltip"
+    },
+    {
+      "code": "RecipeLookupOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "Recipe Lookup",
+      "comment": "Early dimension rejection for impossible crafting matches"
+    },
+    {
+      "code": "OcclusionCullingOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-occlusion",
+      "comment": "optitime:setting-occlusion-tooltip"
+    },
+    {
+      "code": "ParticleOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-particles",
+      "comment": "optitime:setting-particles-tooltip"
+    }
+  ]
+}
