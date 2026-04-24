@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "Ветер погоды",
+  "optitime:setting-weatherwind-tooltip": "Ограничить запросы скорости ветра с каждого кадра до каждого 4-го кадра",
+  "optitime:setting-tickingblocks": "Тикающие блоки",
+  "optitime:setting-tickingblocks-tooltip": "Повторное использование BlockPos в цикле тика частиц для снижения нагрузки на GC",
+  "optitime:setting-shadowveg": "Отсечение растительности теней",
+  "optitime:setting-shadowveg-tooltip": "Пропускать растительность в дальнем каскаде теней (тени листьев/травы на 150+ блоках невидимы)",
+  "optitime:setting-background-maxfps": "Макс. FPS в фоне",
+  "optitime:setting-background-maxfps-tooltip": "Ограничение FPS, когда окно игры не в фокусе (5-60)",
+  "optitime:setting-gui-mousemove": "Объединение движений мыши",
+  "optitime:setting-gui-mousemove-tooltip": "Объединять быстрые события движения мыши для снижения нагрузки на обработку"
 }

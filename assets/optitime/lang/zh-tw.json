@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "天氣風力",
+  "optitime:setting-weatherwind-tooltip": "將風速查詢從每幀降低到每4幀一次",
+  "optitime:setting-tickingblocks": "活動方塊",
+  "optitime:setting-tickingblocks-tooltip": "在粒子tick迴圈中複用BlockPos以減少GC壓力",
+  "optitime:setting-shadowveg": "陰影植被剔除",
+  "optitime:setting-shadowveg-tooltip": "跳過遠距離陰影級聯中的植被（150+方塊處的樹葉/草地陰影不可見）",
+  "optitime:setting-background-maxfps": "背景最大FPS",
+  "optitime:setting-background-maxfps-tooltip": "遊戲視窗未聚焦時的FPS上限（5-60）",
+  "optitime:setting-gui-mousemove": "滑鼠移動合併",
+  "optitime:setting-gui-mousemove-tooltip": "合併快速滑鼠移動事件以減少處理開銷"
 }

@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "天候の風",
+  "optitime:setting-weatherwind-tooltip": "風速の問い合わせを毎フレームから4フレームごとに削減",
+  "optitime:setting-tickingblocks": "ティッキングブロック",
+  "optitime:setting-tickingblocks-tooltip": "パーティクルtickループでBlockPosを再利用してGC負荷を軽減",
+  "optitime:setting-shadowveg": "影の植生カリング",
+  "optitime:setting-shadowveg-tooltip": "遠距離シャドウカスケードの植生をスキップ（150+ブロック先の葉/草の影は見えない）",
+  "optitime:setting-background-maxfps": "バックグラウンド最大FPS",
+  "optitime:setting-background-maxfps-tooltip": "ゲームウィンドウが非アクティブ時のFPS上限（5-60）",
+  "optitime:setting-gui-mousemove": "マウス移動の統合",
+  "optitime:setting-gui-mousemove-tooltip": "高速なマウス移動イベントを統合して処理負荷を軽減"
 }

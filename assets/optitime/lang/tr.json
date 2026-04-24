@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "Hava rüzgârı",
+  "optitime:setting-weatherwind-tooltip": "Rüzgâr hızı sorgularını her kareden her 4. kareye düşür",
+  "optitime:setting-tickingblocks": "Tiklenen bloklar",
+  "optitime:setting-tickingblocks-tooltip": "Parçacık tick döngüsünde BlockPos yeniden kullanarak GC baskısını azalt",
+  "optitime:setting-shadowveg": "Gölge bitki örtüsü budama",
+  "optitime:setting-shadowveg-tooltip": "Uzak gölge kademesinde bitki örtüsünü atla (150+ bloktaki yaprak/çimen gölgeleri görünmez)",
+  "optitime:setting-background-maxfps": "Arka plan maks. FPS",
+  "optitime:setting-background-maxfps-tooltip": "Oyun penceresi odakta değilken FPS sınırı (5-60)",
+  "optitime:setting-gui-mousemove": "Fare hareketi birleştirme",
+  "optitime:setting-gui-mousemove-tooltip": "Hızlı fare hareketi olaylarını birleştirerek işlem yükünü azalt"
 }

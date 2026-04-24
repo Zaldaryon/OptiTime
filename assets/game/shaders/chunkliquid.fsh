@@ -42,8 +42,9 @@ flat in int renderFoam;
 
 vec2 droplethash3( vec2 p )
 {
-	vec2 q = vec2(dot(p,vec2(12.71,31.17)), dot(p,vec2(26.95,18.33)));
-	return fract(q * vec2(43758.5453, 22578.1459));
+	vec3 p3 = fract(vec3(p.xyx) * vec3(.1031, .1030, .0973));
+	p3 += dot(p3, p3.yzx + 33.33);
+	return fract((p3.xx + p3.yz) * p3.zy);
 }
 
 float dropletnoise(in vec2 x)

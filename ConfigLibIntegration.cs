@@ -129,6 +129,22 @@ namespace OptiTime
                     config.ParticleOptimizations = value;
                     changed = true;
                     break;
+                case "WeatherWindOptimizations":
+                    config.WeatherWindOptimizations = value;
+                    changed = true;
+                    break;
+                case "TickingBlocksOptimizations":
+                    config.TickingBlocksOptimizations = value;
+                    changed = true;
+                    break;
+                case "ShadowFarVegetationCullEnabled":
+                    config.ShadowFarVegetationCullEnabled = value;
+                    changed = true;
+                    break;
+                case "BackgroundMaxFps":
+                    config.BackgroundMaxFps = tree.GetInt("value", 20);
+                    changed = true;
+                    break;
             }
 
             if (changed)

@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "Veðurvindur",
+  "optitime:setting-weatherwind-tooltip": "Takmarka vindahraðafyrirspurnir úr hverri ramma í hverja 4. ramma",
+  "optitime:setting-tickingblocks": "Tikkandi blokkir",
+  "optitime:setting-tickingblocks-tooltip": "Endurnýta BlockPos í agna tick-lykkju til að minnka GC-þrýsting",
+  "optitime:setting-shadowveg": "Skuggagróðurklipping",
+  "optitime:setting-shadowveg-tooltip": "Sleppa gróðri í fjarlægri skuggakaskíðu (lauf-/grasskuggar við 150+ blokka eru ósýnilegir)",
+  "optitime:setting-background-maxfps": "Bakgrunns hámarks FPS",
+  "optitime:setting-background-maxfps-tooltip": "FPS-takmörk þegar leikjagluggi er ekki í fókus (5-60)",
+  "optitime:setting-gui-mousemove": "Músarhreyfingasamruni",
+  "optitime:setting-gui-mousemove-tooltip": "Sameina hraðar músarhreyfingar til að minnka vinnsluálag"
 }

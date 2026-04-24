@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "Gió thời tiết",
+  "optitime:setting-weatherwind-tooltip": "Giảm truy vấn tốc độ gió từ mỗi khung hình xuống mỗi 4 khung hình",
+  "optitime:setting-tickingblocks": "Khối đang hoạt động",
+  "optitime:setting-tickingblocks-tooltip": "Tái sử dụng BlockPos trong vòng lặp tick hạt để giảm áp lực GC",
+  "optitime:setting-shadowveg": "Loại bỏ thực vật trong bóng",
+  "optitime:setting-shadowveg-tooltip": "Bỏ qua thực vật trong tầng bóng xa (bóng lá/cỏ ở 150+ khối không nhìn thấy được)",
+  "optitime:setting-background-maxfps": "FPS tối đa nền",
+  "optitime:setting-background-maxfps-tooltip": "Giới hạn FPS khi cửa sổ trò chơi không được chọn (5-60)",
+  "optitime:setting-gui-mousemove": "Gộp di chuyển chuột",
+  "optitime:setting-gui-mousemove-tooltip": "Gộp các sự kiện di chuyển chuột nhanh để giảm tải xử lý"
 }

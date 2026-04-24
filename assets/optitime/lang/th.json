@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "ลมสภาพอากาศ",
+  "optitime:setting-weatherwind-tooltip": "จำกัดการสอบถามความเร็วลมจากทุกเฟรมเป็นทุก 4 เฟรม",
+  "optitime:setting-tickingblocks": "บล็อกที่ทำงาน",
+  "optitime:setting-tickingblocks-tooltip": "ใช้ BlockPos ซ้ำในลูป tick ของอนุภาคเพื่อลดแรงกดดัน GC",
+  "optitime:setting-shadowveg": "ตัดพืชพรรณในเงา",
+  "optitime:setting-shadowveg-tooltip": "ข้ามพืชพรรณในเงาระยะไกล (เงาใบไม้/หญ้าที่ 150+ บล็อกมองไม่เห็น)",
+  "optitime:setting-background-maxfps": "FPS สูงสุดในพื้นหลัง",
+  "optitime:setting-background-maxfps-tooltip": "จำกัด FPS เมื่อหน้าต่างเกมไม่ได้โฟกัส (5-60)",
+  "optitime:setting-gui-mousemove": "รวมการเคลื่อนที่เมาส์",
+  "optitime:setting-gui-mousemove-tooltip": "รวมเหตุการณ์การเคลื่อนที่เมาส์ที่รวดเร็วเพื่อลดภาระการประมวลผล"
 }

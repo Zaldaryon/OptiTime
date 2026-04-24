@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "Viento climático",
+  "optitime:setting-weatherwind-tooltip": "Reducir consultas de velocidad del viento de cada fotograma a cada 4 fotogramas",
+  "optitime:setting-tickingblocks": "Bloques activos",
+  "optitime:setting-tickingblocks-tooltip": "Reutilizar BlockPos en el ciclo tick de partículas para reducir presión de GC",
+  "optitime:setting-shadowveg": "Recorte de vegetación de sombras",
+  "optitime:setting-shadowveg-tooltip": "Omitir vegetación en la cascada de sombras lejana (sombras de hojas/hierba a 150+ bloques son invisibles)",
+  "optitime:setting-background-maxfps": "FPS máx. en segundo plano",
+  "optitime:setting-background-maxfps-tooltip": "Límite de FPS cuando la ventana del juego no está enfocada (5-60)",
+  "optitime:setting-gui-mousemove": "Fusión de movimiento del ratón",
+  "optitime:setting-gui-mousemove-tooltip": "Fusionar eventos rápidos de movimiento del ratón para reducir carga de procesamiento"
 }

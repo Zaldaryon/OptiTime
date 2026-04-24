@@ -62,5 +62,15 @@
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",
-  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off"
+  "optitime:setting-frame-pacing-tooltip": "Use hybrid sleep/yield/spin timing when VSync is off",
+  "optitime:setting-weatherwind": "رياح الطقس",
+  "optitime:setting-weatherwind-tooltip": "تقليل استعلامات سرعة الرياح من كل إطار إلى كل 4 إطارات",
+  "optitime:setting-tickingblocks": "الكتل النشطة",
+  "optitime:setting-tickingblocks-tooltip": "إعادة استخدام BlockPos في حلقة tick الجسيمات لتقليل ضغط GC",
+  "optitime:setting-shadowveg": "قص نباتات الظل",
+  "optitime:setting-shadowveg-tooltip": "تخطي النباتات في شلال الظل البعيد (ظلال الأوراق/العشب على بعد 150+ كتلة غير مرئية)",
+  "optitime:setting-background-maxfps": "أقصى FPS في الخلفية",
+  "optitime:setting-background-maxfps-tooltip": "حد FPS عندما تكون نافذة اللعبة غير مركزة (5-60)",
+  "optitime:setting-gui-mousemove": "دمج حركة الماوس",
+  "optitime:setting-gui-mousemove-tooltip": "دمج أحداث حركة الماوس السريعة لتقليل عبء المعالجة"
 }

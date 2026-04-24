@@ -137,9 +137,14 @@ What it checks automatically:
 
 ## Version
 
-Current: **1.4.10**
+Current: **1.4.11**
 
-**What's New in 1.4.10:**
+**What's New in 1.4.11:**
+- **FIX:** Liquid Droplets shader — replaced broken fract-only hash with Dave Hoskins hash22 (industry-standard sin-free hash); droplets now animate with proper randomness instead of all syncing together
+- **NEW:** All optimizations now exposed in ConfigLib GUI — WeatherWind, TickingBlocks, ShadowVegetationCull, BackgroundMaxFps, and MouseMoveCoalescing added to the settings panel
+- **NEW:** Complete translations for all new ConfigLib settings across all 31 languages
+
+**Previous Release (1.4.10):**
 - **FIX:** Dynamic lights intensity — restored `lighthsv[2]` multiplier lost in 1.4.8 FieldRefAccess refactor; held light sources (lanterns, torches) now emit light at correct intensity
 - **NEW:** Shadow PCF reduction — far cascade shadow sampling reduced from 9-tap 3×3 grid to 4-tap Vogel disk (56% fewer texture lookups, near cascade unchanged)
 - **NEW:** Shadow alpha threshold — shadow map fragment discard threshold raised from 0.02 to 0.15 (better early-Z, minimal visual change)
