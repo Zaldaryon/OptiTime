@@ -30,6 +30,7 @@ namespace OptiTime
         public bool ShaderOptimizations { get; set; } = true;
         public bool WeatherWindOptimizations { get; set; } = true;
         public bool TickingBlocksOptimizations { get; set; } = true;
+        public bool ShadowFarVegetationCullEnabled { get; set; } = true;
 
         private Dictionary<string, Action<bool>> optimizationSetters;
         private Dictionary<string, Func<bool>> optimizationGetters;
@@ -60,6 +61,7 @@ namespace OptiTime
                 [nameof(ShaderOptimizations)] = v => ShaderOptimizations = v,
                 [nameof(WeatherWindOptimizations)] = v => WeatherWindOptimizations = v,
                 [nameof(TickingBlocksOptimizations)] = v => TickingBlocksOptimizations = v,
+                [nameof(ShadowFarVegetationCullEnabled)] = v => ShadowFarVegetationCullEnabled = v,
                 [nameof(EnableProfiling)] = v => EnableProfiling = v
             };
 
@@ -80,6 +82,7 @@ namespace OptiTime
                 [nameof(ShaderOptimizations)] = () => ShaderOptimizations,
                 [nameof(WeatherWindOptimizations)] = () => WeatherWindOptimizations,
                 [nameof(TickingBlocksOptimizations)] = () => TickingBlocksOptimizations,
+                [nameof(ShadowFarVegetationCullEnabled)] = () => ShadowFarVegetationCullEnabled,
                 [nameof(EnableProfiling)] = () => EnableProfiling
             };
         }
@@ -142,6 +145,7 @@ namespace OptiTime
                 nameof(ShaderOptimizations) => "OptiTime shader replacements for blur, clouds, godrays, and SSAO",
                 nameof(WeatherWindOptimizations) => "Throttle wind speed lookups from every frame to every 4th frame",
                 nameof(TickingBlocksOptimizations) => "Reuse BlockPos in particle tick loop to reduce GC pressure",
+                nameof(ShadowFarVegetationCullEnabled) => "Skip vegetation in far shadow cascade (removes leaf/grass shadows at distance)",
                 _ => "Unknown optimization"
             };
         }
@@ -208,6 +212,7 @@ namespace OptiTime
             PrintOptStatus(api, "recipe", RecipeLookupOptimizations, nameof(RecipeLookupOptimizations));
             PrintOptStatus(api, "weatherwind", WeatherWindOptimizations, nameof(WeatherWindOptimizations));
             PrintOptStatus(api, "tickingblocks", TickingBlocksOptimizations, nameof(TickingBlocksOptimizations));
+            PrintOptStatus(api, "shadowveg", ShadowFarVegetationCullEnabled, nameof(ShadowFarVegetationCullEnabled));
             api.ShowChatMessage($"profiling: {(EnableProfiling ? "ON" : "OFF")}");
         }
         
@@ -251,7 +256,8 @@ namespace OptiTime
                 ["handbook"] = (HandbookOptimizations, "Handbook", nameof(HandbookOptimizations)),
                 ["recipe"] = (RecipeLookupOptimizations, "Recipe Lookup", nameof(RecipeLookupOptimizations)),
                 ["weatherwind"] = (WeatherWindOptimizations, "Weather Wind", nameof(WeatherWindOptimizations)),
-                ["tickingblocks"] = (TickingBlocksOptimizations, "Ticking Blocks", nameof(TickingBlocksOptimizations))
+                ["tickingblocks"] = (TickingBlocksOptimizations, "Ticking Blocks", nameof(TickingBlocksOptimizations)),
+                ["shadowveg"] = (ShadowFarVegetationCullEnabled, "Shadow Far Vegetation Cull", nameof(ShadowFarVegetationCullEnabled))
             };
 
             if (mapping.TryGetValue(catLower, out var info))

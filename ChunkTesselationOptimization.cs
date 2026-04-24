@@ -132,7 +132,7 @@ namespace OptiTime
 
             if (getMultiplierMethod == null)
             {
-                logger?.Invoke("[ot] ChunkTess: GetAdaptiveMultiplier not found");
+                logger?.Invoke("[OptiTime] ChunkTess: GetAdaptiveMultiplier not found");
                 return codes;
             }
 
@@ -140,7 +140,7 @@ namespace OptiTime
             var uploadRateLimiterField = AccessTools.PropertyGetter(typeof(ClientSettings), nameof(ClientSettings.ChunkVerticesUploadRateLimiter));
             if (uploadRateLimiterField == null)
             {
-                logger?.Invoke("[ot] ChunkTess: ChunkVerticesUploadRateLimiter getter not found");
+                logger?.Invoke("[OptiTime] ChunkTess: ChunkVerticesUploadRateLimiter getter not found");
                 return instructions;
             }
 
@@ -153,13 +153,13 @@ namespace OptiTime
                     if (LoadsInt32(codes[d], 3))
                     {
                         var sb = new System.Text.StringBuilder();
-                        sb.Append($"[ot] ChunkTess: found ldc.i4.3 at {d}, next 8: ");
+                        sb.Append($"[OptiTime] ChunkTess: found ldc.i4.3 at {d}, next 8: ");
                         for (int k = d + 1; k < Math.Min(codes.Count, d + 9); k++)
                             sb.Append($"[{codes[k].opcode} {codes[k].operand}] ");
                         logger?.Invoke(sb.ToString());
                     }
                 }
-                logger?.Invoke("[ot] ChunkTess: upload multiplier anchor not found");
+                logger?.Invoke("[OptiTime] ChunkTess: upload multiplier anchor not found");
                 return instructions;
             }
 
@@ -176,7 +176,7 @@ namespace OptiTime
             codes[multiplierIndex] = replacement;
             codes.Insert(multiplierIndex + 1, new CodeInstruction(OpCodes.Call, getMultiplierMethod));
 
-            logger?.Invoke($"[ot] ChunkTess: adaptive multiplier injected at IL index {multiplierIndex}");
+            logger?.Invoke($"[OptiTime] ChunkTess: adaptive multiplier injected at IL index {multiplierIndex}");
             return codes;
         }
 

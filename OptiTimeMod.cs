@@ -44,9 +44,11 @@ namespace OptiTime
         {
             "shaders/blur.fsh",
             "shaders/chunkliquid.fsh",
+            "shaders/chunkshadowmap.fsh",
             "shaders/cloudvolumetric.fsh",
             "shaders/godrays.fsh",
-            "shaders/ssao.fsh"
+            "shaders/ssao.fsh",
+            "shaderincludes/fogandlight.fsh"
         };
         private static readonly Dictionary<string, string> OptimizationMap = new Dictionary<string, string>
         {
@@ -64,7 +66,8 @@ namespace OptiTime
             ["handbook"] = "HandbookOptimizations",
             ["recipe"] = "RecipeLookupOptimizations",
             ["weatherwind"] = "WeatherWindOptimizations",
-            ["tickingblocks"] = "TickingBlocksOptimizations"
+            ["tickingblocks"] = "TickingBlocksOptimizations",
+            ["shadowveg"] = "ShadowFarVegetationCullEnabled"
         };
 
         public override bool ShouldLoad(EnumAppSide forSide)
@@ -128,12 +131,12 @@ namespace OptiTime
                 {
                     harmony.Patch(hasTranslation,
                         transpiler: new HarmonyMethod(typeof(TranslationServicePatch), nameof(TranslationServicePatch.Transpile)));
-                    api.Logger.Notification("[ot] TranslationService thread-safety fix loaded");
+                    api.Logger.Notification("[OptiTime] TranslationService thread-safety fix loaded");
                 }
             }
             catch (Exception ex)
             {
-                api.Logger.Warning("[ot] TranslationService thread-safety fix failed: " + ex.Message);
+                api.Logger.Warning("[OptiTime] TranslationService thread-safety fix failed: " + ex.Message);
             }
 
             try
@@ -287,12 +290,12 @@ namespace OptiTime
                             target,
                             transpiler: new HarmonyMethod(typeof(ChunkTesselationOptimization), nameof(ChunkTesselationOptimization.TranspileTesselationThrottle)));
 
-                        api.Logger.Notification("[ot] Chunk tesselation optimization loaded (transpiler)");
+                        api.Logger.Notification("[OptiTime] Chunk tesselation optimization loaded (transpiler)");
                     }
                 }
                 catch (Exception ex)
                 {
-                    api.Logger.Error("[ot] Failed to load chunk tesselation optimization: " + ex.Message);
+                    api.Logger.Error("[OptiTime] Failed to load chunk tesselation optimization: " + ex.Message);
                     config.ChunkTesselationOptimizations = false;
                 }
             }
@@ -505,12 +508,12 @@ namespace OptiTime
                     {
                         harmony.Patch(target,
                             transpiler: new HarmonyMethod(typeof(WeatherWindOptimization), nameof(WeatherWindOptimization.Transpile)));
-                        api.Logger.Notification("[ot] Weather wind speed throttle loaded");
+                        api.Logger.Notification("[OptiTime] Weather wind speed throttle loaded");
                     }
                 }
                 catch (Exception ex)
                 {
-                    api.Logger.Warning("[ot] Failed to load weather wind optimization: " + ex.Message);
+                    api.Logger.Warning("[OptiTime] Failed to load weather wind optimization: " + ex.Message);
                     config.WeatherWindOptimizations = false;
                 }
             }
@@ -527,13 +530,32 @@ namespace OptiTime
                     {
                         harmony.Patch(target,
                             transpiler: new HarmonyMethod(typeof(TickingBlocksOptimization), nameof(TickingBlocksOptimization.Transpile)));
-                        api.Logger.Notification("[ot] Ticking blocks GC optimization loaded");
+                        api.Logger.Notification("[OptiTime] Ticking blocks GC optimization loaded");
                     }
                 }
                 catch (Exception ex)
                 {
-                    api.Logger.Warning("[ot] Failed to load ticking blocks optimization: " + ex.Message);
+                    api.Logger.Warning("[OptiTime] Failed to load ticking blocks optimization: " + ex.Message);
                     config.TickingBlocksOptimizations = false;
+                }
+            }
+
+            if (config.ShadowFarVegetationCullEnabled)
+            {
+                try
+                {
+                    var renderShadow = AccessTools.Method("Vintagestory.Client.NoObf.ChunkRenderer:RenderShadow", new Type[] { typeof(float) });
+                    if (renderShadow == null)
+                        throw new InvalidOperationException("ChunkRenderer.RenderShadow not found");
+
+                    harmony.Patch(renderShadow,
+                        transpiler: new HarmonyMethod(typeof(ShadowOptimization), nameof(ShadowOptimization.TranspileRenderShadow)));
+                    api.Logger.Notification("[OptiTime] Shadow far vegetation cull loaded");
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[OptiTime] Failed to load shadow far vegetation cull: " + ex.Message);
+                    config.ShadowFarVegetationCullEnabled = false;
                 }
             }
 
@@ -721,6 +743,7 @@ namespace OptiTime
             if (config.RecipeLookupOptimizations) count++;
             if (config.WeatherWindOptimizations) count++;
             if (config.TickingBlocksOptimizations) count++;
+            if (config.ShadowFarVegetationCullEnabled) count++;
             if (config.ShaderOptimizations && !config.IsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations))) count++;
 
             if (count > 0)
@@ -961,6 +984,7 @@ namespace OptiTime
                 // Cleanup recipe lookup optimization (no resources currently)
                 RecipeLookupCacheOptimization.Cleanup();
                 WeatherWindOptimization.Cleanup();
+                ShadowOptimization.Cleanup();
 
                 ProfilingHelper.Cleanup();
             }

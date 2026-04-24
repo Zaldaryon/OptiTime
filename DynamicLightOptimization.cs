@@ -111,14 +111,15 @@ namespace OptiTime
             game.shUniforms.PointLights3[3 * count + 1] = (float)outval.Y;
             game.shUniforms.PointLights3[3 * count + 2] = (float)outval.Z;
 
+            int num = lighthsv[2];
             int h = game.WorldMap.hueLevels[lighthsv[0]];
             int s = game.WorldMap.satLevels[lighthsv[1]];
-            int v = (int)(game.WorldMap.BlockLightLevels[lighthsv[2]] * 255);
+            int v = (int)(game.WorldMap.BlockLightLevels[num] * 255);
             ColorUtil.ToRGBVec3f(ColorUtil.HsvToRgba(h, s, v), ref outval3);
 
-            game.shUniforms.PointLightColors3[3 * count] = outval3.Z;
-            game.shUniforms.PointLightColors3[3 * count + 1] = outval3.Y;
-            game.shUniforms.PointLightColors3[3 * count + 2] = outval3.X;
+            game.shUniforms.PointLightColors3[3 * count] = outval3.Z * num;
+            game.shUniforms.PointLightColors3[3 * count + 1] = outval3.Y * num;
+            game.shUniforms.PointLightColors3[3 * count + 2] = outval3.X * num;
             game.shUniforms.PointLightsCount++;
         }
 
