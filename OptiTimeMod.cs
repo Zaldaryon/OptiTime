@@ -43,9 +43,9 @@ namespace OptiTime
         private static readonly string[] OptiTimeShaderPaths = new[]
         {
             "shaders/blur.fsh",
+            "shaders/chunkliquid.fsh",
             "shaders/cloudvolumetric.fsh",
             "shaders/godrays.fsh",
-            "shaders/godrays.vsh",
             "shaders/ssao.fsh"
         };
         private static readonly Dictionary<string, string> OptimizationMap = new Dictionary<string, string>
@@ -62,7 +62,9 @@ namespace OptiTime
             ["framepace"] = "PreciseFramePacingEnabled",
             ["guimgr"] = "GuiManagerOptimizations",
             ["handbook"] = "HandbookOptimizations",
-            ["recipe"] = "RecipeLookupOptimizations"
+            ["recipe"] = "RecipeLookupOptimizations",
+            ["weatherwind"] = "WeatherWindOptimizations",
+            ["tickingblocks"] = "TickingBlocksOptimizations"
         };
 
         public override bool ShouldLoad(EnumAppSide forSide)
@@ -250,7 +252,6 @@ namespace OptiTime
             {
                 try
                 {
-                    // Set logger for diagnostics
                     ChunkTesselationOptimization.SetLogger((msg) => api.Logger.Notification(msg));
 
                     var onBeforeFrame = AccessTools.Method(
@@ -267,14 +268,14 @@ namespace OptiTime
                     {
                         harmony.Patch(
                             target,
-                            prefix: new HarmonyMethod(typeof(ChunkTesselationOptimization), "OnBeforeFrame_Prefix"));
+                            transpiler: new HarmonyMethod(typeof(ChunkTesselationOptimization), nameof(ChunkTesselationOptimization.TranspileTesselationThrottle)));
 
-                        api.Logger.Notification("[OptiTime] Chunk tesselation optimization loaded");
+                        api.Logger.Notification("[ot] Chunk tesselation optimization loaded (transpiler)");
                     }
                 }
                 catch (Exception ex)
                 {
-                    api.Logger.Error("[OptiTime] Failed to load chunk tesselation optimization: " + ex.Message);
+                    api.Logger.Error("[ot] Failed to load chunk tesselation optimization: " + ex.Message);
                     config.ChunkTesselationOptimizations = false;
                 }
             }
@@ -475,6 +476,50 @@ namespace OptiTime
 
             RegisterCommands(api);
 
+            if (config.WeatherWindOptimizations)
+            {
+                try
+                {
+                    var target = AccessTools.Method("Vintagestory.GameContent.WeatherSystemClient:OnRenderFrame", new Type[] { typeof(float), typeof(Vintagestory.API.Client.EnumRenderStage) });
+                    if (target == null)
+                        throw new InvalidOperationException("WeatherSystemClient.OnRenderFrame not found");
+
+                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.WeatherWindOptimizations), "Weather wind optimization", target))
+                    {
+                        harmony.Patch(target,
+                            transpiler: new HarmonyMethod(typeof(WeatherWindOptimization), nameof(WeatherWindOptimization.Transpile)));
+                        api.Logger.Notification("[ot] Weather wind speed throttle loaded");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[ot] Failed to load weather wind optimization: " + ex.Message);
+                    config.WeatherWindOptimizations = false;
+                }
+            }
+
+            if (config.TickingBlocksOptimizations)
+            {
+                try
+                {
+                    var target = AccessTools.Method("Vintagestory.Client.NoObf.SystemClientTickingBlocks:onOffThreadParticleTick", new Type[] { typeof(float), typeof(Vintagestory.API.Client.IAsyncParticleManager) });
+                    if (target == null)
+                        throw new InvalidOperationException("SystemClientTickingBlocks.onOffThreadParticleTick not found");
+
+                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.TickingBlocksOptimizations), "Ticking blocks optimization", target))
+                    {
+                        harmony.Patch(target,
+                            transpiler: new HarmonyMethod(typeof(TickingBlocksOptimization), nameof(TickingBlocksOptimization.Transpile)));
+                        api.Logger.Notification("[ot] Ticking blocks GC optimization loaded");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[ot] Failed to load ticking blocks optimization: " + ex.Message);
+                    config.TickingBlocksOptimizations = false;
+                }
+            }
+
             api.Event.LevelFinalize += OnLevelFinalize;
         }
 
@@ -657,6 +702,8 @@ namespace OptiTime
             if (config.GuiManagerOptimizations) count++;
             if (config.HandbookOptimizations) count++;
             if (config.RecipeLookupOptimizations) count++;
+            if (config.WeatherWindOptimizations) count++;
+            if (config.TickingBlocksOptimizations) count++;
             if (config.ShaderOptimizations && !config.IsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations))) count++;
 
             if (count > 0)
@@ -724,15 +771,18 @@ namespace OptiTime
         {
             try
             {
-                var assets = origin.GetAssets(AssetCategory.shaders, false);
-                foreach (var asset in assets)
+                foreach (var category in new[] { AssetCategory.shaders, AssetCategory.shaderincludes })
                 {
-                    if (asset?.Location == null)
-                        continue;
-                    if (!string.Equals(asset.Location.Domain, "game", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    if (IsOptiTimeShaderPath(asset.Location.Path))
-                        return true;
+                    var assets = origin.GetAssets(category, false);
+                    foreach (var asset in assets)
+                    {
+                        if (asset?.Location == null)
+                            continue;
+                        if (!string.Equals(asset.Location.Domain, "game", StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        if (IsOptiTimeShaderPath(asset.Location.Path))
+                            return true;
+                    }
                 }
             }
             catch { }
@@ -893,6 +943,7 @@ namespace OptiTime
 
                 // Cleanup recipe lookup optimization (no resources currently)
                 RecipeLookupCacheOptimization.Cleanup();
+                WeatherWindOptimization.Cleanup();
 
                 ProfilingHelper.Cleanup();
             }

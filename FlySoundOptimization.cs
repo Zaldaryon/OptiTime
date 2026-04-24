@@ -1,24 +1,35 @@
 using HarmonyLib;
 using System;
+using Vintagestory.API.Client;
+using Vintagestory.Client.NoObf;
 
 namespace OptiTime
 {
     public class FlySoundOptimization
     {
-        private static float lastVolume = 0f;
+        private static float lastVolume;
 
-        public static bool OptimizeFlySound(object __instance, float dt)
+        private static readonly AccessTools.FieldRef<SystemPlayerSounds, ILoadedSound> flySoundRef =
+            AccessTools.FieldRefAccess<SystemPlayerSounds, ILoadedSound>("FlySound");
+        private static readonly AccessTools.FieldRef<SystemPlayerSounds, double> flySpeedRef =
+            AccessTools.FieldRefAccess<SystemPlayerSounds, double>("flySpeed");
+        private static readonly AccessTools.FieldRef<SystemPlayerSounds, float> curVolumeRef =
+            AccessTools.FieldRefAccess<SystemPlayerSounds, float>("curVolume");
+        private static readonly AccessTools.FieldRef<SystemPlayerSounds, float> targetVolumeRef =
+            AccessTools.FieldRefAccess<SystemPlayerSounds, float>("targetVolume");
+        private static readonly AccessTools.FieldRef<SystemPlayerSounds, bool> fallActiveRef =
+            AccessTools.FieldRefAccess<SystemPlayerSounds, bool>("fallActive");
+
+        public static bool OptimizeFlySound(SystemPlayerSounds __instance, float dt)
         {
             try
             {
-                var instance = __instance as dynamic;
-                var flySound = instance.FlySound;
-
-                double flySpeed = instance.flySpeed;
-                float curVolume = instance.curVolume;
+                var flySound = flySoundRef(__instance);
+                double flySpeed = flySpeedRef(__instance);
+                float curVolume = curVolumeRef(__instance);
 
                 bool flag = Math.Abs(flySpeed) - 0.05 > 0.2;
-                if (flag && !instance.fallActive && !flySound.IsPlaying)
+                if (flag && !fallActiveRef(__instance) && !flySound.IsPlaying)
                     flySound.Start();
                 if (!flag && curVolume < 0.08f && flySound.IsPlaying)
                     flySound.Stop();
@@ -35,14 +46,14 @@ namespace OptiTime
                         lastVolume = newVolume;
                     }
 
-                    instance.curVolume = newVolume;
-                    instance.targetVolume = targetVolume;
+                    curVolumeRef(__instance) = newVolume;
+                    targetVolumeRef(__instance) = targetVolume;
                 }
                 else
                 {
-                    instance.targetVolume = 0.0f;
+                    targetVolumeRef(__instance) = 0.0f;
                 }
-                instance.fallActive = flag;
+                fallActiveRef(__instance) = flag;
 
                 return false;
             }

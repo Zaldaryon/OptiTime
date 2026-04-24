@@ -28,6 +28,8 @@ namespace OptiTime
         public bool RecipeLookupOptimizations { get; set; } = true;
         public bool EnableProfiling { get; set; } = false;
         public bool ShaderOptimizations { get; set; } = true;
+        public bool WeatherWindOptimizations { get; set; } = true;
+        public bool TickingBlocksOptimizations { get; set; } = true;
 
         private Dictionary<string, Action<bool>> optimizationSetters;
         private Dictionary<string, Func<bool>> optimizationGetters;
@@ -56,6 +58,8 @@ namespace OptiTime
                 [nameof(HandbookOptimizations)] = v => HandbookOptimizations = v,
                 [nameof(RecipeLookupOptimizations)] = v => RecipeLookupOptimizations = v,
                 [nameof(ShaderOptimizations)] = v => ShaderOptimizations = v,
+                [nameof(WeatherWindOptimizations)] = v => WeatherWindOptimizations = v,
+                [nameof(TickingBlocksOptimizations)] = v => TickingBlocksOptimizations = v,
                 [nameof(EnableProfiling)] = v => EnableProfiling = v
             };
 
@@ -74,6 +78,8 @@ namespace OptiTime
                 [nameof(HandbookOptimizations)] = () => HandbookOptimizations,
                 [nameof(RecipeLookupOptimizations)] = () => RecipeLookupOptimizations,
                 [nameof(ShaderOptimizations)] = () => ShaderOptimizations,
+                [nameof(WeatherWindOptimizations)] = () => WeatherWindOptimizations,
+                [nameof(TickingBlocksOptimizations)] = () => TickingBlocksOptimizations,
                 [nameof(EnableProfiling)] = () => EnableProfiling
             };
         }
@@ -134,6 +140,8 @@ namespace OptiTime
                 nameof(HandbookOptimizations) => "Cached handbook relationships after async indexing",
                 nameof(RecipeLookupOptimizations) => "Early dimension rejection for impossible crafting matches",
                 nameof(ShaderOptimizations) => "OptiTime shader replacements for blur, clouds, godrays, and SSAO",
+                nameof(WeatherWindOptimizations) => "Throttle wind speed lookups from every frame to every 4th frame",
+                nameof(TickingBlocksOptimizations) => "Reuse BlockPos in particle tick loop to reduce GC pressure",
                 _ => "Unknown optimization"
             };
         }
@@ -198,6 +206,8 @@ namespace OptiTime
             PrintOptStatus(api, "guimgr", GuiManagerOptimizations, nameof(GuiManagerOptimizations));
             PrintOptStatus(api, "handbook", HandbookOptimizations, nameof(HandbookOptimizations));
             PrintOptStatus(api, "recipe", RecipeLookupOptimizations, nameof(RecipeLookupOptimizations));
+            PrintOptStatus(api, "weatherwind", WeatherWindOptimizations, nameof(WeatherWindOptimizations));
+            PrintOptStatus(api, "tickingblocks", TickingBlocksOptimizations, nameof(TickingBlocksOptimizations));
             api.ShowChatMessage($"profiling: {(EnableProfiling ? "ON" : "OFF")}");
         }
         
@@ -239,7 +249,9 @@ namespace OptiTime
                 ["framepace"] = (PreciseFramePacingEnabled, "Precise Frame Pacing", nameof(PreciseFramePacingEnabled)),
                 ["guimgr"] = (GuiManagerOptimizations, "GUI Manager", nameof(GuiManagerOptimizations)),
                 ["handbook"] = (HandbookOptimizations, "Handbook", nameof(HandbookOptimizations)),
-                ["recipe"] = (RecipeLookupOptimizations, "Recipe Lookup", nameof(RecipeLookupOptimizations))
+                ["recipe"] = (RecipeLookupOptimizations, "Recipe Lookup", nameof(RecipeLookupOptimizations)),
+                ["weatherwind"] = (WeatherWindOptimizations, "Weather Wind", nameof(WeatherWindOptimizations)),
+                ["tickingblocks"] = (TickingBlocksOptimizations, "Ticking Blocks", nameof(TickingBlocksOptimizations))
             };
 
             if (mapping.TryGetValue(catLower, out var info))

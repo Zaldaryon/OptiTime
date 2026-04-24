@@ -2,21 +2,26 @@ using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common.Entities;
+using Vintagestory.Client.NoObf;
 
 namespace OptiTime
 {
     public class EntityAnimationOptimization
     {
-        private static byte frameCounter = 0;
-        private const double CLOSE_DIST_SQ = 2304.0;   // 48 blocks (was 24) - more conservative to reduce visual artifacts
-        private const double MEDIUM_DIST_SQ = 6400.0;  // 80 blocks (was 40) - more conservative to reduce visual artifacts
+        private static byte frameCounter;
+        private const double CLOSE_DIST_SQ = 2304.0;   // 48 blocks
+        private const double MEDIUM_DIST_SQ = 6400.0;  // 80 blocks
 
-        public static bool OptimizeEntityAnimations(object __instance, float dt)
+        private static readonly AccessTools.FieldRef<ClientSystem, ClientMain> gameRef =
+            AccessTools.FieldRefAccess<ClientSystem, ClientMain>("game");
+        private static readonly AccessTools.FieldRef<ClientMain, Dictionary<long, EntityRenderer>> entityRenderersRef =
+            AccessTools.FieldRefAccess<ClientMain, Dictionary<long, EntityRenderer>>("EntityRenderers");
+
+        public static bool OptimizeEntityAnimations(SystemRenderEntities __instance, float dt)
         {
             try
             {
-                var instance = __instance as dynamic;
-                var game = instance.game;
+                var game = gameRef(__instance);
                 var frustumCuller = game.frustumCuller;
 
                 frameCounter++;
@@ -28,7 +33,7 @@ namespace OptiTime
                 int dimension = game.EntityPlayer.Pos.Dimension;
                 double maxAnimationDistSq = viewDistanceSq * 1.2;
 
-                foreach (var kvp in (IEnumerable<dynamic>)game.EntityRenderers)
+                foreach (var kvp in entityRenderersRef(game))
                 {
                     var entityRenderer = kvp.Value;
                     Entity entity = entityRenderer.entity;
@@ -36,14 +41,12 @@ namespace OptiTime
                     bool isPlayer = entity == game.EntityPlayer;
                     bool allowOutside = entity.AllowOutsideLoadedRange;
 
-                    // 1. Dimension check (cheapest)
                     if (!isPlayer && !allowOutside && entity.Pos.Dimension != dimension)
                     {
                         entity.IsRendered = false;
                         continue;
                     }
 
-                    // 2. Distance check (cheap) - MOVED UP for early rejection
                     double distSq = plrPos.HorizontalSquareDistanceTo(entity.Pos.X, entity.Pos.Z);
 
                     if (!isPlayer && !allowOutside && distSq > maxAnimationDistSq)
@@ -52,11 +55,8 @@ namespace OptiTime
                         continue;
                     }
 
-                    // 3. Frustum check (expensive) - MOVED DOWN after distance check
                     bool inFrustum = frustumCuller.SphereInFrustum(
-                        entity.Pos.X,
-                        entity.Pos.InternalY,
-                        entity.Pos.Z,
+                        entity.Pos.X, entity.Pos.InternalY, entity.Pos.Z,
                         entity.FrustumSphereRadius);
 
                     if (!inFrustum && !isPlayer && !allowOutside)
@@ -68,7 +68,10 @@ namespace OptiTime
                     bool inRange = allowOutside ||
                         (distSq < viewDistanceSq &&
                         (isPlayer ||
-                         game.WorldMap.IsChunkRendered((int)entity.Pos.X / 32, (int)entity.Pos.InternalY / 32, (int)entity.Pos.Z / 32)));
+                         game.WorldMap.IsChunkRendered(
+                             (int)entity.Pos.X / 32,
+                             (int)entity.Pos.InternalY / 32,
+                             (int)entity.Pos.Z / 32)));
 
                     if (inFrustum && inRange)
                     {
@@ -81,10 +84,7 @@ namespace OptiTime
                         if (shouldUpdate)
                         {
                             game.api.World.FrameProfiler.Mark("esr-beforeanim");
-                            try
-                            {
-                                entity.AnimManager?.OnClientFrame(dt);
-                            }
+                            try { entity.AnimManager?.OnClientFrame(dt); }
                             catch (Exception)
                             {
                                 game.Logger.Error($"Animations error for entity {entity.Code.ToShortString()} at {entity.Pos.AsBlockPos?.ToString()}");
@@ -96,14 +96,10 @@ namespace OptiTime
                     else
                     {
                         entity.IsRendered = false;
-
                         if (isPlayer || allowOutside)
                         {
                             game.api.World.FrameProfiler.Mark("esr-beforeanim");
-                            try
-                            {
-                                entity.AnimManager?.OnClientFrame(dt);
-                            }
+                            try { entity.AnimManager?.OnClientFrame(dt); }
                             catch (Exception)
                             {
                                 game.Logger.Error($"Animations error for entity {entity.Code.ToShortString()} at {entity.Pos.AsBlockPos?.ToString()}");

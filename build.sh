@@ -34,6 +34,9 @@ resolve_vintage_story() {
         "${VINTAGE_STORY_HOME:-}"
         "${VINTAGE_STORY_PATH:-}"
         "$HOME/Games/vintagestory"
+        "$HOME/Games/vintagestory"
+        "/mnt/c/Users/$USER/Documents/Misc/Vintagestory"
+        "/mnt/c/Users/$USER/Documents/Misc/Vintagestory"
         "/mnt/c/Games/VintageStory"
         "/mnt/c/Program Files/Vintage Story"
     )
@@ -52,6 +55,8 @@ resolve_vintagestory_data_root() {
         "${VINTAGESTORY_DATA:-}"
         "${XDG_CONFIG_HOME:-$HOME/.config}/VintagestoryData"
         "$HOME/.config/VintagestoryData"
+        "/mnt/c/Users/$USER/AppData/Roaming/VintagestoryData"
+        "/mnt/c/Users/$USER/AppData/Roaming/VintagestoryData"
     )
     first_existing_dir "${candidates[@]}"
 }

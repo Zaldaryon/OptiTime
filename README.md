@@ -1,111 +1,108 @@
 # OptiTime
 
-Client-side performance optimization mod for [Vintage Story](https://vintagestory.at/).
+Clientside performance optimizations for Vintage Story through shader optimization and code patches.
 
-OptiTime improves frame rates through quality-preserving shader optimizations and [Harmony](https://github.com/pardeike/Harmony) code patches. All optimizations are transparent — visual quality and gameplay behavior are preserved. If any patch conflicts with another mod, it automatically disables itself and falls back to vanilla behavior.
+## Performance Gains
 
-**Requires Vintage Story 1.22.0+** · Client-side only (no server changes needed)
+**Shader Optimizations (quality-preserving cuts):**
+- **GodRays** — Early-out when intensity/glow is low and samples reduced (180 → 90).
+- **Liquid Droplets** — Droplet hash sin → fract (cheaper GPU operation, equivalent visual).
+- **SSAO** — Reduced kernel (24/20 → 16/14) plus depth‑scaled radius to reduce shimmer.
+- **Gaussian Blur** — 17 → 9 taps with paired samples for lower ALU.
+- **Volumetric Clouds** — Early alpha clamp to cut overdraw; steps reduced (200 → 128).
 
-## What it optimizes
+**Code Optimizations:**
+- **Ambient Sounds** - Update sound positions only when the player moves meaningfully.
+- **Background FPS Limiter** - Lowers the frame cap when the window is unfocused.
+- **Chunk Tesselation** - Adaptive throttle/boost by real queue size (normal + priority) to keep uploads smooth.
+- **Dynamic Lights** - Cull lights based on view distance.
+- **Entity Animations** - Distance-based LOD for animation updates (conservative thresholds: 48/80 blocks).
+- **Fly Sound** - Volume updates only on meaningful changes.
+- **Frame Pacing** - Hybrid sleep/yield/spin frame pacing when VSync is off.
+- **GUI Manager** - LINQ-free render iteration with conflict auto-disable (opt-out); input patches optional/off by default.
+- **Handbook** - Cached relationships for faster page loading after indexing.
+- **Recipe Lookup** - Safer crafting-grid lookup with previous-match reuse, positive-result revalidation, and candidate narrowing (default on, opt-out).
+- **Occlusion Culling** - Dynamic enable gate based on view distance (clamped 70–200 chunks).
+- **Particles** - High-distance particle budget scaling (default on, opt-out) with conservative thresholds.
+- **Ticking Blocks** - Reuse BlockPos in particle tick loop to eliminate 30K-90K heap allocations/sec.
+- **Weather Wind** - Throttle wind speed lookups from every frame to every 4th frame.
 
-### Shader optimizations (quality-preserving)
-
-| Shader | What it does |
-|--------|-------------|
-| **GodRays** | Early-out when intensity/glow is low; samples reduced (180 → 90) |
-| **Volumetric Clouds** | Early alpha clamp to cut overdraw; steps reduced (200 → 128) |
-| **SSAO** | Reduced kernel (24/20 → 16/14) plus depth-scaled radius to reduce shimmer |
-| **Gaussian Blur** | 17 → 9 taps with paired samples for lower ALU |
-
-### Code optimizations
-
-| Area | What it does |
-|------|-------------|
-| **Ambient Sounds** | Updates sound positions only when the player moves meaningfully |
-| **Background FPS Limiter** | Lowers the frame cap when the window is unfocused |
-| **Chunk Tesselation** | Adaptive throttle/boost by real queue size to keep uploads smooth |
-| **Dynamic Lights** | Culls lights based on view distance |
-| **Entity Animations** | Distance-based LOD for animation updates (conservative thresholds: 48/80 blocks) |
-| **Fly Sound** | Volume updates only on meaningful changes |
-| **Frame Pacing** | Hybrid sleep/yield/spin frame pacing when VSync is off |
-| **GUI Manager** | LINQ-free render iteration with conflict auto-disable |
-| **Handbook** | Cached relationships for faster page loading after indexing |
-| **Recipe Lookup** | Previous-match reuse, positive-result revalidation, and candidate narrowing |
-| **Occlusion Culling** | Dynamic enable gate based on view distance (clamped 70–200 chunks) |
-| **Particles** | High-distance particle budget scaling with conservative thresholds |
+**Performance:** Significant FPS improvement with minimal visual impact. Actual gains vary by scene complexity, hardware, and settings.
 
 ## Installation
 
-1. Download the latest release from [GitHub Releases](https://github.com/Zaldaryon/OptiTime/releases) or [Mod DB](https://mods.vintagestory.at/optitime).
-2. Place the zip in your `VintagestoryData/Mods/` folder.
-3. Launch Vintage Story.
-
-All optimizations are enabled by default. No configuration needed.
+1. Download `OptiTime-X.X.X.zip` from releases
+2. Place in `%APPDATA%\VintagestoryData\Mods\` folder
+3. Launch Vintage Story
 
 ## Configuration
 
-### In-game commands
+### In-Game Commands
 
-Use `.optitime` in chat:
+Use `.optitime` command in-game:
 
-| Command | Description |
-|---------|-------------|
-| `.optitime` | Show status of all optimizations |
-| `.optitime <opt> on\|off` | Toggle a specific optimization |
-| `.optitime <opt>` | Show info about an optimization |
-| `.optitime profile on\|off\|dump\|reset` | Profiling helpers (off by default) |
-
-Available optimizations: `ambientsound`, `bgfps`, `chunktess`, `dynlights`, `entityanim`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `shaders`
-
-Commands work in multiplayer without admin privileges.
-
-### ConfigLib GUI (optional)
-
-If [ConfigLib](https://mods.vintagestory.at/configlib) is installed, use `.configlib` to open a GUI for OptiTime settings. ConfigLib is not required.
-
-### Manual configuration (OptiTime.json)
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `ShaderOptimizations` | `true` | Enable shader replacements. Set to `false` for vanilla or other shader mods |
-| `RecipeLookupOptimizations` | `true` | Crafting-grid lookup: previous-match fast path, positive cache, candidate narrowing |
-| `ParticleViewDistanceScalingEnabled` | `true` | Reduce particle counts at high view distances (75% at 384+, 50% at 512+) |
-| `BackgroundFpsLimiterEnabled` | `true` | Lower frame cap when window is unfocused |
-| `BackgroundMaxFps` | `20` | Unfocused FPS cap |
-| `PreciseFramePacingEnabled` | `true` | Hybrid frame pacing when VSync is off |
-| `GuiManagerNoLinqEnabled` | `true` | LINQ-free GUI render iteration |
-| `GuiManagerInputNoLinqEnabled` | `false` | No-LINQ input patches (enable only if no conflicting UI mods) |
-
-Changes require a game restart.
-
-## Safety model
-
-- **Startup**: If a Harmony patch fails to apply, that optimization stays disabled. The game starts normally.
-- **Runtime**: High-risk patches auto-disable when other mods already patch the same target method.
-- **Shader compatibility**: When Ancestral Bliss Shaders is detected, OptiTime disables its shader assets automatically. Code optimizations remain active.
-
-## Compatibility
-
-- Works with most mods.
-- Shader mods: toggle `ShaderOptimizations` off if using a different shader pack.
-- Harmony conflicts only if another mod patches the exact same methods — OptiTime auto-disables the conflicting patch.
-- Client-side only — servers don't need it installed.
-
-## Building from source
-
-Requires the Vintage Story game installation. Set the `VINTAGE_STORY` environment variable to your install path, then:
-
-```bash
-# Linux
-./build.sh
-
-# Windows
-build.bat
+```
+.optitime                  - Show current status
+.optitime status           - Show current status
+.optitime <opt> on         - Enable optimization
+.optitime <opt> off        - Disable optimization
+.optitime <opt>            - Show info about optimization
 ```
 
-Output: `bin/OptiTime-<version>.zip`
+**Available optimizations:**
+`ambientsound`, `bgfps`, `chunktess`, `dynlights`, `entityanim`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `shaders`, `tickingblocks`, `weatherwind`
 
-## Smoke tests
+### ConfigLib GUI (Optional)
+
+OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-game GUI configuration:
+
+1. Install ConfigLib mod (optional dependency)
+2. Use `.configlib` command to open GUI
+3. Navigate to OptiTime settings
+4. Changes apply immediately (restart may be required for some settings)
+
+**Note:** ConfigLib is NOT required - OptiTime works perfectly without it using JSON config or commands.
+
+### Manual Configuration (OptiTime.json)
+
+**Advanced config (OptiTime.json):**
+- `ShaderOptimizations` - enable OptiTime shader replacements (default on). Set to false to use vanilla or other shader mods. Covers: chunkliquid droplets, godrays, volumetric clouds, SSAO, gaussian blur.
+- `RecipeLookupOptimizations` - enable the crafting-grid lookup optimization bundle: previous-match fast path, exact positive cache with revalidation, and bounded candidate narrowing (default on).
+- `ParticleViewDistanceScalingEnabled` - reduce particle counts only at high view distances (default on; 75% at 384+, 50% at 512+).
+- `BackgroundFpsLimiterEnabled` - lower the frame cap when the game window is unfocused (default on).
+- `BackgroundMaxFps` - unfocused FPS cap used by the background limiter (default 20).
+- `PreciseFramePacingEnabled` - replace coarse sleep-based FPS limiting with hybrid pacing when VSync is off (default on).
+- `GuiManagerNoLinqEnabled` - keep LINQ-free GUI render iteration (default on).
+- `GuiManagerInputNoLinqEnabled` - apply no-LINQ input patches (default off; enable only if you need the tiny allocation savings and no conflicting UI mods).
+- `WeatherWindOptimizations` - throttle wind speed lookups from every frame to every 4th frame (default on).
+- `TickingBlocksOptimizations` - reuse BlockPos in particle tick loop to eliminate heap allocations (default on).
+
+**Examples:**
+```
+.optitime dynlights on     - Enable dynamic light optimization
+.optitime particles off    - Disable particle optimization
+.optitime entityanim       - Show entity animation info
+.optitime bgfps off        - Disable the unfocused FPS limiter
+.optitime framepace on     - Enable precise frame pacing
+.optitime recipe off       - Disable recipe lookup optimization
+.optitime shaders off      - Disable OptiTime shader replacements
+.optitime weatherwind off  - Disable weather wind throttle
+.optitime tickingblocks off - Disable ticking blocks GC optimization
+```
+
+**Note:** Changes require game restart to take effect.
+
+## Technical Details
+
+- **Method:** Shader replacement (toggle via `ShaderOptimizations`) + Harmony patches
+- **Side:** Clientside only (no server changes needed)
+- **Compatibility:** Works with most mods. **Ancestral Bliss Shaders** - OptiTime disables its shader assets when Ancestral Bliss is detected; code optimizations remain active
+- **Compatibility Behavior:** High-risk patches now auto-disable when other mods already patch the same target method
+- **Visual Impact:** Minimal - optimizations preserve visual quality
+- **Default State:** Most optimizations enabled; GUI input patches are off by default
+- **Commands:** Work in multiplayer without admin privileges; profiling helpers via `.optitime profile on|off|dump|reset` (off by default, now includes frame pacing and frametime summary data)
+
+## Automated Smoke Tests
 
 Run the automated smoke test battery from the repo root:
 
@@ -113,7 +110,15 @@ Run the automated smoke test battery from the repo root:
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-SmokeTests.ps1
 ```
 
-What it checks:
+Optional parameters:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-SmokeTests.ps1 -SkipBuild
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-SmokeTests.ps1 -GamePath "C:\Path\To\Vintagestory"
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Invoke-SmokeTests.ps1 -RequireRecentLog -RecentLogHours 2
+```
+
+What it checks automatically:
 - Version and packaging consistency
 - Build and zip generation
 - Critical vanilla reflection contracts for recipe, handbook and chunk paths
@@ -121,6 +126,10 @@ What it checks:
 - Vanilla IL pattern required by the chunk upload transpiler
 - Recent Vintagestory log scan for OptiTime/Harmony failures
 
+## Version
+
+Current: **1.4.8**
+
 ## License
 
-Copyright © 2025 Zaldaryon — All Rights Reserved
+Copyright (c) 2025-2026 Zaldaryon - All Rights Reserved
