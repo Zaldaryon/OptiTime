@@ -119,6 +119,23 @@ namespace OptiTime
             harmony = new Harmony("com.zaldaryon.optitime");
             ApplyRuntimeConfig();
 
+            // Always-on: fix vanilla TranslationService thread-safety bug (notFound HashSet)
+            try
+            {
+                var hasTranslation = AccessTools.Method(typeof(TranslationService), nameof(TranslationService.HasTranslation),
+                    new[] { typeof(string), typeof(bool), typeof(bool) });
+                if (hasTranslation != null)
+                {
+                    harmony.Patch(hasTranslation,
+                        transpiler: new HarmonyMethod(typeof(TranslationServicePatch), nameof(TranslationServicePatch.Transpile)));
+                    api.Logger.Notification("[ot] TranslationService thread-safety fix loaded");
+                }
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Warning("[ot] TranslationService thread-safety fix failed: " + ex.Message);
+            }
+
             try
             {
                 var onNewFrame = AccessTools.Method("Vintagestory.Client.ScreenManager:OnNewFrame", new Type[] { typeof(float) });
