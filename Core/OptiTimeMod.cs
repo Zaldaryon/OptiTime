@@ -167,6 +167,17 @@ namespace OptiTime
 
             if (config.PreciseFramePacingEnabled)
             {
+                // Thread.Yield() loop causes lag spikes on Linux PREEMPT kernels
+                // (sched_yield latency 1-4ms per call). Auto-disable on non-Windows.
+                if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+                {
+                    config.PreciseFramePacingEnabled = false;
+                    config.Save(api);
+                    ApplyRuntimeConfig();
+                    api.Logger.Notification("[OptiTime] Precise frame pacing auto-disabled on Linux (sched_yield latency)");
+                }
+                else
+                {
                 try
                 {
                     var renderFrame = AccessTools.Method("Vintagestory.Client.NoObf.ClientPlatformWindows:window_RenderFrame");
@@ -190,6 +201,7 @@ namespace OptiTime
                     config.PreciseFramePacingEnabled = false;
                     ApplyRuntimeConfig();
                 }
+                } // else (Windows)
             }
 
             if (config.DynamicLightOptimizations)
@@ -552,9 +564,12 @@ namespace OptiTime
                     if (renderShadow == null)
                         throw new InvalidOperationException("ChunkRenderer.RenderShadow not found");
 
-                    harmony.Patch(renderShadow,
-                        transpiler: new HarmonyMethod(typeof(ShadowOptimization), nameof(ShadowOptimization.TranspileRenderShadow)));
-                    api.Logger.Notification("[OptiTime] Shadow far vegetation cull loaded");
+                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), "Shadow far vegetation cull", renderShadow))
+                    {
+                        harmony.Patch(renderShadow,
+                            transpiler: new HarmonyMethod(typeof(ShadowOptimization), nameof(ShadowOptimization.TranspileRenderShadow)));
+                        api.Logger.Notification("[OptiTime] Shadow far vegetation cull loaded");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1045,6 +1060,8 @@ namespace OptiTime
             {
                 harmony = null;
                 config = null;
+                Config = null;
+                staticCapi = null;
                 capi = null;
             }
         }

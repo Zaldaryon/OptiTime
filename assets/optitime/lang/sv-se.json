@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader-optimeringar",
   "optitime:setting-particle-scaling": "Partikelskalning",
   "optitime:setting-gui-no-linq": "GUI-rendering",
-  "optitime:setting-gui-input-no-linq": "GUI-inmatning",
-  "optitime:setting-ambient-sound": "Omgivningsljud",
-  "optitime:setting-chunk-tess": "Chunk-tessellering",
-  "optitime:setting-dynamic-lights": "Dynamiska Ljus",
-  "optitime:setting-entity-anim": "Entitetsanimationer",
-  "optitime:setting-fly-sound": "Flygljud",
-  "optitime:setting-gui-manager": "GUI-hanterare",
-  "optitime:setting-handbook": "Handbok",
-  "optitime:setting-occlusion": "Ocklusion",
-  "optitime:setting-particles": "Partiklar",
   "optitime:cmd-conflict-ancestral": "{0}: Kan inte aktivera - konflikt med Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Inaktivera Ancestral Bliss för att använda denna optimering",
   "optitime:cmd-enabled": "{0}: PÅ",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Entitetsinterpolation",
   "optitime:setting-entityinterp-tooltip": "Jämnare rörelse av avlägsna entiteter i multiplayer",
   "optitime:setting-repulseagents": "Agentavstötning",
-  "optitime:setting-repulseagents-tooltip": "Hoppa över separationskontroller för avlägsna varelser"
+  "optitime:setting-repulseagents-tooltip": "Hoppa över separationskontroller för avlägsna varelser",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

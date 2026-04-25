@@ -102,6 +102,19 @@ public static class EntityInterpolationOptimization
 
         if (onRenderFrame != null)
         {
+            // Check for foreign patches — postfix is cooperative but log a warning
+            var renderPatchInfo = Harmony.GetPatchInfo(onRenderFrame);
+            if (renderPatchInfo?.Postfixes != null)
+            {
+                foreach (var p in renderPatchInfo.Postfixes)
+                {
+                    if (p.owner != harmony.Id)
+                    {
+                        api.Logger.Warning($"[OptiTime] EntityInterpolation: foreign postfix on OnRenderFrame from {p.owner} — extrapolation may interact");
+                        break;
+                    }
+                }
+            }
             harmony.Patch(onRenderFrame,
                 postfix: new HarmonyMethod(typeof(EntityInterpolationOptimization), nameof(Postfix_OnRenderFrame)));
         }
@@ -119,8 +132,25 @@ public static class EntityInterpolationOptimization
 
         if (popQueue != null)
         {
-            harmony.Patch(popQueue,
-                transpiler: new HarmonyMethod(typeof(EntityInterpolationOptimization), nameof(Transpiler_FixInterval)));
+            // Transpiler-on-transpiler is the highest-risk conflict type — check before applying
+            var popPatchInfo = Harmony.GetPatchInfo(popQueue);
+            bool hasConflict = false;
+            if (popPatchInfo != null)
+            {
+                foreach (var p in popPatchInfo.Transpilers ?? [])
+                {
+                    if (p.owner != harmony.Id) { hasConflict = true; break; }
+                }
+            }
+            if (hasConflict)
+            {
+                api.Logger.Warning("[OptiTime] EntityInterpolation: skipping PopQueue transpiler — foreign transpiler detected");
+            }
+            else
+            {
+                harmony.Patch(popQueue,
+                    transpiler: new HarmonyMethod(typeof(EntityInterpolationOptimization), nameof(Transpiler_FixInterval)));
+            }
         }
 
         // F3: Fix initial targetSpeed from 0.6 to 1.0 (calibrated for 1/30f interval)

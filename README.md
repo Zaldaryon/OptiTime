@@ -5,12 +5,7 @@ Clientside performance optimizations for Vintage Story through shader optimizati
 ## Performance Gains
 
 **Shader Optimizations (quality-preserving cuts):**
-- **GodRays** — Early-out when intensity/glow is low and samples reduced (180 → 90).
 - **Liquid Droplets** — Droplet hash sin → fract (cheaper GPU operation, equivalent visual).
-- **SSAO** — Reduced kernel (24/20 → 16/14) plus depth‑scaled radius to reduce shimmer.
-- **Gaussian Blur** — 17 → 9 taps with paired samples for lower ALU.
-- **Volumetric Clouds** — Early alpha clamp to cut overdraw; steps reduced (200 → 128).
-- **Shadow PCF** — Far cascade sampling reduced from 9-tap 3×3 to 4-tap Vogel disk (56% fewer lookups).
 - **Shadow Alpha** — Shadow map discard threshold raised (0.02 → 0.15) for better early-Z.
 
 **Code Optimizations:**
@@ -70,7 +65,7 @@ OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-gam
 ### Manual Configuration (OptiTime.json)
 
 **Advanced config (OptiTime.json):**
-- `ShaderOptimizations` - enable OptiTime shader replacements (default on). Set to false to use vanilla or other shader mods. Covers: chunkliquid droplets, godrays, volumetric clouds, SSAO, gaussian blur.
+- `ShaderOptimizations` - enable OptiTime shader replacements (default on). Set to false to use vanilla or other shader mods. Covers: chunkliquid droplets, shadow alpha threshold.
 - `RecipeLookupOptimizations` - enable the crafting-grid lookup optimization bundle: previous-match fast path, exact positive cache with revalidation, and bounded candidate narrowing (default on).
 - `ParticleViewDistanceScalingEnabled` - reduce particle counts only at high view distances (default on; 75% at 384+, 50% at 512+).
 - `BackgroundFpsLimiterEnabled` - lower the frame cap when the game window is unfocused (default on).
@@ -104,8 +99,9 @@ OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-gam
 
 - **Method:** Shader replacement (toggle via `ShaderOptimizations`) + Harmony patches
 - **Side:** Clientside only (no server changes needed)
-- **Compatibility:** Works with most mods. **Ancestral Bliss Shaders** - OptiTime disables its shader assets when Ancestral Bliss is detected; code optimizations remain active
-- **Compatibility Behavior:** High-risk patches now auto-disable when other mods already patch the same target method
+- **Compatibility:** Tested with 100 most popular ModDB mods (71 decompiled, 38 with Harmony patches analyzed). Works with all tested mods. Auto-disables conflicting optimizations when detected.
+- **Known mod interactions:** **Ancestral Bliss Shaders** — OptiTime disables its shader assets; **Combat Overhaul / Overhaullib** — entity animation optimization auto-disabled; **A Culinary Artillery / Extra Info / Tabletop Games** — handbook optimization auto-disabled; **Electrical Progressive** — handbook optimization auto-disabled
+- **Compatibility Behavior:** All Harmony patches check for foreign patches before applying and auto-disable on conflict
 - **Visual Impact:** Minimal - optimizations preserve visual quality
 - **Default State:** Most optimizations enabled; GUI input patches are off by default
 - **Commands:** Work in multiplayer without admin privileges; profiling helpers via `.optitime profile on|off|dump|reset` (off by default, now includes frame pacing and frametime summary data)
@@ -140,13 +136,23 @@ What it checks automatically:
 
 ## Version
 
-Current: **1.4.12**
+Current: **1.5.0**
 
-**What's New in 1.4.12:**
+**What's New in 1.5.0:**
 - **NEW:** Entity Interpolation optimization — smoother remote entity movement in multiplayer: accelerated playback flood protection (replaces vanilla recursive queue drain), server tick rate interval correction (1/15f → 1/30f), constant velocity extrapolation with 200ms cap and exponential decay correction
 - **NEW:** Repulse Agents optimization — distance-based cull for `EntityBehaviorRepulseAgents.OnGameTick`; skips non-player entities beyond 64 blocks (saves spatial partition queries for ~60-70% of creatures)
+- **FIX:** Reverted 5 shader optimizations (SSAO, Gaussian Blur, Volumetric Clouds, God Rays, Shadow PCF) that caused visible banding/noise on volumetric clouds. Remaining shaders: Liquid Droplets (hash22) and Shadow Alpha (threshold 0.15)
+- **FIX:** Precise frame pacing auto-disabled on Linux — `sched_yield()` causes lag spikes on PREEMPT kernels (confirmed by Red Hat docs, kernel man pages, and benchmarks)
+- **FIX:** Handbook harvest indexing now includes FruitingBush and FruitTreeBranch (berry bushes, fruit trees)
+- **FIX:** Handbook addStorableInfo/addStoredInInfo falls back to vanilla for complete container coverage (Display, PlantContainer, TroughBase, WearableStats, animalHusbandry, Pie)
+- **FIX:** Per-target conflict checks for EntityInterpolation sub-patches (PopQueue transpiler)
+- **FIX:** Static Config/staticCapi nulled in Dispose (prevents GC leak across mod reloads)
+- **FIX:** ShadowFarVegetationCull now has conflict detection before patching
 - **IMPROVED:** Source reorganized into domain subfolders (Audio/, Core/, Entity/, Gui/, Systems/)
+- **IMPROVED:** HandbookOptimization split into 3 partial class files for maintainability
+- **IMPROVED:** ParticleOptimization migrated from `dynamic` dispatch to cached FieldInfo
 - **IMPROVED:** All documentation renamed to kebab-case
+- **IMPROVED:** Compatibility verified with 100 most popular ModDB mods (71 decompiled, 38 with Harmony patches analyzed)
 
 **Previous Release (1.4.11):**
 - **FIX:** Liquid Droplets shader — replaced broken fract-only hash with Dave Hoskins hash22 (industry-standard sin-free hash); droplets now animate with proper randomness instead of all syncing together

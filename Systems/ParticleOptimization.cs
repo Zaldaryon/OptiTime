@@ -1,8 +1,21 @@
 using HarmonyLib;
 using System;
+using System.Reflection;
 
 namespace OptiTime
 {
+    /// <summary>
+    /// Scales particle pool MaxParticles at high view distances (384+: 75%, 512+: 50%).
+    /// Targets SystemRenderParticles.mainthreadpools/offthreadpools (internal IParticlePool[]).
+    ///
+    /// Migrated from dynamic dispatch to cached FieldInfo to eliminate DLR overhead.
+    /// IParticlePool is internal to VintagestoryLib — FieldInfo.GetValue is the correct
+    /// access pattern for external assemblies (same as FieldRefAccess but for array types
+    /// where the element type is inaccessible at compile time).
+    ///
+    /// Ref: SystemRenderParticles.cs — internal IParticlePool[] mainthreadpools, offthreadpools
+    /// Ref: IParticlePool.MaxParticles — int property on each pool
+    /// </summary>
     public class ParticleOptimization
     {
         private static object particleSystemInstance = null;
@@ -12,6 +25,11 @@ namespace OptiTime
         private static bool viewDistanceScalingEnabled = false;
         private static Action<string> logger;
         private static bool loggedAccessFailure;
+
+        // Cached reflection — resolved once in AdjustParticlePools, zero per-call overhead
+        private static FieldInfo mainThreadPoolsField;
+        private static FieldInfo offThreadPoolsField;
+        private static PropertyInfo maxParticlesProp;
 
         public static void SetLogger(Action<string> log) => logger = log;
 
@@ -24,6 +42,9 @@ namespace OptiTime
             viewDistanceScalingEnabled = false;
             logger = null;
             loggedAccessFailure = false;
+            mainThreadPoolsField = null;
+            offThreadPoolsField = null;
+            maxParticlesProp = null;
         }
 
         private static float GetParticleScale(int viewDistance)
@@ -40,24 +61,41 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
                 particleSystemInstance = __instance;
+                var instanceType = __instance.GetType();
 
-                var mainthreadpools = instance.mainthreadpools;
-                var offthreadpools = instance.offthreadpools;
+                // Resolve fields once — SystemRenderParticles.mainthreadpools/offthreadpools are internal
+                mainThreadPoolsField = AccessTools.Field(instanceType, "mainthreadpools");
+                offThreadPoolsField = AccessTools.Field(instanceType, "offthreadpools");
 
-                originalMainThreadMaxParticles = new int[mainthreadpools.Length];
-                originalOffThreadMaxParticles = new int[offthreadpools.Length];
+                if (mainThreadPoolsField == null || offThreadPoolsField == null)
+                    throw new InvalidOperationException("Pool fields not found on " + instanceType.Name);
 
-                for (int i = 0; i < mainthreadpools.Length; i++)
+                var mainPools = mainThreadPoolsField.GetValue(__instance) as Array;
+                var offPools = offThreadPoolsField.GetValue(__instance) as Array;
+
+                if (mainPools == null || offPools == null)
+                    throw new InvalidOperationException("Pool arrays are null");
+
+                // Resolve MaxParticles property from the first pool element
+                if (mainPools.Length > 0)
                 {
-                    originalMainThreadMaxParticles[i] = mainthreadpools[i].MaxParticles;
+                    var poolElement = mainPools.GetValue(0);
+                    if (poolElement != null)
+                        maxParticlesProp = poolElement.GetType().GetProperty("MaxParticles");
                 }
 
-                for (int i = 0; i < offthreadpools.Length; i++)
-                {
-                    originalOffThreadMaxParticles[i] = offthreadpools[i].MaxParticles;
-                }
+                if (maxParticlesProp == null)
+                    throw new InvalidOperationException("MaxParticles property not found on pool type");
+
+                originalMainThreadMaxParticles = new int[mainPools.Length];
+                originalOffThreadMaxParticles = new int[offPools.Length];
+
+                for (int i = 0; i < mainPools.Length; i++)
+                    originalMainThreadMaxParticles[i] = (int)maxParticlesProp.GetValue(mainPools.GetValue(i));
+
+                for (int i = 0; i < offPools.Length; i++)
+                    originalOffThreadMaxParticles[i] = (int)maxParticlesProp.GetValue(offPools.GetValue(i));
 
                 ApplyParticleScale(cachedViewDistance);
             }
@@ -81,30 +119,29 @@ namespace OptiTime
         private static void ApplyParticleScale(int viewDistance)
         {
             if (!viewDistanceScalingEnabled) return;
-            if (particleSystemInstance == null || originalMainThreadMaxParticles == null) return;
+            if (particleSystemInstance == null || originalMainThreadMaxParticles == null || maxParticlesProp == null) return;
 
             try
             {
-                var instance = particleSystemInstance as dynamic;
                 float scale = GetParticleScale(viewDistance);
 
-                var mainthreadpools = instance.mainthreadpools;
-                var offthreadpools = instance.offthreadpools;
+                var mainPools = mainThreadPoolsField.GetValue(particleSystemInstance) as Array;
+                var offPools = offThreadPoolsField.GetValue(particleSystemInstance) as Array;
 
-                for (int i = 0; i < mainthreadpools.Length; i++)
+                if (mainPools != null)
                 {
-                    mainthreadpools[i].MaxParticles = (int)(originalMainThreadMaxParticles[i] * scale);
+                    for (int i = 0; i < mainPools.Length; i++)
+                        maxParticlesProp.SetValue(mainPools.GetValue(i), (int)(originalMainThreadMaxParticles[i] * scale));
                 }
 
-                for (int i = 0; i < offthreadpools.Length; i++)
+                if (offPools != null)
                 {
-                    offthreadpools[i].MaxParticles = (int)(originalOffThreadMaxParticles[i] * scale);
+                    for (int i = 0; i < offPools.Length; i++)
+                        maxParticlesProp.SetValue(offPools.GetValue(i), (int)(originalOffThreadMaxParticles[i] * scale));
                 }
 
                 if (ProfilingHelper.Enabled)
-                {
                     ProfilingHelper.Mark("opt-particlescale", $"vd={viewDistance},scale={scale:0.00}", countOnly: true);
-                }
             }
             catch
             {
@@ -120,25 +157,26 @@ namespace OptiTime
         {
             viewDistanceScalingEnabled = enabled;
 
-            // If scaling was turned off after being on, restore original caps
             if (!enabled && particleSystemInstance != null &&
                 originalMainThreadMaxParticles != null &&
-                originalOffThreadMaxParticles != null)
+                originalOffThreadMaxParticles != null &&
+                maxParticlesProp != null)
             {
                 try
                 {
-                    var instance = particleSystemInstance as dynamic;
-                    var mainthreadpools = instance.mainthreadpools;
-                    var offthreadpools = instance.offthreadpools;
+                    var mainPools = mainThreadPoolsField.GetValue(particleSystemInstance) as Array;
+                    var offPools = offThreadPoolsField.GetValue(particleSystemInstance) as Array;
 
-                    for (int i = 0; i < mainthreadpools.Length; i++)
+                    if (mainPools != null)
                     {
-                        mainthreadpools[i].MaxParticles = originalMainThreadMaxParticles[i];
+                        for (int i = 0; i < mainPools.Length; i++)
+                            maxParticlesProp.SetValue(mainPools.GetValue(i), originalMainThreadMaxParticles[i]);
                     }
 
-                    for (int i = 0; i < offthreadpools.Length; i++)
+                    if (offPools != null)
                     {
-                        offthreadpools[i].MaxParticles = originalOffThreadMaxParticles[i];
+                        for (int i = 0; i < offPools.Length; i++)
+                            maxParticlesProp.SetValue(offPools.GetValue(i), originalOffThreadMaxParticles[i]);
                     }
                 }
                 catch

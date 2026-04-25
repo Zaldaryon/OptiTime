@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader-optimaliseringer",
   "optitime:setting-particle-scaling": "Partikkelskalering",
   "optitime:setting-gui-no-linq": "GUI-rendering",
-  "optitime:setting-gui-input-no-linq": "GUI-inndata",
-  "optitime:setting-ambient-sound": "Omgivelseslyd",
-  "optitime:setting-chunk-tess": "Chunk-tessellering",
-  "optitime:setting-dynamic-lights": "Dynamiske Lys",
-  "optitime:setting-entity-anim": "Entitetsanimasjoner",
-  "optitime:setting-fly-sound": "Flygelyd",
-  "optitime:setting-gui-manager": "GUI-behandler",
-  "optitime:setting-handbook": "Håndbok",
-  "optitime:setting-occlusion": "Okklusjon",
-  "optitime:setting-particles": "Partikler",
   "optitime:cmd-conflict-ancestral": "{0}: Kan ikke aktivere - konflikt med Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Deaktiver Ancestral Bliss for å bruke denne optimaliseringen",
   "optitime:cmd-enabled": "{0}: PÅ",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Entitetsinterpolasjon",
   "optitime:setting-entityinterp-tooltip": "Jevnere bevegelse av fjerne enheter i flerspiller",
   "optitime:setting-repulseagents": "Frastøting av Agenter",
-  "optitime:setting-repulseagents-tooltip": "Hopp over separasjonssjekker for fjerne skapninger"
+  "optitime:setting-repulseagents-tooltip": "Hopp over separasjonssjekker for fjerne skapninger",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

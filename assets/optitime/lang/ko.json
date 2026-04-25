@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "셰이더 최적화",
   "optitime:setting-particle-scaling": "파티클 스케일링",
   "optitime:setting-gui-no-linq": "GUI 렌더링",
-  "optitime:setting-gui-input-no-linq": "GUI 입력",
-  "optitime:setting-ambient-sound": "주변 사운드",
-  "optitime:setting-chunk-tess": "청크 테셀레이션",
-  "optitime:setting-dynamic-lights": "동적 조명",
-  "optitime:setting-entity-anim": "엔티티 애니메이션",
-  "optitime:setting-fly-sound": "비행 사운드",
-  "optitime:setting-gui-manager": "GUI 관리자",
-  "optitime:setting-handbook": "핸드북",
-  "optitime:setting-occlusion": "오클루전",
-  "optitime:setting-particles": "파티클",
   "optitime:cmd-conflict-ancestral": "{0}: 활성화할 수 없음 - Ancestral Bliss Shaders와 충돌",
   "optitime:cmd-conflict-disable": "이 최적화를 사용하려면 Ancestral Bliss를 비활성화하세요",
   "optitime:cmd-enabled": "{0}: 켜짐",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "엔티티 보간",
   "optitime:setting-entityinterp-tooltip": "멀티플레이에서 원격 엔티티의 부드러운 이동",
   "optitime:setting-repulseagents": "에이전트 반발",
-  "optitime:setting-repulseagents-tooltip": "먼 거리의 생물 분리 검사 건너뛰기"
+  "optitime:setting-repulseagents-tooltip": "먼 거리의 생물 분리 검사 건너뛰기",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

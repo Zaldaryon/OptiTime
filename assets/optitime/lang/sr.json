@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Optimizacije Šejdera",
   "optitime:setting-particle-scaling": "Skaliranje Čestica",
   "optitime:setting-gui-no-linq": "Renderovanje GUI",
-  "optitime:setting-gui-input-no-linq": "Unos GUI",
-  "optitime:setting-ambient-sound": "Ambijentalni Zvuk",
-  "optitime:setting-chunk-tess": "Teselacija Čanka",
-  "optitime:setting-dynamic-lights": "Dinamična Svetla",
-  "optitime:setting-entity-anim": "Animacije Entiteta",
-  "optitime:setting-fly-sound": "Zvuk Letenja",
-  "optitime:setting-gui-manager": "Menadžer GUI",
-  "optitime:setting-handbook": "Priručnik",
-  "optitime:setting-occlusion": "Okluzija",
-  "optitime:setting-particles": "Čestice",
   "optitime:cmd-conflict-ancestral": "{0}: Ne može se omogućiti - konflikt sa Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Onemogućite Ancestral Bliss da biste koristili ovu optimizaciju",
   "optitime:cmd-enabled": "{0}: UKLJUČENO",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Интерполација Ентитета",
   "optitime:setting-entityinterp-tooltip": "Глаткије кретање удаљених ентитета у мултиплејеру",
   "optitime:setting-repulseagents": "Одбијање Агената",
-  "optitime:setting-repulseagents-tooltip": "Прескочи провере раздвајања за удаљена створења"
+  "optitime:setting-repulseagents-tooltip": "Прескочи провере раздвајања за удаљена створења",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

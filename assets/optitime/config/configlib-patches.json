@@ -113,8 +113,8 @@
       "code": "RecipeLookupOptimizations",
       "type": "boolean",
       "default": true,
-      "ingui": "Recipe Lookup",
-      "comment": "Early dimension rejection for impossible crafting matches"
+      "ingui": "optitime:setting-recipe",
+      "comment": "optitime:setting-recipe-tooltip"
     },
     {
       "code": "OcclusionCullingOptimizations",

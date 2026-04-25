@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "การเพิ่มประสิทธิภาพเชเดอร์",
   "optitime:setting-particle-scaling": "การปรับขนาดอนุภาค",
   "optitime:setting-gui-no-linq": "การเรนเดอร์ GUI",
-  "optitime:setting-gui-input-no-linq": "การป้อนข้อมูล GUI",
-  "optitime:setting-ambient-sound": "เสียงแวดล้อม",
-  "optitime:setting-chunk-tess": "การแบ่งส่วนชังค์",
-  "optitime:setting-dynamic-lights": "แสงไดนามิก",
-  "optitime:setting-entity-anim": "แอนิเมชันเอนทิตี",
-  "optitime:setting-fly-sound": "เสียงบิน",
-  "optitime:setting-gui-manager": "ตัวจัดการ GUI",
-  "optitime:setting-handbook": "คู่มือ",
-  "optitime:setting-occlusion": "การบดบัง",
-  "optitime:setting-particles": "อนุภาค",
   "optitime:cmd-conflict-ancestral": "{0}: ไม่สามารถเปิดใช้งาน - ขัดแย้งกับ Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "ปิด Ancestral Bliss เพื่อใช้การเพิ่มประสิทธิภาพนี้",
   "optitime:cmd-enabled": "{0}: เปิด",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "การประมาณค่าเอนทิตี",
   "optitime:setting-entityinterp-tooltip": "การเคลื่อนที่ที่ราบรื่นขึ้นของเอนทิตีระยะไกลในโหมดผู้เล่นหลายคน",
   "optitime:setting-repulseagents": "การผลักตัวแทน",
-  "optitime:setting-repulseagents-tooltip": "ข้ามการตรวจสอบการแยกสำหรับสิ่งมีชีวิตที่อยู่ไกล"
+  "optitime:setting-repulseagents-tooltip": "ข้ามการตรวจสอบการแยกสำหรับสิ่งมีชีวิตที่อยู่ไกล",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

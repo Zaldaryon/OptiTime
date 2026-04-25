@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Optimizaciones de Shader",
   "optitime:setting-particle-scaling": "Escala de Partículas",
   "optitime:setting-gui-no-linq": "Renderizado GUI",
-  "optitime:setting-gui-input-no-linq": "Entrada GUI",
-  "optitime:setting-ambient-sound": "Sonido Ambiental",
-  "optitime:setting-chunk-tess": "Teselación de Chunk",
-  "optitime:setting-dynamic-lights": "Luces Dinámicas",
-  "optitime:setting-entity-anim": "Animaciones de Entidad",
-  "optitime:setting-fly-sound": "Sonido de Vuelo",
-  "optitime:setting-gui-manager": "Gestor GUI",
-  "optitime:setting-handbook": "Manual",
-  "optitime:setting-occlusion": "Oclusión",
-  "optitime:setting-particles": "Partículas",
   "optitime:cmd-conflict-ancestral": "{0}: No se puede activar - conflicto con Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Desactive Ancestral Bliss para usar esta optimización",
   "optitime:cmd-enabled": "{0}: ACTIVADO",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Interpolación de Entidades",
   "optitime:setting-entityinterp-tooltip": "Movimiento más suave de entidades remotas en multijugador",
   "optitime:setting-repulseagents": "Repulsión de Agentes",
-  "optitime:setting-repulseagents-tooltip": "Omitir verificaciones de separación para criaturas lejanas"
+  "optitime:setting-repulseagents-tooltip": "Omitir verificaciones de separación para criaturas lejanas",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader Hagræðingar",
   "optitime:setting-particle-scaling": "Agnastærð",
   "optitime:setting-gui-no-linq": "GUI Myndgerð",
-  "optitime:setting-gui-input-no-linq": "GUI Inntak",
-  "optitime:setting-ambient-sound": "Umhverfishljóð",
-  "optitime:setting-chunk-tess": "Chunk Flísun",
-  "optitime:setting-dynamic-lights": "Kraftmikil Ljós",
-  "optitime:setting-entity-anim": "Einingahreyfingar",
-  "optitime:setting-fly-sound": "Flughljóð",
-  "optitime:setting-gui-manager": "GUI Stjórnandi",
-  "optitime:setting-handbook": "Handbók",
-  "optitime:setting-occlusion": "Hindrun",
-  "optitime:setting-particles": "Agnir",
   "optitime:cmd-conflict-ancestral": "{0}: Get ekki virkjað - árekstur við Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Slökktu á Ancestral Bliss til að nota þessa hagræðingu",
   "optitime:cmd-enabled": "{0}: Á",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Einingabrúun",
   "optitime:setting-entityinterp-tooltip": "Sléttari hreyfing fjarlægra eininga í fjölspilunarham",
   "optitime:setting-repulseagents": "Fráhrinding Umboðsmanna",
-  "optitime:setting-repulseagents-tooltip": "Sleppa aðskilnaðarathugunum fyrir fjarlægar verur"
+  "optitime:setting-repulseagents-tooltip": "Sleppa aðskilnaðarathugunum fyrir fjarlægar verur",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

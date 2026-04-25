@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "تحسينات الشيدر",
   "optitime:setting-particle-scaling": "تحجيم الجسيمات",
   "optitime:setting-gui-no-linq": "عرض الواجهة",
-  "optitime:setting-gui-input-no-linq": "إدخال الواجهة",
-  "optitime:setting-ambient-sound": "الصوت المحيط",
-  "optitime:setting-chunk-tess": "تجزئة القطع",
-  "optitime:setting-dynamic-lights": "الإضاءة الديناميكية",
-  "optitime:setting-entity-anim": "رسوم الكيانات",
-  "optitime:setting-fly-sound": "صوت الطيران",
-  "optitime:setting-gui-manager": "مدير الواجهة",
-  "optitime:setting-handbook": "الدليل",
-  "optitime:setting-occlusion": "الإخفاء",
-  "optitime:setting-particles": "الجسيمات",
   "optitime:cmd-conflict-ancestral": "{0}: لا يمكن التفعيل - تعارض مع Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "قم بتعطيل Ancestral Bliss لاستخدام هذا التحسين",
   "optitime:cmd-enabled": "{0}: مفعل",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "استيفاء الكيانات",
   "optitime:setting-entityinterp-tooltip": "حركة أكثر سلاسة للكيانات البعيدة في اللعب الجماعي",
   "optitime:setting-repulseagents": "تنافر الكيانات",
-  "optitime:setting-repulseagents-tooltip": "تخطي فحوصات فصل الكيانات للمخلوقات البعيدة"
+  "optitime:setting-repulseagents-tooltip": "تخطي فحوصات فصل الكيانات للمخلوقات البعيدة",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

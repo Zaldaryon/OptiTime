@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "着色器优化",
   "optitime:setting-particle-scaling": "粒子缩放",
   "optitime:setting-gui-no-linq": "GUI渲染",
-  "optitime:setting-gui-input-no-linq": "GUI输入",
-  "optitime:setting-ambient-sound": "环境音效",
-  "optitime:setting-chunk-tess": "区块细分",
-  "optitime:setting-dynamic-lights": "动态光照",
-  "optitime:setting-entity-anim": "实体动画",
-  "optitime:setting-fly-sound": "飞行音效",
-  "optitime:setting-gui-manager": "GUI管理器",
-  "optitime:setting-handbook": "手册",
-  "optitime:setting-occlusion": "遮挡剔除",
-  "optitime:setting-particles": "粒子",
   "optitime:cmd-conflict-ancestral": "{0}: 无法启用 - 与Ancestral Bliss Shaders冲突",
   "optitime:cmd-conflict-disable": "禁用Ancestral Bliss以使用此优化",
   "optitime:cmd-enabled": "{0}: 开",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "实体插值",
   "optitime:setting-entityinterp-tooltip": "多人游戏中远程实体更平滑的移动",
   "optitime:setting-repulseagents": "实体排斥",
-  "optitime:setting-repulseagents-tooltip": "跳过远距离生物的分离检查"
+  "optitime:setting-repulseagents-tooltip": "跳过远距离生物的分离检查",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }
