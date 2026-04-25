@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "FPS max in background",
   "optitime:setting-background-maxfps-tooltip": "Limite FPS quando la finestra di gioco non è attiva (5-60)",
   "optitime:setting-gui-mousemove": "Unione movimenti mouse",
-  "optitime:setting-gui-mousemove-tooltip": "Unire eventi rapidi di movimento del mouse per ridurre il carico di elaborazione"
+  "optitime:setting-gui-mousemove-tooltip": "Unire eventi rapidi di movimento del mouse per ridurre il carico di elaborazione",
+  "optitime:setting-entityinterp": "Interpolazione Entità",
+  "optitime:setting-entityinterp-tooltip": "Movimento più fluido delle entità remote in multiplayer",
+  "optitime:setting-repulseagents": "Repulsione Agenti",
+  "optitime:setting-repulseagents-tooltip": "Salta i controlli di separazione per creature distanti"
 }

@@ -7,7 +7,7 @@
     "Zaldaryon"
   ],
   "description": "Clientside performance optimizations for Vintage Story",
-  "version": "1.4.11",
+  "version": "1.4.12",
   "dependencies": {
     "game": "1.22.0"
   }

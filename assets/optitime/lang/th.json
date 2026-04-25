@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "FPS สูงสุดในพื้นหลัง",
   "optitime:setting-background-maxfps-tooltip": "จำกัด FPS เมื่อหน้าต่างเกมไม่ได้โฟกัส (5-60)",
   "optitime:setting-gui-mousemove": "รวมการเคลื่อนที่เมาส์",
-  "optitime:setting-gui-mousemove-tooltip": "รวมเหตุการณ์การเคลื่อนที่เมาส์ที่รวดเร็วเพื่อลดภาระการประมวลผล"
+  "optitime:setting-gui-mousemove-tooltip": "รวมเหตุการณ์การเคลื่อนที่เมาส์ที่รวดเร็วเพื่อลดภาระการประมวลผล",
+  "optitime:setting-entityinterp": "การประมาณค่าเอนทิตี",
+  "optitime:setting-entityinterp-tooltip": "การเคลื่อนที่ที่ราบรื่นขึ้นของเอนทิตีระยะไกลในโหมดผู้เล่นหลายคน",
+  "optitime:setting-repulseagents": "การผลักตัวแทน",
+  "optitime:setting-repulseagents-tooltip": "ข้ามการตรวจสอบการแยกสำหรับสิ่งมีชีวิตที่อยู่ไกล"
 }

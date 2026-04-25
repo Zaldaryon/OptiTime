@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "バックグラウンド最大FPS",
   "optitime:setting-background-maxfps-tooltip": "ゲームウィンドウが非アクティブ時のFPS上限（5-60）",
   "optitime:setting-gui-mousemove": "マウス移動の統合",
-  "optitime:setting-gui-mousemove-tooltip": "高速なマウス移動イベントを統合して処理負荷を軽減"
+  "optitime:setting-gui-mousemove-tooltip": "高速なマウス移動イベントを統合して処理負荷を軽減",
+  "optitime:setting-entityinterp": "エンティティ補間",
+  "optitime:setting-entityinterp-tooltip": "マルチプレイでのリモートエンティティの滑らかな移動",
+  "optitime:setting-repulseagents": "エージェント反発",
+  "optitime:setting-repulseagents-tooltip": "遠距離のクリーチャーの分離チェックをスキップ"
 }

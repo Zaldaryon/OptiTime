@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Bakgrunns hámarks FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-takmörk þegar leikjagluggi er ekki í fókus (5-60)",
   "optitime:setting-gui-mousemove": "Músarhreyfingasamruni",
-  "optitime:setting-gui-mousemove-tooltip": "Sameina hraðar músarhreyfingar til að minnka vinnsluálag"
+  "optitime:setting-gui-mousemove-tooltip": "Sameina hraðar músarhreyfingar til að minnka vinnsluálag",
+  "optitime:setting-entityinterp": "Einingabrúun",
+  "optitime:setting-entityinterp-tooltip": "Sléttari hreyfing fjarlægra eininga í fjölspilunarham",
+  "optitime:setting-repulseagents": "Fráhrinding Umboðsmanna",
+  "optitime:setting-repulseagents-tooltip": "Sleppa aðskilnaðarathugunum fyrir fjarlægar verur"
 }

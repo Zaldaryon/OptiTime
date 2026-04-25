@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "백그라운드 최대 FPS",
   "optitime:setting-background-maxfps-tooltip": "게임 창이 비활성일 때 FPS 제한 (5-60)",
   "optitime:setting-gui-mousemove": "마우스 이동 병합",
-  "optitime:setting-gui-mousemove-tooltip": "빠른 마우스 이동 이벤트를 병합하여 처리 부하 감소"
+  "optitime:setting-gui-mousemove-tooltip": "빠른 마우스 이동 이벤트를 병합하여 처리 부하 감소",
+  "optitime:setting-entityinterp": "엔티티 보간",
+  "optitime:setting-entityinterp-tooltip": "멀티플레이에서 원격 엔티티의 부드러운 이동",
+  "optitime:setting-repulseagents": "에이전트 반발",
+  "optitime:setting-repulseagents-tooltip": "먼 거리의 생물 분리 검사 건너뛰기"
 }

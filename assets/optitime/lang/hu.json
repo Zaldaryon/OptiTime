@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Háttér max. FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-korlát amikor a játékablak nincs fókuszban (5-60)",
   "optitime:setting-gui-mousemove": "Egérmozgás összevonás",
-  "optitime:setting-gui-mousemove-tooltip": "Gyors egérmozgás események összevonása a feldolgozási terhelés csökkentéséhez"
+  "optitime:setting-gui-mousemove-tooltip": "Gyors egérmozgás események összevonása a feldolgozási terhelés csökkentéséhez",
+  "optitime:setting-entityinterp": "Entitás Interpoláció",
+  "optitime:setting-entityinterp-tooltip": "Simább távoli entitás mozgás többjátékos módban",
+  "optitime:setting-repulseagents": "Ügynök Taszítás",
+  "optitime:setting-repulseagents-tooltip": "Távoli lények szétválasztási ellenőrzéseinek kihagyása"
 }

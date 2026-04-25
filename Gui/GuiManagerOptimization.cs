@@ -13,7 +13,7 @@ namespace OptiTime
         private static List<GuiDialog> cachedOpenedGuis = new List<GuiDialog>();
         private static List<GuiDialog> cachedReversedGuis = new List<GuiDialog>();
         private static int cleanupCounter = 0;
-        private static readonly System.Collections.Generic.HashSet<GuiComposer> suppressedPostRenderExceptions = new System.Collections.Generic.HashSet<GuiComposer>();
+        private static readonly System.Collections.Generic.HashSet<string> suppressedPostRenderExceptions = new System.Collections.Generic.HashSet<string>();
 
         // Cached reflection results to avoid repeated lookups
         private static Type screenManagerType = null;
@@ -342,9 +342,9 @@ namespace OptiTime
             if (!IsSelfReferenceBoundsIssue(__exception))
                 return __exception;
 
-            if (!suppressedPostRenderExceptions.Contains(__instance))
+            if (!suppressedPostRenderExceptions.Contains(__instance.DialogName ?? "unknown"))
             {
-                suppressedPostRenderExceptions.Add(__instance);
+                suppressedPostRenderExceptions.Add(__instance.DialogName ?? "unknown");
                 var api = __instance.Api;
                 if (api?.Logger != null)
                 {

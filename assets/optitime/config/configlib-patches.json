@@ -145,6 +145,20 @@
       "comment": "optitime:setting-tickingblocks-tooltip"
     },
     {
+      "code": "EntityInterpolationOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-entityinterp",
+      "comment": "optitime:setting-entityinterp-tooltip"
+    },
+    {
+      "code": "RepulseAgentsOptimizations",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-repulseagents",
+      "comment": "optitime:setting-repulseagents-tooltip"
+    },
+    {
       "code": "ShadowFarVegetationCullEnabled",
       "type": "boolean",
       "default": true,

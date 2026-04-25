@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Fona maks. FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-limo kiam la ludfenestro ne estas fokusita (5-60)",
   "optitime:setting-gui-mousemove": "Muskuriga kunfando",
-  "optitime:setting-gui-mousemove-tooltip": "Kunfandi rapidajn musmoviĝajn eventojn por redukti prilaboran ŝarĝon"
+  "optitime:setting-gui-mousemove-tooltip": "Kunfandi rapidajn musmoviĝajn eventojn por redukti prilaboran ŝarĝon",
+  "optitime:setting-entityinterp": "Entaĵa Interpolado",
+  "optitime:setting-entityinterp-tooltip": "Pli glata movado de foraj entaĵoj en multludanto",
+  "optitime:setting-repulseagents": "Forpuŝo de Agentoj",
+  "optitime:setting-repulseagents-tooltip": "Preterlasi apartigajn kontrolojn por foraj kreitaĵoj"
 }

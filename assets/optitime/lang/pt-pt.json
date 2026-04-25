@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "FPS Máx. em Segundo Plano",
   "optitime:setting-background-maxfps-tooltip": "Limite de FPS quando a janela do jogo não está em foco (5-60)",
   "optitime:setting-gui-mousemove": "Fusão de Movimento do Rato",
-  "optitime:setting-gui-mousemove-tooltip": "Fundir eventos rápidos de movimento do rato para reduzir carga de processamento"
+  "optitime:setting-gui-mousemove-tooltip": "Fundir eventos rápidos de movimento do rato para reduzir carga de processamento",
+  "optitime:setting-entityinterp": "Interpolação de Entidades",
+  "optitime:setting-entityinterp-tooltip": "Movimento mais suave de entidades remotas no multijogador",
+  "optitime:setting-repulseagents": "Repulsão de Agentes",
+  "optitime:setting-repulseagents-tooltip": "Saltar verificações de separação para criaturas distantes"
 }

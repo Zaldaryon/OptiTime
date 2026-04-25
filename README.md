@@ -19,6 +19,7 @@ Clientside performance optimizations for Vintage Story through shader optimizati
 - **Chunk Tesselation** - Adaptive throttle/boost by real queue size (normal + priority) to keep uploads smooth.
 - **Dynamic Lights** - Cull lights based on view distance.
 - **Entity Animations** - Distance-based LOD for animation updates (conservative thresholds: 48/80 blocks).
+- **Entity Interpolation** - Smoother remote entity movement in multiplayer (flood protection, interval correction, extrapolation).
 - **Fly Sound** - Volume updates only on meaningful changes.
 - **Frame Pacing** - Hybrid sleep/yield/spin frame pacing when VSync is off.
 - **GUI Manager** - LINQ-free render iteration with conflict auto-disable (opt-out); input patches optional/off by default.
@@ -26,6 +27,7 @@ Clientside performance optimizations for Vintage Story through shader optimizati
 - **Recipe Lookup** - Safer crafting-grid lookup with previous-match reuse, positive-result revalidation, and candidate narrowing (default on, opt-out).
 - **Occlusion Culling** - Dynamic enable gate based on view distance (clamped 70–200 chunks).
 - **Particles** - High-distance particle budget scaling (default on, opt-out) with conservative thresholds.
+- **Repulse Agents** - Distance-based cull for entity separation checks (skip non-player entities beyond 64 blocks).
 - **Ticking Blocks** - Reuse BlockPos in particle tick loop to eliminate 30K-90K heap allocations/sec.
 - **Weather Wind** - Throttle wind speed lookups from every frame to every 4th frame.
 
@@ -52,7 +54,7 @@ Use `.optitime` command in-game:
 ```
 
 **Available optimizations:**
-`ambientsound`, `bgfps`, `chunktess`, `dynlights`, `entityanim`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `shaders`, `shadowveg`, `tickingblocks`, `weatherwind`
+`ambientsound`, `bgfps`, `chunktess`, `dynlights`, `entityanim`, `entityinterp`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `repulseagents`, `shaders`, `shadowveg`, `tickingblocks`, `weatherwind`
 
 ### ConfigLib GUI (Optional)
 
@@ -92,6 +94,8 @@ OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-gam
 .optitime weatherwind off  - Disable weather wind throttle
 .optitime tickingblocks off - Disable ticking blocks GC optimization
 .optitime shadowveg off  - Disable far shadow vegetation cull
+.optitime entityinterp off - Disable entity interpolation smoothing
+.optitime repulseagents off - Disable repulse agents distance cull
 ```
 
 **Note:** Changes require game restart to take effect.
@@ -109,7 +113,6 @@ OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-gam
 ## Documentation
 
 See `Documentation/Description/` for detailed information about each optimization.
-See `Documentation/BEHAVIORAL_ANALYSIS.md` for comprehensive analysis of behavioral differences vs vanilla.
 
 ## Automated Smoke Tests
 
@@ -137,9 +140,15 @@ What it checks automatically:
 
 ## Version
 
-Current: **1.4.11**
+Current: **1.4.12**
 
-**What's New in 1.4.11:**
+**What's New in 1.4.12:**
+- **NEW:** Entity Interpolation optimization — smoother remote entity movement in multiplayer: accelerated playback flood protection (replaces vanilla recursive queue drain), server tick rate interval correction (1/15f → 1/30f), constant velocity extrapolation with 200ms cap and exponential decay correction
+- **NEW:** Repulse Agents optimization — distance-based cull for `EntityBehaviorRepulseAgents.OnGameTick`; skips non-player entities beyond 64 blocks (saves spatial partition queries for ~60-70% of creatures)
+- **IMPROVED:** Source reorganized into domain subfolders (Audio/, Core/, Entity/, Gui/, Systems/)
+- **IMPROVED:** All documentation renamed to kebab-case
+
+**Previous Release (1.4.11):**
 - **FIX:** Liquid Droplets shader — replaced broken fract-only hash with Dave Hoskins hash22 (industry-standard sin-free hash); droplets now animate with proper randomness instead of all syncing together
 - **NEW:** All optimizations now exposed in ConfigLib GUI — WeatherWind, TickingBlocks, ShadowVegetationCull, BackgroundMaxFps, and MouseMoveCoalescing added to the settings panel
 - **NEW:** Complete translations for all new ConfigLib settings across all 31 languages

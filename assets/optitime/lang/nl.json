@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Achtergrond max FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-limiet wanneer het spelvenster niet gefocust is (5-60)",
   "optitime:setting-gui-mousemove": "Muisbewegingsamenvoeging",
-  "optitime:setting-gui-mousemove-tooltip": "Snelle muisbewegingsgebeurtenissen samenvoegen om verwerkingsbelasting te verminderen"
+  "optitime:setting-gui-mousemove-tooltip": "Snelle muisbewegingsgebeurtenissen samenvoegen om verwerkingsbelasting te verminderen",
+  "optitime:setting-entityinterp": "Entiteit Interpolatie",
+  "optitime:setting-entityinterp-tooltip": "Vloeiendere beweging van externe entiteiten in multiplayer",
+  "optitime:setting-repulseagents": "Agent Afstoting",
+  "optitime:setting-repulseagents-tooltip": "Scheidingscontroles overslaan voor verre wezens"
 }

@@ -18,6 +18,11 @@ namespace OptiTime
     {
         private static readonly ConcurrentDictionary<string, byte> safeNotFound = new();
 
+        internal static void Cleanup()
+        {
+            safeNotFound.Clear();
+        }
+
         internal static bool SafeAdd(HashSet<string> _, string key)
         {
             return safeNotFound.TryAdd(key, 0);

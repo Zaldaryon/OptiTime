@@ -37,6 +37,21 @@ namespace OptiTime
             capi.Logger.Notification("[OptiTime] ConfigLib integration enabled - use .configlib command to open GUI");
         }
 
+        public static void Cleanup()
+        {
+            if (api != null && initialized)
+            {
+                try
+                {
+                    api.Event.UnregisterEventBusListener(OnConfigLibSettingChanged);
+                }
+                catch { }
+            }
+
+            api = null;
+            initialized = false;
+        }
+
         private static void OnConfigLibSettingChanged(string eventName, ref EnumHandling handling, IAttribute data)
         {
             if (data is not ITreeAttribute tree)
@@ -139,6 +154,14 @@ namespace OptiTime
                     break;
                 case "ShadowFarVegetationCullEnabled":
                     config.ShadowFarVegetationCullEnabled = value;
+                    changed = true;
+                    break;
+                case "EntityInterpolationOptimizations":
+                    config.EntityInterpolationOptimizations = value;
+                    changed = true;
+                    break;
+                case "RepulseAgentsOptimizations":
+                    config.RepulseAgentsOptimizations = value;
                     changed = true;
                     break;
                 case "BackgroundMaxFps":

@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Bakgrunds-max-FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-gräns när spelfönstret är ofokuserat (5-60)",
   "optitime:setting-gui-mousemove": "Musrörelsesammanslagning",
-  "optitime:setting-gui-mousemove-tooltip": "Slå samman snabba musrörelsehändelser för att minska bearbetningsbelastning"
+  "optitime:setting-gui-mousemove-tooltip": "Slå samman snabba musrörelsehändelser för att minska bearbetningsbelastning",
+  "optitime:setting-entityinterp": "Entitetsinterpolation",
+  "optitime:setting-entityinterp-tooltip": "Jämnare rörelse av avlägsna entiteter i multiplayer",
+  "optitime:setting-repulseagents": "Agentavstötning",
+  "optitime:setting-repulseagents-tooltip": "Hoppa över separationskontroller för avlägsna varelser"
 }

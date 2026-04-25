@@ -202,6 +202,12 @@ namespace OptiTime
 
             try
             {
+                if (!player.Entity.Api.Event.TriggerMatchesRecipe(player, (IRecipeBase)recipe, ingredients))
+                {
+                    result = false;
+                    return false;
+                }
+
                 if (!player.Entity.Api.Event.TriggerMatchesRecipe(player, recipe, ingredients, gridWidth))
                 {
                     result = false;

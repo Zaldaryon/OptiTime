@@ -72,5 +72,9 @@
   "optitime:setting-shadowveg": "Shadow Vegetation Cull",
   "optitime:setting-shadowveg-tooltip": "Skip vegetation in far shadow cascade (leaf/grass shadows at 150+ blocks are invisible)",
   "optitime:setting-background-maxfps": "Background Max FPS",
-  "optitime:setting-background-maxfps-tooltip": "FPS cap when the game window is unfocused (5-60)"
+  "optitime:setting-background-maxfps-tooltip": "FPS cap when the game window is unfocused (5-60)",
+  "optitime:setting-entityinterp": "Entity Interpolation",
+  "optitime:setting-entityinterp-tooltip": "Smoother remote entity movement in multiplayer (extrapolation, interval correction, flood protection)",
+  "optitime:setting-repulseagents": "Repulse Agents",
+  "optitime:setting-repulseagents-tooltip": "Skip entity separation checks for distant creatures"
 }

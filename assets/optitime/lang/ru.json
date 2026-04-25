@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Макс. FPS в фоне",
   "optitime:setting-background-maxfps-tooltip": "Ограничение FPS, когда окно игры не в фокусе (5-60)",
   "optitime:setting-gui-mousemove": "Объединение движений мыши",
-  "optitime:setting-gui-mousemove-tooltip": "Объединять быстрые события движения мыши для снижения нагрузки на обработку"
+  "optitime:setting-gui-mousemove-tooltip": "Объединять быстрые события движения мыши для снижения нагрузки на обработку",
+  "optitime:setting-entityinterp": "Интерполяция Сущностей",
+  "optitime:setting-entityinterp-tooltip": "Более плавное движение удалённых сущностей в мультиплеере",
+  "optitime:setting-repulseagents": "Отталкивание Агентов",
+  "optitime:setting-repulseagents-tooltip": "Пропуск проверок разделения для далёких существ"
 }

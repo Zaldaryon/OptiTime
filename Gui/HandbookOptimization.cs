@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Frozen;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using HarmonyLib;
 using Vintagestory.API.Client;
@@ -66,6 +67,8 @@ namespace OptiTime
         private static bool isIndexed = false;
         private static bool isIndexing = false;
         private static readonly System.Threading.Lock indexLock = new();
+        private static System.Threading.CancellationTokenSource indexCts = null;
+        private static int disposeGeneration = 0;
 
         // Cached reflection MethodInfo objects to reduce overhead
         private static System.Reflection.MethodInfo cachedAddGeneralInfo;
@@ -131,6 +134,12 @@ namespace OptiTime
             isIndexed = false;
             isIndexing = false;
 
+            // Cancel any running indexing task
+            try { indexCts?.Cancel(); } catch { }
+            indexCts?.Dispose();
+            indexCts = null;
+            Interlocked.Increment(ref disposeGeneration);
+
             // Clear reflection caches
             cachedAddGeneralInfo = null;
             cachedAddDropsInfo = null;
@@ -153,6 +162,28 @@ namespace OptiTime
             cachedTinyPaddingField = null;
             cachedTinyIndentField = null;
             cachedMediumPaddingField = null;
+
+            // Clear storage reflection cache
+            storageReflectionInitialized = false;
+            cachedBlockShelfType = null;
+            cachedBlockToolRackType = null;
+            cachedBlockMoldRackType = null;
+            cachedBlockBookshelfType = null;
+            cachedBlockScrollRackType = null;
+            cachedBlockDisplayCaseType = null;
+            cachedBlockAntlerMountType = null;
+            cachedBlockOmokTableType = null;
+            cachedBlockAnimalTrapType = null;
+            cachedBlockCrockType = null;
+            cachedLiquidInterfaceType = null;
+            cachedBlockLiquidContainerBaseType = null;
+            cachedShelfLayoutMethod = null;
+            cachedDisplayCaseHeightField = null;
+            cachedIsAppetizingBaitMethod = null;
+            cachedCanFitBaitMethod = null;
+            cachedGetCollectibleInterfaceMethod = null;
+            cachedGetCurrentLitresMethod = null;
+            cachedGetContainablePropsMethod = null;
         }
 
         private static void InitializeReflectionCache()
@@ -207,12 +238,20 @@ namespace OptiTime
             {
                 if (isIndexed || isIndexing) return;
                 isIndexing = true;
+                indexCts?.Dispose();
+                indexCts = new System.Threading.CancellationTokenSource();
             }
+
+            var cts = indexCts;
+            int startGen = Volatile.Read(ref disposeGeneration);
 
             Task.Run(() =>
             {
                 try
                 {
+                    var token = cts.Token;
+                    token.ThrowIfCancellationRequested();
+
                     capi.Logger.VerboseDebug("[OptiTime] Starting handbook relationship indexing...");
                     var startTime = capi.World.ElapsedMilliseconds;
                     if (ProfilingHelper.Enabled)
@@ -221,14 +260,22 @@ namespace OptiTime
                     }
 
                     BuildAllStacksOrderCache(capi.World, allStacks);
+                    token.ThrowIfCancellationRequested();
 
-                    Parallel.ForEach(allStacks, stack =>
+                    Parallel.ForEach(allStacks, new ParallelOptions { CancellationToken = token }, stack =>
                     {
                         IndexStackRelationships(capi, stack, allStacks);
                     });
 
+                    token.ThrowIfCancellationRequested();
                     IndexEntityRelationships(capi);
+                    token.ThrowIfCancellationRequested();
                     IndexStorageRelationships(capi, allStacks);
+                    token.ThrowIfCancellationRequested();
+
+                    // Check generation before writing results — if Cleanup ran, discard
+                    if (Volatile.Read(ref disposeGeneration) != startGen) return;
+
                     FreezeIndexCaches(capi);
 
                     var elapsed = capi.World.ElapsedMilliseconds - startTime;
@@ -240,9 +287,14 @@ namespace OptiTime
 
                     lock (indexLock)
                     {
+                        if (Volatile.Read(ref disposeGeneration) != startGen) return;
                         isIndexed = true;
                         isIndexing = false;
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    // Expected when Cleanup is called during indexing
                 }
                 catch (Exception ex)
                 {
@@ -422,10 +474,79 @@ namespace OptiTime
             }
         }
 
+        // Cached reflection for storage relationship checks (F3: hoisted out of O(N²) loop)
+        private static Type cachedBlockShelfType;
+        private static Type cachedBlockToolRackType;
+        private static Type cachedBlockMoldRackType;
+        private static Type cachedBlockBookshelfType;
+        private static Type cachedBlockScrollRackType;
+        private static Type cachedBlockDisplayCaseType;
+        private static Type cachedBlockAntlerMountType;
+        private static Type cachedBlockOmokTableType;
+        private static Type cachedBlockAnimalTrapType;
+        private static Type cachedBlockCrockType;
+        private static Type cachedLiquidInterfaceType;
+        private static Type cachedBlockLiquidContainerBaseType;
+        private static System.Reflection.MethodInfo cachedShelfLayoutMethod;
+        private static System.Reflection.FieldInfo cachedDisplayCaseHeightField;
+        private static System.Reflection.MethodInfo cachedIsAppetizingBaitMethod;
+        private static System.Reflection.MethodInfo cachedCanFitBaitMethod;
+        private static System.Reflection.MethodInfo cachedGetCollectibleInterfaceMethod;
+        private static System.Reflection.MethodInfo cachedGetCurrentLitresMethod;
+        private static System.Reflection.MethodInfo cachedGetContainablePropsMethod;
+        private static bool storageReflectionInitialized;
+        private static readonly System.Threading.Lock storageReflectionLock = new();
+
+        private static void InitializeStorageReflection()
+        {
+            if (storageReflectionInitialized) return;
+            lock (storageReflectionLock)
+            {
+                if (storageReflectionInitialized) return;
+
+                cachedBlockShelfType = AccessTools.TypeByName("Vintagestory.GameContent.BlockShelf");
+                cachedBlockToolRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockToolRack");
+                cachedBlockMoldRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockMoldRack");
+                cachedBlockBookshelfType = AccessTools.TypeByName("Vintagestory.GameContent.BlockBookshelf");
+                cachedBlockScrollRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockScrollRack");
+                cachedBlockDisplayCaseType = AccessTools.TypeByName("Vintagestory.GameContent.BlockDisplayCase");
+                cachedBlockAntlerMountType = AccessTools.TypeByName("Vintagestory.GameContent.BlockAntlerMount");
+                cachedBlockOmokTableType = AccessTools.TypeByName("Vintagestory.GameContent.BlockOmokTable");
+                cachedBlockAnimalTrapType = AccessTools.TypeByName("Vintagestory.GameContent.BlockAnimalTrap");
+                cachedBlockCrockType = AccessTools.TypeByName("Vintagestory.GameContent.BlockCrock");
+                cachedLiquidInterfaceType = AccessTools.TypeByName("Vintagestory.GameContent.ILiquidInterface");
+                cachedBlockLiquidContainerBaseType = AccessTools.TypeByName("Vintagestory.GameContent.BlockLiquidContainerBase");
+
+                var blockEntityShelfType = AccessTools.TypeByName("Vintagestory.GameContent.BlockEntityShelf");
+                if (blockEntityShelfType != null)
+                    cachedShelfLayoutMethod = AccessTools.Method(blockEntityShelfType, "GetShelvableLayout", new[] { typeof(ItemStack) });
+
+                if (cachedBlockDisplayCaseType != null)
+                    cachedDisplayCaseHeightField = AccessTools.Field(cachedBlockDisplayCaseType, "height");
+
+                if (cachedBlockAnimalTrapType != null)
+                {
+                    cachedIsAppetizingBaitMethod = AccessTools.Method(cachedBlockAnimalTrapType, "IsAppetizingBait");
+                    cachedCanFitBaitMethod = AccessTools.Method(cachedBlockAnimalTrapType, "CanFitBait");
+                }
+
+                cachedGetCollectibleInterfaceMethod = AccessTools.Method(typeof(CollectibleObject), "GetCollectibleInterface");
+
+                if (cachedLiquidInterfaceType != null)
+                    cachedGetCurrentLitresMethod = AccessTools.Method(cachedLiquidInterfaceType, "GetCurrentLitres");
+
+                if (cachedBlockLiquidContainerBaseType != null)
+                    cachedGetContainablePropsMethod = AccessTools.Method(cachedBlockLiquidContainerBaseType, "GetContainableProps", new[] { typeof(ItemStack) });
+
+                storageReflectionInitialized = true;
+            }
+        }
+
         private static void IndexStorageRelationships(ICoreClientAPI capi, ItemStack[] allStacks)
         {
             try
             {
+                InitializeStorageReflection();
                 var groundStorableType = AccessTools.TypeByName("Vintagestory.GameContent.CollectibleBehaviorGroundStorable");
 
                 // Index ground storable items
@@ -492,19 +613,16 @@ namespace OptiTime
 
         private static bool CanItemBeStoredInContainer(ICoreClientAPI capi, ItemStack item, ItemStack container)
         {
-            var blockShelfType = AccessTools.TypeByName("Vintagestory.GameContent.BlockShelf");
-            if (blockShelfType != null && blockShelfType.IsInstanceOfType(container.Collectible))
+            if (cachedBlockShelfType != null && cachedBlockShelfType.IsInstanceOfType(container.Collectible))
             {
-                var shelfLayoutMethod = AccessTools.Method(AccessTools.TypeByName("Vintagestory.GameContent.BlockEntityShelf"), "GetShelvableLayout", new[] { typeof(ItemStack) });
-                if (shelfLayoutMethod != null)
+                if (cachedShelfLayoutMethod != null)
                 {
-                    var layout = shelfLayoutMethod.Invoke(null, new object[] { item });
+                    var layout = cachedShelfLayoutMethod.Invoke(null, new object[] { item });
                     if (layout != null) return true;
                 }
             }
 
-            var blockToolRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockToolRack");
-            if (blockToolRackType != null && blockToolRackType.IsInstanceOfType(container.Collectible))
+            if (cachedBlockToolRackType != null && cachedBlockToolRackType.IsInstanceOfType(container.Collectible))
             {
                 if (item.Collectible.Tool != null || item.ItemAttributes?["rackable"].AsBool() == true)
                     return true;
@@ -512,49 +630,39 @@ namespace OptiTime
 
             if (item.ItemAttributes is not JsonObject attr) return false;
 
-            var blockMoldRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockMoldRack");
-            if (blockMoldRackType != null && blockMoldRackType.IsInstanceOfType(container.Collectible) && attr["moldrackable"].AsBool())
+            if (cachedBlockMoldRackType != null && cachedBlockMoldRackType.IsInstanceOfType(container.Collectible) && attr["moldrackable"].AsBool())
                 return true;
 
-            var blockBookshelfType = AccessTools.TypeByName("Vintagestory.GameContent.BlockBookshelf");
-            if (blockBookshelfType != null && blockBookshelfType.IsInstanceOfType(container.Collectible) && attr["bookshelveable"].AsBool())
+            if (cachedBlockBookshelfType != null && cachedBlockBookshelfType.IsInstanceOfType(container.Collectible) && attr["bookshelveable"].AsBool())
                 return true;
 
-            var blockScrollRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockScrollRack");
-            if (blockScrollRackType != null && blockScrollRackType.IsInstanceOfType(container.Collectible) && attr["scrollrackable"].AsBool())
+            if (cachedBlockScrollRackType != null && cachedBlockScrollRackType.IsInstanceOfType(container.Collectible) && attr["scrollrackable"].AsBool())
                 return true;
 
-            var blockDisplayCaseType = AccessTools.TypeByName("Vintagestory.GameContent.BlockDisplayCase");
-            if (attr["displaycaseable"].AsBool() && blockDisplayCaseType != null && blockDisplayCaseType.IsInstanceOfType(container.Collectible))
+            if (attr["displaycaseable"].AsBool() && cachedBlockDisplayCaseType != null && cachedBlockDisplayCaseType.IsInstanceOfType(container.Collectible))
             {
                 float minHeight = attr["displaycase"]["minHeight"].AsFloat(0.25f);
-                var heightField = AccessTools.Field(blockDisplayCaseType, "height");
-                if (heightField != null)
+                if (cachedDisplayCaseHeightField != null)
                 {
-                    float height = (float)heightField.GetValue(container.Collectible);
+                    float height = (float)cachedDisplayCaseHeightField.GetValue(container.Collectible);
                     if (height >= minHeight) return true;
                 }
             }
 
-            var blockAntlerMountType = AccessTools.TypeByName("Vintagestory.GameContent.BlockAntlerMount");
-            if (blockAntlerMountType != null && blockAntlerMountType.IsInstanceOfType(container.Collectible) && attr["antlerMountable"].AsBool())
+            if (cachedBlockAntlerMountType != null && cachedBlockAntlerMountType.IsInstanceOfType(container.Collectible) && attr["antlerMountable"].AsBool())
                 return true;
 
-            var blockOmokTableType = AccessTools.TypeByName("Vintagestory.GameContent.BlockOmokTable");
-            if (blockOmokTableType != null && blockOmokTableType.IsInstanceOfType(container.Collectible) && attr["omokpiece"].AsBool())
+            if (cachedBlockOmokTableType != null && cachedBlockOmokTableType.IsInstanceOfType(container.Collectible) && attr["omokpiece"].AsBool())
                 return true;
 
-            var blockAnimalTrapType = AccessTools.TypeByName("Vintagestory.GameContent.BlockAnimalTrap");
-            if (blockAnimalTrapType != null && blockAnimalTrapType.IsInstanceOfType(container.Collectible))
+            if (cachedBlockAnimalTrapType != null && cachedBlockAnimalTrapType.IsInstanceOfType(container.Collectible))
             {
-                var isAppetizingMethod = AccessTools.Method(blockAnimalTrapType, "IsAppetizingBait");
-                var canFitMethod = AccessTools.Method(blockAnimalTrapType, "CanFitBait");
-                if (isAppetizingMethod != null && canFitMethod != null)
+                if (cachedIsAppetizingBaitMethod != null && cachedCanFitBaitMethod != null)
                 {
                     try
                     {
-                        bool appetizing = (bool)isAppetizingMethod.Invoke(container.Collectible, new object[] { capi, item });
-                        bool canFit = (bool)canFitMethod.Invoke(container.Collectible, new object[] { capi, item });
+                        bool appetizing = (bool)cachedIsAppetizingBaitMethod.Invoke(container.Collectible, new object[] { capi, item });
+                        bool canFit = (bool)cachedCanFitBaitMethod.Invoke(container.Collectible, new object[] { capi, item });
                         if (appetizing && canFit) return true;
                     }
                     catch { }
@@ -563,29 +671,19 @@ namespace OptiTime
 
             if (attr["waterTightContainerProps"].Exists)
             {
-                var liquidInterfaceType = AccessTools.TypeByName("Vintagestory.GameContent.ILiquidInterface");
-                if (liquidInterfaceType != null)
+                if (cachedLiquidInterfaceType != null && cachedGetCollectibleInterfaceMethod != null)
                 {
-                    var getInterfaceMethod = AccessTools.Method(typeof(CollectibleObject), "GetCollectibleInterface");
-                    if (getInterfaceMethod != null)
+                    var genericMethod = cachedGetCollectibleInterfaceMethod.MakeGenericMethod(cachedLiquidInterfaceType);
+                    var liquidInterface = genericMethod.Invoke(container.Collectible, null);
+                    if (liquidInterface != null && cachedGetCurrentLitresMethod != null)
                     {
-                        var genericMethod = getInterfaceMethod.MakeGenericMethod(liquidInterfaceType);
-                        var liquidInterface = genericMethod.Invoke(container.Collectible, null);
-                        if (liquidInterface != null)
-                        {
-                            var getCurrentLitresMethod = AccessTools.Method(liquidInterfaceType, "GetCurrentLitres");
-                            if (getCurrentLitresMethod != null)
-                            {
-                                float litres = (float)getCurrentLitresMethod.Invoke(liquidInterface, new object[] { container });
-                                if (litres <= 0) return true;
-                            }
-                        }
+                        float litres = (float)cachedGetCurrentLitresMethod.Invoke(liquidInterface, new object[] { container });
+                        if (litres <= 0) return true;
                     }
                 }
             }
 
-            var blockCrockType = AccessTools.TypeByName("Vintagestory.GameContent.BlockCrock");
-            if (blockCrockType != null && blockCrockType.IsInstanceOfType(container.Collectible) && attr["crockable"].AsBool())
+            if (cachedBlockCrockType != null && cachedBlockCrockType.IsInstanceOfType(container.Collectible) && attr["crockable"].AsBool())
                 return true;
 
             return false;
@@ -593,19 +691,16 @@ namespace OptiTime
 
         private static bool CanContainerStoreItem(ICoreClientAPI capi, ItemStack container, ItemStack item)
         {
-            var blockShelfType = AccessTools.TypeByName("Vintagestory.GameContent.BlockShelf");
-            if (blockShelfType != null && blockShelfType.IsInstanceOfType(container.Collectible))
+            if (cachedBlockShelfType != null && cachedBlockShelfType.IsInstanceOfType(container.Collectible))
             {
-                var shelfLayoutMethod = AccessTools.Method(AccessTools.TypeByName("Vintagestory.GameContent.BlockEntityShelf"), "GetShelvableLayout", new[] { typeof(ItemStack) });
-                if (shelfLayoutMethod != null)
+                if (cachedShelfLayoutMethod != null)
                 {
-                    var layout = shelfLayoutMethod.Invoke(null, new object[] { item });
+                    var layout = cachedShelfLayoutMethod.Invoke(null, new object[] { item });
                     if (layout != null) return true;
                 }
             }
 
-            var blockToolRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockToolRack");
-            if (blockToolRackType != null && blockToolRackType.IsInstanceOfType(container.Collectible))
+            if (cachedBlockToolRackType != null && cachedBlockToolRackType.IsInstanceOfType(container.Collectible))
             {
                 if (item.Collectible.Tool != null || item.ItemAttributes?["rackable"].AsBool() == true)
                     return true;
@@ -613,81 +708,63 @@ namespace OptiTime
 
             if (item.ItemAttributes is not JsonObject attr) return false;
 
-            var blockMoldRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockMoldRack");
-            if (blockMoldRackType != null && blockMoldRackType.IsInstanceOfType(container.Collectible) && attr["moldrackable"].AsBool())
+            if (cachedBlockMoldRackType != null && cachedBlockMoldRackType.IsInstanceOfType(container.Collectible) && attr["moldrackable"].AsBool())
                 return true;
 
-            var blockBookshelfType = AccessTools.TypeByName("Vintagestory.GameContent.BlockBookshelf");
-            if (blockBookshelfType != null && blockBookshelfType.IsInstanceOfType(container.Collectible) && attr["bookshelveable"].AsBool())
+            if (cachedBlockBookshelfType != null && cachedBlockBookshelfType.IsInstanceOfType(container.Collectible) && attr["bookshelveable"].AsBool())
                 return true;
 
-            var blockScrollRackType = AccessTools.TypeByName("Vintagestory.GameContent.BlockScrollRack");
-            if (blockScrollRackType != null && blockScrollRackType.IsInstanceOfType(container.Collectible) && attr["scrollrackable"].AsBool())
+            if (cachedBlockScrollRackType != null && cachedBlockScrollRackType.IsInstanceOfType(container.Collectible) && attr["scrollrackable"].AsBool())
                 return true;
 
-            var blockDisplayCaseType = AccessTools.TypeByName("Vintagestory.GameContent.BlockDisplayCase");
-            if (attr["displaycaseable"].AsBool() && blockDisplayCaseType != null && blockDisplayCaseType.IsInstanceOfType(container.Collectible))
+            if (attr["displaycaseable"].AsBool() && cachedBlockDisplayCaseType != null && cachedBlockDisplayCaseType.IsInstanceOfType(container.Collectible))
             {
                 float minHeight = attr["displaycase"]["minHeight"].AsFloat(0.25f);
-                var heightField = AccessTools.Field(blockDisplayCaseType, "height");
-                if (heightField != null)
+                if (cachedDisplayCaseHeightField != null)
                 {
-                    float height = (float)heightField.GetValue(container.Collectible);
+                    float height = (float)cachedDisplayCaseHeightField.GetValue(container.Collectible);
                     if (height >= minHeight) return true;
                 }
             }
 
-            var blockAntlerMountType = AccessTools.TypeByName("Vintagestory.GameContent.BlockAntlerMount");
-            if (blockAntlerMountType != null && blockAntlerMountType.IsInstanceOfType(container.Collectible) && attr["antlerMountable"].AsBool())
+            if (cachedBlockAntlerMountType != null && cachedBlockAntlerMountType.IsInstanceOfType(container.Collectible) && attr["antlerMountable"].AsBool())
                 return true;
 
-            var blockOmokTableType = AccessTools.TypeByName("Vintagestory.GameContent.BlockOmokTable");
-            if (blockOmokTableType != null && blockOmokTableType.IsInstanceOfType(container.Collectible) && attr["omokpiece"].AsBool())
+            if (cachedBlockOmokTableType != null && cachedBlockOmokTableType.IsInstanceOfType(container.Collectible) && attr["omokpiece"].AsBool())
                 return true;
 
-            var blockAnimalTrapType = AccessTools.TypeByName("Vintagestory.GameContent.BlockAnimalTrap");
-            if (blockAnimalTrapType != null && blockAnimalTrapType.IsInstanceOfType(container.Collectible))
+            if (cachedBlockAnimalTrapType != null && cachedBlockAnimalTrapType.IsInstanceOfType(container.Collectible))
             {
-                var isAppetizingMethod = AccessTools.Method(blockAnimalTrapType, "IsAppetizingBait");
-                var canFitMethod = AccessTools.Method(blockAnimalTrapType, "CanFitBait");
-                if (isAppetizingMethod != null && canFitMethod != null)
+                if (cachedIsAppetizingBaitMethod != null && cachedCanFitBaitMethod != null)
                 {
                     try
                     {
-                        bool appetizing = (bool)isAppetizingMethod.Invoke(container.Collectible, new object[] { capi, item });
-                        bool canFit = (bool)canFitMethod.Invoke(container.Collectible, new object[] { capi, item });
+                        bool appetizing = (bool)cachedIsAppetizingBaitMethod.Invoke(container.Collectible, new object[] { capi, item });
+                        bool canFit = (bool)cachedCanFitBaitMethod.Invoke(container.Collectible, new object[] { capi, item });
                         if (appetizing && canFit) return true;
                     }
                     catch { }
                 }
             }
 
-            var liquidInterfaceType = AccessTools.TypeByName("Vintagestory.GameContent.ILiquidInterface");
-            if (liquidInterfaceType != null)
+            if (cachedLiquidInterfaceType != null && cachedGetCollectibleInterfaceMethod != null)
             {
-                var getInterfaceMethod = AccessTools.Method(typeof(CollectibleObject), "GetCollectibleInterface");
-                var blockLiquidContainerBaseType = AccessTools.TypeByName("Vintagestory.GameContent.BlockLiquidContainerBase");
-                if (getInterfaceMethod != null && blockLiquidContainerBaseType != null)
+                var genericMethod = cachedGetCollectibleInterfaceMethod.MakeGenericMethod(cachedLiquidInterfaceType);
+                var liquidInterface = genericMethod.Invoke(container.Collectible, null);
+                if (liquidInterface != null && cachedGetContainablePropsMethod != null)
                 {
-                    var genericMethod = getInterfaceMethod.MakeGenericMethod(liquidInterfaceType);
-                    var liquidInterface = genericMethod.Invoke(container.Collectible, null);
-                    if (liquidInterface != null)
+                    var containableProps = cachedGetContainablePropsMethod.Invoke(null, new object[] { item });
+                    if (containableProps != null)
                     {
-                        var getContainablePropsMethod = AccessTools.Method(blockLiquidContainerBaseType, "GetContainableProps", new[] { typeof(ItemStack) });
-                        var containableProps = getContainablePropsMethod?.Invoke(null, new object[] { item });
-                        if (containableProps != null)
-                        {
-                            var whenFilledField = AccessTools.Field(containableProps.GetType(), "WhenFilled");
-                            var whenFilledProperty = AccessTools.Property(containableProps.GetType(), "WhenFilled");
-                            object whenFilled = whenFilledField?.GetValue(containableProps) ?? whenFilledProperty?.GetValue(containableProps);
-                            if (whenFilled == null) return true;
-                        }
+                        var whenFilledField = AccessTools.Field(containableProps.GetType(), "WhenFilled");
+                        var whenFilledProperty = AccessTools.Property(containableProps.GetType(), "WhenFilled");
+                        object whenFilled = whenFilledField?.GetValue(containableProps) ?? whenFilledProperty?.GetValue(containableProps);
+                        if (whenFilled == null) return true;
                     }
                 }
             }
 
-            var blockCrockType = AccessTools.TypeByName("Vintagestory.GameContent.BlockCrock");
-            if (blockCrockType != null && blockCrockType.IsInstanceOfType(container.Collectible) && attr["crockable"].AsBool())
+            if (cachedBlockCrockType != null && cachedBlockCrockType.IsInstanceOfType(container.Collectible) && attr["crockable"].AsBool())
                 return true;
 
             return false;

@@ -10,6 +10,10 @@ namespace OptiTime
         private static int[] originalOffThreadMaxParticles = null;
         private static int cachedViewDistance = 256;
         private static bool viewDistanceScalingEnabled = false;
+        private static Action<string> logger;
+        private static bool loggedAccessFailure;
+
+        public static void SetLogger(Action<string> log) => logger = log;
 
         public static void Cleanup()
         {
@@ -18,6 +22,8 @@ namespace OptiTime
             originalOffThreadMaxParticles = null;
             cachedViewDistance = 256;
             viewDistanceScalingEnabled = false;
+            logger = null;
+            loggedAccessFailure = false;
         }
 
         private static float GetParticleScale(int viewDistance)
@@ -55,7 +61,14 @@ namespace OptiTime
 
                 ApplyParticleScale(cachedViewDistance);
             }
-            catch { }
+            catch
+            {
+                if (!loggedAccessFailure)
+                {
+                    loggedAccessFailure = true;
+                    logger?.Invoke("[OptiTime] Particle pool access failed — MaxParticles not available, scaling disabled");
+                }
+            }
         }
 
         public static void UpdateViewDistance(int newViewDistance)
@@ -93,7 +106,14 @@ namespace OptiTime
                     ProfilingHelper.Mark("opt-particlescale", $"vd={viewDistance},scale={scale:0.00}", countOnly: true);
                 }
             }
-            catch { }
+            catch
+            {
+                if (!loggedAccessFailure)
+                {
+                    loggedAccessFailure = true;
+                    logger?.Invoke("[OptiTime] Particle pool scaling failed — MaxParticles not available, scaling disabled");
+                }
+            }
         }
 
         public static void ConfigureScaling(bool enabled)
@@ -121,7 +141,14 @@ namespace OptiTime
                         offthreadpools[i].MaxParticles = originalOffThreadMaxParticles[i];
                     }
                 }
-                catch { }
+                catch
+                {
+                    if (!loggedAccessFailure)
+                    {
+                        loggedAccessFailure = true;
+                        logger?.Invoke("[OptiTime] Particle pool restore failed — MaxParticles not available");
+                    }
+                }
             }
         }
     }

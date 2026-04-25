@@ -41,7 +41,7 @@ namespace OptiTime
                     bool isPlayer = entity == game.EntityPlayer;
                     bool allowOutside = entity.AllowOutsideLoadedRange;
 
-                    if (!isPlayer && !allowOutside && entity.Pos.Dimension != dimension)
+                    if (!isPlayer && entity.Pos.Dimension != dimension)
                     {
                         entity.IsRendered = false;
                         continue;

@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<Obfuscator>
+  <Var name="InPath" value="bin\Release\net8.0" />
+  <Var name="OutPath" value="bin\Release\net8.0\Obfuscated" />
+  
+  <Module file="$(InPath)\OptiTime.dll">
+    <SkipMethod type="OptiTime.DynamicLightOptimization" name="OptimizeLightCulling" />
+    <SkipMethod type="OptiTime.DynamicLightOptimization" name="AddPointLight" />
+    <SkipMethod type="OptiTime.DynamicLightOptimization" name="GetOptimalLightRadius" />
+    <SkipMethod type="OptiTime.EntityAnimationOptimization" name="OptimizeEntityAnimations" />
+    <SkipMethod type="OptiTime.ParticleOptimization" name="AdjustParticlePools" />
+    <SkipMethod type="OptiTime.ParticleOptimization" name="GetParticleScale" />
+    <SkipMethod type="OptiTime.OcclusionCullingOptimization" name="OptimizeOcclusionCulling" />
+    <SkipMethod type="OptiTime.BlockScanningOptimization" name="AdjustScanRange" />
+    <SkipMethod type="OptiTime.BlockScanningOptimization" name="GetOptimalScanRange" />
+    <SkipMethod type="OptiTime.ChunkTesselationOptimization" name="TranspileTesselationThrottle" />
+    <SkipMethod type="OptiTime.ChunkTesselationOptimization" name="GetAdaptiveMultiplier" />
+    <SkipMethod type="OptiTime.ChunkTesselationOptimization" name="CaptureInstance" />
+  </Module>
+  
+  <AssemblySearchPath path="$(InPath)" />
+  <AssemblySearchPath path="C:\Games\VintageStory" />
+  <AssemblySearchPath path="C:\Games\VintageStory\Lib" />
+</Obfuscator>

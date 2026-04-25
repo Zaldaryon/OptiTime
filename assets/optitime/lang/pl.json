@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Maks. FPS w tle",
   "optitime:setting-background-maxfps-tooltip": "Limit FPS gdy okno gry nie jest aktywne (5-60)",
   "optitime:setting-gui-mousemove": "Łączenie ruchów myszy",
-  "optitime:setting-gui-mousemove-tooltip": "Łączyć szybkie zdarzenia ruchu myszy w celu zmniejszenia obciążenia przetwarzania"
+  "optitime:setting-gui-mousemove-tooltip": "Łączyć szybkie zdarzenia ruchu myszy w celu zmniejszenia obciążenia przetwarzania",
+  "optitime:setting-entityinterp": "Interpolacja Bytów",
+  "optitime:setting-entityinterp-tooltip": "Płynniejszy ruch zdalnych bytów w trybie wieloosobowym",
+  "optitime:setting-repulseagents": "Odpychanie Agentów",
+  "optitime:setting-repulseagents-tooltip": "Pomiń sprawdzanie separacji dla odległych stworzeń"
 }

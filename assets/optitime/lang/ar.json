@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "أقصى FPS في الخلفية",
   "optitime:setting-background-maxfps-tooltip": "حد FPS عندما تكون نافذة اللعبة غير مركزة (5-60)",
   "optitime:setting-gui-mousemove": "دمج حركة الماوس",
-  "optitime:setting-gui-mousemove-tooltip": "دمج أحداث حركة الماوس السريعة لتقليل عبء المعالجة"
+  "optitime:setting-gui-mousemove-tooltip": "دمج أحداث حركة الماوس السريعة لتقليل عبء المعالجة",
+  "optitime:setting-entityinterp": "استيفاء الكيانات",
+  "optitime:setting-entityinterp-tooltip": "حركة أكثر سلاسة للكيانات البعيدة في اللعب الجماعي",
+  "optitime:setting-repulseagents": "تنافر الكيانات",
+  "optitime:setting-repulseagents-tooltip": "تخطي فحوصات فصل الكيانات للمخلوقات البعيدة"
 }

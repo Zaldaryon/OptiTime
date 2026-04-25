@@ -75,6 +75,9 @@ namespace OptiTime
                     baseMultiplier = 1;
                 else if (queueSize >= QUEUE_THRESHOLD_LOW)
                     baseMultiplier = 2;
+                // Intentionally exceeds vanilla's hardcoded 3 in the 50-149 range
+                // to clear moderate queue backlogs (berry bushes, block entities) faster.
+                // Frame-pressure scaling below can reduce this adaptively.
                 else if (queueSize >= 50)
                     baseMultiplier = 4;
                 else

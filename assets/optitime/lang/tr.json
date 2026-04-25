@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Arka plan maks. FPS",
   "optitime:setting-background-maxfps-tooltip": "Oyun penceresi odakta değilken FPS sınırı (5-60)",
   "optitime:setting-gui-mousemove": "Fare hareketi birleştirme",
-  "optitime:setting-gui-mousemove-tooltip": "Hızlı fare hareketi olaylarını birleştirerek işlem yükünü azalt"
+  "optitime:setting-gui-mousemove-tooltip": "Hızlı fare hareketi olaylarını birleştirerek işlem yükünü azalt",
+  "optitime:setting-entityinterp": "Varlık Enterpolasyonu",
+  "optitime:setting-entityinterp-tooltip": "Çok oyuncuda uzak varlıkların daha akıcı hareketi",
+  "optitime:setting-repulseagents": "Ajan İtmesi",
+  "optitime:setting-repulseagents-tooltip": "Uzak yaratıklar için ayırma kontrollerini atla"
 }

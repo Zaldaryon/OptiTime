@@ -35,6 +35,7 @@ namespace OptiTime
                 return;
 
             FrameRateOptimization.Configure(Config);
+            ParticleOptimization.SetLogger(msg => staticCapi?.Logger?.Warning(msg));
             ParticleOptimization.ConfigureScaling(Config.ParticleViewDistanceScalingEnabled);
             GuiManagerOptimization.Configure(Config);
             ProfilingHelper.SetEnabled(Config.EnableProfiling);
@@ -67,7 +68,9 @@ namespace OptiTime
             ["recipe"] = "RecipeLookupOptimizations",
             ["weatherwind"] = "WeatherWindOptimizations",
             ["tickingblocks"] = "TickingBlocksOptimizations",
-            ["shadowveg"] = "ShadowFarVegetationCullEnabled"
+            ["shadowveg"] = "ShadowFarVegetationCullEnabled",
+            ["entityinterp"] = "EntityInterpolationOptimizations",
+            ["repulseagents"] = "RepulseAgentsOptimizations"
         };
 
         public override bool ShouldLoad(EnumAppSide forSide)
@@ -544,6 +547,7 @@ namespace OptiTime
             {
                 try
                 {
+                    ShadowOptimization.SetLogger(msg => api.Logger.Warning(msg));
                     var renderShadow = AccessTools.Method("Vintagestory.Client.NoObf.ChunkRenderer:RenderShadow", new Type[] { typeof(float) });
                     if (renderShadow == null)
                         throw new InvalidOperationException("ChunkRenderer.RenderShadow not found");
@@ -556,6 +560,43 @@ namespace OptiTime
                 {
                     api.Logger.Warning("[OptiTime] Failed to load shadow far vegetation cull: " + ex.Message);
                     config.ShadowFarVegetationCullEnabled = false;
+                }
+            }
+
+            if (config.EntityInterpolationOptimizations)
+            {
+                try
+                {
+                    var target = AccessTools.Method("EntityBehaviorInterpolatePosition:OnReceivedServerPos",
+                        new Type[] { typeof(bool), typeof(EnumHandling).MakeByRefType() });
+                    if (target != null && !DisableIfConflictingPatches(api, nameof(OptiTimeConfig.EntityInterpolationOptimizations), "Entity interpolation optimization", target))
+                    {
+                        EntityInterpolationOptimization.Initialize(api, harmony, false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[OptiTime] Failed to load entity interpolation optimization: " + ex.Message);
+                    config.EntityInterpolationOptimizations = false;
+                }
+            }
+
+            if (config.RepulseAgentsOptimizations)
+            {
+                try
+                {
+                    var target = AccessTools.Method(
+                        AccessTools.TypeByName("Vintagestory.GameContent.EntityBehaviorRepulseAgents"),
+                        "OnGameTick", new Type[] { typeof(float) });
+                    if (target != null && !DisableIfConflictingPatches(api, nameof(OptiTimeConfig.RepulseAgentsOptimizations), "RepulseAgents optimization", target))
+                    {
+                        RepulseAgentsOptimization.Initialize(api, harmony);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[OptiTime] Failed to load RepulseAgents optimization: " + ex.Message);
+                    config.RepulseAgentsOptimizations = false;
                 }
             }
 
@@ -744,6 +785,8 @@ namespace OptiTime
             if (config.WeatherWindOptimizations) count++;
             if (config.TickingBlocksOptimizations) count++;
             if (config.ShadowFarVegetationCullEnabled) count++;
+            if (config.EntityInterpolationOptimizations) count++;
+            if (config.RepulseAgentsOptimizations) count++;
             if (config.ShaderOptimizations && !config.IsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations))) count++;
 
             if (count > 0)
@@ -968,6 +1011,8 @@ namespace OptiTime
                     FrameRateOptimization.Cleanup();
                     if (config.HandbookOptimizations)
                         HandbookOptimization.Cleanup();
+                    EntityInterpolationOptimization.Cleanup();
+                    RepulseAgentsOptimization.Cleanup();
                 }
                 else
                 {
@@ -979,12 +1024,16 @@ namespace OptiTime
                     FlySoundOptimization.Cleanup();
                     FrameRateOptimization.Cleanup();
                     HandbookOptimization.Cleanup();
+                    EntityInterpolationOptimization.Cleanup();
+                    RepulseAgentsOptimization.Cleanup();
                 }
 
                 // Cleanup recipe lookup optimization (no resources currently)
                 RecipeLookupCacheOptimization.Cleanup();
                 WeatherWindOptimization.Cleanup();
                 ShadowOptimization.Cleanup();
+                ConfigLibIntegration.Cleanup();
+                TranslationServicePatch.Cleanup();
 
                 ProfilingHelper.Cleanup();
             }

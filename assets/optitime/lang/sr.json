@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Макс. FPS у позадини",
   "optitime:setting-background-maxfps-tooltip": "Ограничење FPS када прозор игре није у фокусу (5-60)",
   "optitime:setting-gui-mousemove": "Спајање покрета миша",
-  "optitime:setting-gui-mousemove-tooltip": "Спојити брзе догађаје покрета миша ради смањења оптерећења обраде"
+  "optitime:setting-gui-mousemove-tooltip": "Спојити брзе догађаје покрета миша ради смањења оптерећења обраде",
+  "optitime:setting-entityinterp": "Интерполација Ентитета",
+  "optitime:setting-entityinterp-tooltip": "Глаткије кретање удаљених ентитета у мултиплејеру",
+  "optitime:setting-repulseagents": "Одбијање Агената",
+  "optitime:setting-repulseagents-tooltip": "Прескочи провере раздвајања за удаљена створења"
 }

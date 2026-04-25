@@ -23,6 +23,10 @@
       <HintPath>$(VINTAGE_STORY)\Lib\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="VSEssentials">
+      <HintPath>$(VINTAGE_STORY)\Mods\VSEssentials.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

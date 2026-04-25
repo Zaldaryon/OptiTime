@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Hintergrund-Max-FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-Limit wenn das Spielfenster nicht fokussiert ist (5-60)",
   "optitime:setting-gui-mousemove": "Mausbewegungszusammenführung",
-  "optitime:setting-gui-mousemove-tooltip": "Schnelle Mausbewegungsereignisse zusammenführen um Verarbeitungsaufwand zu reduzieren"
+  "optitime:setting-gui-mousemove-tooltip": "Schnelle Mausbewegungsereignisse zusammenführen um Verarbeitungsaufwand zu reduzieren",
+  "optitime:setting-entityinterp": "Entitäts-Interpolation",
+  "optitime:setting-entityinterp-tooltip": "Flüssigere Bewegung entfernter Entitäten im Multiplayer",
+  "optitime:setting-repulseagents": "Abstoßung von Agenten",
+  "optitime:setting-repulseagents-tooltip": "Trennungsprüfungen für entfernte Kreaturen überspringen"
 }

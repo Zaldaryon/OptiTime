@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Taustan maks. FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-raja kun peli-ikkuna ei ole aktiivinen (5-60)",
   "optitime:setting-gui-mousemove": "Hiiren liikkeen yhdistäminen",
-  "optitime:setting-gui-mousemove-tooltip": "Yhdistä nopeat hiiren liiketapahtumat käsittelykuorman vähentämiseksi"
+  "optitime:setting-gui-mousemove-tooltip": "Yhdistä nopeat hiiren liiketapahtumat käsittelykuorman vähentämiseksi",
+  "optitime:setting-entityinterp": "Entiteetti-interpolaatio",
+  "optitime:setting-entityinterp-tooltip": "Tasaisempi etäentiteettien liike moninpelissä",
+  "optitime:setting-repulseagents": "Agenttien hylkiminen",
+  "optitime:setting-repulseagents-tooltip": "Ohita etäisten olentojen erottelutarkistukset"
 }

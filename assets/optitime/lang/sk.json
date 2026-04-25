@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Max FPS na pozadí",
   "optitime:setting-background-maxfps-tooltip": "Limit FPS, keď okno hry nie je aktívne (5-60)",
   "optitime:setting-gui-mousemove": "Zlučovanie pohybu myši",
-  "optitime:setting-gui-mousemove-tooltip": "Zlúčiť rýchle udalosti pohybu myši pre zníženie réžie spracovania"
+  "optitime:setting-gui-mousemove-tooltip": "Zlúčiť rýchle udalosti pohybu myši pre zníženie réžie spracovania",
+  "optitime:setting-entityinterp": "Interpolácia Entít",
+  "optitime:setting-entityinterp-tooltip": "Plynulejší pohyb vzdialených entít v multiplayeri",
+  "optitime:setting-repulseagents": "Odpudzovanie Agentov",
+  "optitime:setting-repulseagents-tooltip": "Preskočiť kontroly oddelenia pre vzdialené tvory"
 }

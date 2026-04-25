@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "后台最大FPS",
   "optitime:setting-background-maxfps-tooltip": "游戏窗口未聚焦时的FPS上限（5-60）",
   "optitime:setting-gui-mousemove": "鼠标移动合并",
-  "optitime:setting-gui-mousemove-tooltip": "合并快速鼠标移动事件以减少处理开销"
+  "optitime:setting-gui-mousemove-tooltip": "合并快速鼠标移动事件以减少处理开销",
+  "optitime:setting-entityinterp": "实体插值",
+  "optitime:setting-entityinterp-tooltip": "多人游戏中远程实体更平滑的移动",
+  "optitime:setting-repulseagents": "实体排斥",
+  "optitime:setting-repulseagents-tooltip": "跳过远距离生物的分离检查"
 }

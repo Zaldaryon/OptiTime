@@ -30,6 +30,15 @@ namespace OptiTime
             {
                 var r = ba.GetWindSpeedAt(pos);
                 cachedWind.Set(r.X, r.Y, r.Z);
+
+                if (!initialized)
+                {
+                    // Pre-fill all caches on first frame to avoid returning zeros
+                    var sw = ba.GetWindSpeedAt(pos);
+                    cachedSurfaceWind.Set(sw.X, sw.Y, sw.Z);
+                    cachedRainHeight = ba.GetRainMapHeightAt((int)pos.X, (int)pos.Z);
+                }
+
                 initialized = true;
                 return r;
             }

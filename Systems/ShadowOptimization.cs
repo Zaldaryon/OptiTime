@@ -12,6 +12,10 @@ namespace OptiTime
     {
         // --- Skip BlendNoCull (vegetation) in far cascade shadow ---
 
+        private static Action<string> logger;
+
+        public static void SetLogger(Action<string> log) => logger = log;
+
         public static IEnumerable<CodeInstruction> TranspileRenderShadow(IEnumerable<CodeInstruction> instructions)
         {
             var codes = new List<CodeInstruction>(instructions);
@@ -116,12 +120,17 @@ namespace OptiTime
                 // Insert the skip label nop at the loop end
                 codes.Insert(loopEndLoc, skipLabelInstr);
             }
+            else
+            {
+                logger?.Invoke("[OptiTime] Shadow far vegetation cull: IL anchors not found, optimization inactive");
+            }
 
             return codes;
         }
 
         public static void Cleanup()
         {
+            logger = null;
         }
     }
 }

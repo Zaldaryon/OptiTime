@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "Baggrunds-maks-FPS",
   "optitime:setting-background-maxfps-tooltip": "FPS-grænse når spilvinduet er ufokuseret (5-60)",
   "optitime:setting-gui-mousemove": "Museflytningssammensmeltning",
-  "optitime:setting-gui-mousemove-tooltip": "Sammensæt hurtige musebevægelseshændelser for at reducere behandlingsbelastning"
+  "optitime:setting-gui-mousemove-tooltip": "Sammensæt hurtige musebevægelseshændelser for at reducere behandlingsbelastning",
+  "optitime:setting-entityinterp": "Entitetsinterpolation",
+  "optitime:setting-entityinterp-tooltip": "Glattere bevægelse af fjerne enheder i multiplayer",
+  "optitime:setting-repulseagents": "Frastødning af agenter",
+  "optitime:setting-repulseagents-tooltip": "Spring over adskillelsestjek for fjerne væsner"
 }

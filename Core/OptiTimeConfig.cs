@@ -31,6 +31,8 @@ namespace OptiTime
         public bool WeatherWindOptimizations { get; set; } = true;
         public bool TickingBlocksOptimizations { get; set; } = true;
         public bool ShadowFarVegetationCullEnabled { get; set; } = true;
+        public bool EntityInterpolationOptimizations { get; set; } = true;
+        public bool RepulseAgentsOptimizations { get; set; } = true;
 
         private Dictionary<string, Action<bool>> optimizationSetters;
         private Dictionary<string, Func<bool>> optimizationGetters;
@@ -62,6 +64,8 @@ namespace OptiTime
                 [nameof(WeatherWindOptimizations)] = v => WeatherWindOptimizations = v,
                 [nameof(TickingBlocksOptimizations)] = v => TickingBlocksOptimizations = v,
                 [nameof(ShadowFarVegetationCullEnabled)] = v => ShadowFarVegetationCullEnabled = v,
+                [nameof(EntityInterpolationOptimizations)] = v => EntityInterpolationOptimizations = v,
+                [nameof(RepulseAgentsOptimizations)] = v => RepulseAgentsOptimizations = v,
                 [nameof(EnableProfiling)] = v => EnableProfiling = v
             };
 
@@ -83,6 +87,8 @@ namespace OptiTime
                 [nameof(WeatherWindOptimizations)] = () => WeatherWindOptimizations,
                 [nameof(TickingBlocksOptimizations)] = () => TickingBlocksOptimizations,
                 [nameof(ShadowFarVegetationCullEnabled)] = () => ShadowFarVegetationCullEnabled,
+                [nameof(EntityInterpolationOptimizations)] = () => EntityInterpolationOptimizations,
+                [nameof(RepulseAgentsOptimizations)] = () => RepulseAgentsOptimizations,
                 [nameof(EnableProfiling)] = () => EnableProfiling
             };
         }
@@ -98,19 +104,19 @@ namespace OptiTime
                     if (config != null)
                     {
                         config.InitializeAccessors();
-                        api.Logger.Notification("OptiTime: Configuration loaded successfully");
+                        api.Logger.Notification("[OptiTime] Configuration loaded successfully");
                         return config;
                     }
                 }
             }
             catch (Exception ex)
             {
-                api.Logger.Error($"OptiTime: Error loading configuration: {ex.Message}");
+                api.Logger.Error($"[OptiTime] Error loading configuration: {ex.Message}");
             }
 
             var defaultConfig = new OptiTimeConfig();
             defaultConfig.Save(api);
-            api.Logger.Notification("OptiTime: Created default configuration file");
+            api.Logger.Notification("[OptiTime] Created default configuration file");
             return defaultConfig;
         }
 
@@ -122,7 +128,7 @@ namespace OptiTime
             }
             catch (Exception ex)
             {
-                api.Logger.Error($"OptiTime: Error saving configuration: {ex.Message}");
+                api.Logger.Error($"[OptiTime] Error saving configuration: {ex.Message}");
             }
         }
 
@@ -146,6 +152,8 @@ namespace OptiTime
                 nameof(WeatherWindOptimizations) => "Throttle wind speed lookups from every frame to every 4th frame",
                 nameof(TickingBlocksOptimizations) => "Reuse BlockPos in particle tick loop to reduce GC pressure",
                 nameof(ShadowFarVegetationCullEnabled) => "Skip vegetation in far shadow cascade (removes leaf/grass shadows at distance)",
+                nameof(EntityInterpolationOptimizations) => "Smoother remote entity movement in multiplayer (extrapolation, interval correction, flood protection)",
+                nameof(RepulseAgentsOptimizations) => "Skip entity separation checks for distant creatures (>64 blocks)",
                 _ => "Unknown optimization"
             };
         }
@@ -213,6 +221,8 @@ namespace OptiTime
             PrintOptStatus(api, "weatherwind", WeatherWindOptimizations, nameof(WeatherWindOptimizations));
             PrintOptStatus(api, "tickingblocks", TickingBlocksOptimizations, nameof(TickingBlocksOptimizations));
             PrintOptStatus(api, "shadowveg", ShadowFarVegetationCullEnabled, nameof(ShadowFarVegetationCullEnabled));
+            PrintOptStatus(api, "entityinterp", EntityInterpolationOptimizations, nameof(EntityInterpolationOptimizations));
+            PrintOptStatus(api, "repulseagents", RepulseAgentsOptimizations, nameof(RepulseAgentsOptimizations));
             api.ShowChatMessage($"profiling: {(EnableProfiling ? "ON" : "OFF")}");
         }
         
@@ -257,7 +267,9 @@ namespace OptiTime
                 ["recipe"] = (RecipeLookupOptimizations, "Recipe Lookup", nameof(RecipeLookupOptimizations)),
                 ["weatherwind"] = (WeatherWindOptimizations, "Weather Wind", nameof(WeatherWindOptimizations)),
                 ["tickingblocks"] = (TickingBlocksOptimizations, "Ticking Blocks", nameof(TickingBlocksOptimizations)),
-                ["shadowveg"] = (ShadowFarVegetationCullEnabled, "Shadow Far Vegetation Cull", nameof(ShadowFarVegetationCullEnabled))
+                ["shadowveg"] = (ShadowFarVegetationCullEnabled, "Shadow Far Vegetation Cull", nameof(ShadowFarVegetationCullEnabled)),
+                ["entityinterp"] = (EntityInterpolationOptimizations, "Entity Interpolation", nameof(EntityInterpolationOptimizations)),
+                ["repulseagents"] = (RepulseAgentsOptimizations, "Repulse Agents", nameof(RepulseAgentsOptimizations))
             };
 
             if (mapping.TryGetValue(catLower, out var info))

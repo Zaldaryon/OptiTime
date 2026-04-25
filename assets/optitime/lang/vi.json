@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "FPS tối đa nền",
   "optitime:setting-background-maxfps-tooltip": "Giới hạn FPS khi cửa sổ trò chơi không được chọn (5-60)",
   "optitime:setting-gui-mousemove": "Gộp di chuyển chuột",
-  "optitime:setting-gui-mousemove-tooltip": "Gộp các sự kiện di chuyển chuột nhanh để giảm tải xử lý"
+  "optitime:setting-gui-mousemove-tooltip": "Gộp các sự kiện di chuyển chuột nhanh để giảm tải xử lý",
+  "optitime:setting-entityinterp": "Nội Suy Thực Thể",
+  "optitime:setting-entityinterp-tooltip": "Chuyển động mượt mà hơn của thực thể từ xa trong chế độ nhiều người chơi",
+  "optitime:setting-repulseagents": "Đẩy Lùi Tác Nhân",
+  "optitime:setting-repulseagents-tooltip": "Bỏ qua kiểm tra phân tách cho sinh vật ở xa"
 }

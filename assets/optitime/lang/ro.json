@@ -72,5 +72,9 @@
   "optitime:setting-background-maxfps": "FPS max în fundal",
   "optitime:setting-background-maxfps-tooltip": "Limita FPS când fereastra jocului nu este focalizată (5-60)",
   "optitime:setting-gui-mousemove": "Fuziunea mișcării mouse-ului",
-  "optitime:setting-gui-mousemove-tooltip": "Fuzionează evenimentele rapide de mișcare a mouse-ului pentru a reduce sarcina de procesare"
+  "optitime:setting-gui-mousemove-tooltip": "Fuzionează evenimentele rapide de mișcare a mouse-ului pentru a reduce sarcina de procesare",
+  "optitime:setting-entityinterp": "Interpolare Entități",
+  "optitime:setting-entityinterp-tooltip": "Mișcare mai fluidă a entităților la distanță în multiplayer",
+  "optitime:setting-repulseagents": "Respingere Agenți",
+  "optitime:setting-repulseagents-tooltip": "Omite verificările de separare pentru creaturile îndepărtate"
 }
