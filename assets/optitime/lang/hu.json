@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader Optimalizálások",
   "optitime:setting-particle-scaling": "Részecske Méretezés",
   "optitime:setting-gui-no-linq": "GUI Renderelés",
-  "optitime:setting-gui-input-no-linq": "GUI Bemenet",
-  "optitime:setting-ambient-sound": "Környezeti Hang",
-  "optitime:setting-chunk-tess": "Chunk Tesszellálás",
-  "optitime:setting-dynamic-lights": "Dinamikus Fények",
-  "optitime:setting-entity-anim": "Entitás Animációk",
-  "optitime:setting-fly-sound": "Repülési Hang",
-  "optitime:setting-gui-manager": "GUI Kezelő",
-  "optitime:setting-handbook": "Kézikönyv",
-  "optitime:setting-occlusion": "Okklúzió",
-  "optitime:setting-particles": "Részecskék",
   "optitime:cmd-conflict-ancestral": "{0}: Nem engedélyezhető - ütközés az Ancestral Bliss Shaders-szel",
   "optitime:cmd-conflict-disable": "Tiltsa le az Ancestral Bliss-t ezen optimalizálás használatához",
   "optitime:cmd-enabled": "{0}: BE",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Entitás Interpoláció",
   "optitime:setting-entityinterp-tooltip": "Simább távoli entitás mozgás többjátékos módban",
   "optitime:setting-repulseagents": "Ügynök Taszítás",
-  "optitime:setting-repulseagents-tooltip": "Távoli lények szétválasztási ellenőrzéseinek kihagyása"
+  "optitime:setting-repulseagents-tooltip": "Távoli lények szétválasztási ellenőrzéseinek kihagyása",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

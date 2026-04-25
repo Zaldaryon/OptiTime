@@ -126,6 +126,8 @@ vec4 applyRustEffect(vec4 texColor, vec3 normal, vec3 rustVec, int spotty) {
 vec4 applyReflectiveEffect(vec4 texColor, inout float glow, int renderFlags, vec2 uv, vec3 normal, vec4 worldPos, vec4 camPos, vec3 blockLight) {
 	if ((renderFlags & ReflectiveBitMask) == 0) return texColor;
 	
+	// We use the wind data bits as the reflective mode
+	// This unfortunately means we can't have something reflective *and* wind affected
 	int windMode = (renderFlags >> 29) & 0x7;
 	
 	if (windMode == ReflectiveModeWeak) {
@@ -216,6 +218,7 @@ float linearDepth(float depthSample)
     return zLinear;
 }
 
+// result suitable for assigning to gl_FragDepth
 float depthSample(float linearDepth)
 {
     float nonLinearDepth = (zFar + zNear - 2.0 * zNear * zFar / linearDepth) / (zFar - zNear);
@@ -233,15 +236,15 @@ vec4 applyFog(vec4 rgbaPixel, float fogWeight) {
 
 float getBrightnessFromShadowMap() {
 	#if SHADOWQUALITY > 0
-	// Far cascade: 4-tap Vogel disk (reduced from vanilla 9-tap 3x3)
-	float totalFar = 4.0;
+	float totalFar = 9.0;
 	if (shadowCoordsFar.w > 0) {
-		totalFar -= texture(shadowMapFar, vec3(shadowCoordsFar.xy + vec2( 0.3408, 0.1498) * vec2(shadowMapWidthInv, shadowMapHeightInv), shadowCoordsFar.z - 0.0009));
-		totalFar -= texture(shadowMapFar, vec3(shadowCoordsFar.xy + vec2(-0.1065, 0.4886) * vec2(shadowMapWidthInv, shadowMapHeightInv), shadowCoordsFar.z - 0.0009));
-		totalFar -= texture(shadowMapFar, vec3(shadowCoordsFar.xy + vec2(-0.4928, 0.0196) * vec2(shadowMapWidthInv, shadowMapHeightInv), shadowCoordsFar.z - 0.0009));
-		totalFar -= texture(shadowMapFar, vec3(shadowCoordsFar.xy + vec2( 0.0724,-0.4990) * vec2(shadowMapWidthInv, shadowMapHeightInv), shadowCoordsFar.z - 0.0009));
+		for (int x = -1; x <= 1; x++) {
+			for (int y = -1; y <= 1; y++) {
+				totalFar -= texture (shadowMapFar, vec3(shadowCoordsFar.xy + vec2(x * shadowMapWidthInv, y * shadowMapHeightInv), shadowCoordsFar.z - 0.0009));
+			}
+		}
 	}
-	totalFar /= 4.0;
+	totalFar /= 9.0;
 
 	
 	float b = 1.0 - shadowIntensity * totalFar * shadowCoordsFar.w * 0.5;
@@ -277,8 +280,11 @@ float getBrightnessFromShadowMap() {
 
 float getBrightnessFromNormal(vec3 normal, float normalShadeIntensity, float minNormalShade) {
 
+	// Option 2: Completely hides peter panning, but makes semi sunfacing block sides pretty dark
 	float nb = max(minNormalShade, 0.5 + 0.5 * dot(normal, lightPosition));
 	
+	// Let's also define that diffuse light from the sky provides an additional brightness boost for up facing stuff
+	// because the top side of blocks being darker than the sides is uncanny o__O
 	nb = max(nb, normal.y * 0.95);
 	
 	return mix(1, nb, normalShadeIntensity);
@@ -323,7 +329,10 @@ float getFogLevel(float fogMin, float fogDensity, float worldPosY) {
 	float clampedDepth = min(250, depth);
 	float heightDiff = worldPosY - flatFogStart;
 	
-	float extraDistanceFog = max(-flatFogDensity * clampedDepth * (flatFogStart) / 60, 0);
+	//float extraDistanceFog = max(-flatFogDensity * flatFogStart / (160 + heightDiff * 3), 0);   // heightDiff*3 seems to fix distant mountains being supper fogged on most flat fog values
+	// ^ this breaks stuff. Also doesn't seem to be needed? Seems to work fine without
+	
+	float extraDistanceFog = max(-flatFogDensity * clampedDepth * (flatFogStart) / 60, 0); // div 60 was 160 before, at 160 thick flat fog looks broken when looking at trees
 
 	float distanceFog = 1 - 1 / exp(clampedDepth * (fogDensity + extraDistanceFog));
 	float flatFog = 1 - 1 / exp(heightDiff * flatFogDensity);
@@ -332,6 +341,7 @@ float getFogLevel(float fogMin, float fogDensity, float worldPosY) {
 	float nearnessToPlayer = clamp((8-depth)/8, 0, 0.9);
 	val = max(min(0.04, val), val - nearnessToPlayer);
 	
+	// Needs to be added after so that underwater fog still gets applied. 
 	val += fogMin; 
 	
 	return clamp(val, 0, 1);

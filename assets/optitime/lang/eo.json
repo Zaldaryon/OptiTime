@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Ŝadilaj Optimumigoj",
   "optitime:setting-particle-scaling": "Partikla Skalado",
   "optitime:setting-gui-no-linq": "GUI Bildigo",
-  "optitime:setting-gui-input-no-linq": "GUI Enigo",
-  "optitime:setting-ambient-sound": "Ĉirkaŭa Sono",
-  "optitime:setting-chunk-tess": "Ĉunka Teselado",
-  "optitime:setting-dynamic-lights": "Dinamikaj Lumoj",
-  "optitime:setting-entity-anim": "Entecaj Animacioj",
-  "optitime:setting-fly-sound": "Fluga Sono",
-  "optitime:setting-gui-manager": "GUI Administranto",
-  "optitime:setting-handbook": "Manlibro",
-  "optitime:setting-occlusion": "Kaŝado",
-  "optitime:setting-particles": "Partikoj",
   "optitime:cmd-conflict-ancestral": "{0}: Ne povas ebligi - konflikto kun Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Malŝaltu Ancestral Bliss por uzi ĉi tiun optimumigon",
   "optitime:cmd-enabled": "{0}: ŜAL",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Entaĵa Interpolado",
   "optitime:setting-entityinterp-tooltip": "Pli glata movado de foraj entaĵoj en multludanto",
   "optitime:setting-repulseagents": "Forpuŝo de Agentoj",
-  "optitime:setting-repulseagents-tooltip": "Preterlasi apartigajn kontrolojn por foraj kreitaĵoj"
+  "optitime:setting-repulseagents-tooltip": "Preterlasi apartigajn kontrolojn por foraj kreitaĵoj",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

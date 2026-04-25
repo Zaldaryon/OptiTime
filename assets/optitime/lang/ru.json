@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Оптимизации шейдеров",
   "optitime:setting-particle-scaling": "Масштаб частиц",
   "optitime:setting-gui-no-linq": "Рендеринг GUI",
-  "optitime:setting-gui-input-no-linq": "Ввод GUI",
-  "optitime:setting-ambient-sound": "Окружающий звук",
-  "optitime:setting-chunk-tess": "Тесселяция чанков",
-  "optitime:setting-dynamic-lights": "Динамическое освещение",
-  "optitime:setting-entity-anim": "Анимации сущностей",
-  "optitime:setting-fly-sound": "Звук полёта",
-  "optitime:setting-gui-manager": "Менеджер GUI",
-  "optitime:setting-handbook": "Справочник",
-  "optitime:setting-occlusion": "Окклюзия",
-  "optitime:setting-particles": "Частицы",
   "optitime:cmd-conflict-ancestral": "{0}: Невозможно включить - конфликт с Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Отключите Ancestral Bliss для использования этой оптимизации",
   "optitime:cmd-enabled": "{0}: ВКЛ",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Интерполяция Сущностей",
   "optitime:setting-entityinterp-tooltip": "Более плавное движение удалённых сущностей в мультиплеере",
   "optitime:setting-repulseagents": "Отталкивание Агентов",
-  "optitime:setting-repulseagents-tooltip": "Пропуск проверок разделения для далёких существ"
+  "optitime:setting-repulseagents-tooltip": "Пропуск проверок разделения для далёких существ",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

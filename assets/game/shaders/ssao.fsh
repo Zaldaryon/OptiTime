@@ -11,10 +11,10 @@ in vec2 texcoord;
 out vec4 outOcclusion;
 
 #if SSAOLEVEL == 2
-int kernelSize = 16;
+int kernelSize = 24;
 float radius = 0.9;
 #else
-int kernelSize = 14;
+int kernelSize = 20;
 float radius = 0.9;
 #endif
 
@@ -110,15 +110,11 @@ void main()
     mat3 TBN = mat3(tangent, bitangent, normal);
 	
     float occlusion = 0.0;
-
-    // Clamp effective radius based on depth to reduce over-occlusion shimmer nearby
-    float depthScale = clamp((-fragPos.z) / 200.0, 0.4, 1.0);
-    float effectiveRadius = radius * depthScale;
 	
     for( int i = 0; i < kernelSize; ++i)
     {
         vec3 sample = TBN * samples[i];
-        sample = fragPos + sample * effectiveRadius;
+        sample = fragPos + sample * radius;
 
         vec4 offset = vec4(sample, 1.0);
         offset = projection * offset;
@@ -129,8 +125,8 @@ void main()
 		offset.y = clamp(offset.y, texcoord.y - 0.04,  texcoord.y + 0.04);
 
         float sampleDepth = texture(gPosition, offset.xy).z;
-        float depthDiff = sampleDepth - (sample.z + bias);
-        float rangeCheck = 0;
+		float depthDiff = sampleDepth - (sample.z + bias);
+		float rangeCheck = 0;
 		
 		if (leavesHack) {
 

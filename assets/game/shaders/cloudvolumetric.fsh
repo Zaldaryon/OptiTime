@@ -104,8 +104,7 @@ vec4 traverse(vec3 o, vec3 d, float far, float T){
     float t = 0.0;
     vec4 k = vec4(0.0);
 
-    // OptiTime: reduced from 200 to 128 steps
-    for(int i = 0; i < 128; i++){
+    for(int i = 0; i < 200; i++){
 
         vec4 map = texelFetch(cloudMap, p, 0);
 
@@ -134,8 +133,7 @@ vec4 traverse(vec3 o, vec3 d, float far, float T){
 
             }
 
-            // OptiTime: early alpha clamp (0.99 -> 0.97) to reduce overdraw
-            if(k.a > 0.97) break;
+            if(k.a > 0.99) break;
 
         }
 

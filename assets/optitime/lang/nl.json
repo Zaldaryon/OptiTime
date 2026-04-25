@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader Optimalisaties",
   "optitime:setting-particle-scaling": "Deeltjesschaling",
   "optitime:setting-gui-no-linq": "GUI Rendering",
-  "optitime:setting-gui-input-no-linq": "GUI Invoer",
-  "optitime:setting-ambient-sound": "Omgevingsgeluid",
-  "optitime:setting-chunk-tess": "Chunk Tessellatie",
-  "optitime:setting-dynamic-lights": "Dynamische Lichten",
-  "optitime:setting-entity-anim": "Entiteit Animaties",
-  "optitime:setting-fly-sound": "Vlieggeluid",
-  "optitime:setting-gui-manager": "GUI Manager",
-  "optitime:setting-handbook": "Handboek",
-  "optitime:setting-occlusion": "Occlusie",
-  "optitime:setting-particles": "Deeltjes",
   "optitime:cmd-conflict-ancestral": "{0}: Kan niet inschakelen - conflict met Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Schakel Ancestral Bliss uit om deze optimalisatie te gebruiken",
   "optitime:cmd-enabled": "{0}: AAN",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Entiteit Interpolatie",
   "optitime:setting-entityinterp-tooltip": "Vloeiendere beweging van externe entiteiten in multiplayer",
   "optitime:setting-repulseagents": "Agent Afstoting",
-  "optitime:setting-repulseagents-tooltip": "Scheidingscontroles overslaan voor verre wezens"
+  "optitime:setting-repulseagents-tooltip": "Scheidingscontroles overslaan voor verre wezens",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

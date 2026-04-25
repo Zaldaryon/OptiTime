@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Optimizări Shader",
   "optitime:setting-particle-scaling": "Scalare Particule",
   "optitime:setting-gui-no-linq": "Randare GUI",
-  "optitime:setting-gui-input-no-linq": "Intrare GUI",
-  "optitime:setting-ambient-sound": "Sunet Ambient",
-  "optitime:setting-chunk-tess": "Teselare Chunk",
-  "optitime:setting-dynamic-lights": "Lumini Dinamice",
-  "optitime:setting-entity-anim": "Animații Entități",
-  "optitime:setting-fly-sound": "Sunet Zbor",
-  "optitime:setting-gui-manager": "Manager GUI",
-  "optitime:setting-handbook": "Manual",
-  "optitime:setting-occlusion": "Ocluzie",
-  "optitime:setting-particles": "Particule",
   "optitime:cmd-conflict-ancestral": "{0}: Nu se poate activa - conflict cu Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Dezactivați Ancestral Bliss pentru a folosi această optimizare",
   "optitime:cmd-enabled": "{0}: PORNIT",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Interpolare Entități",
   "optitime:setting-entityinterp-tooltip": "Mișcare mai fluidă a entităților la distanță în multiplayer",
   "optitime:setting-repulseagents": "Respingere Agenți",
-  "optitime:setting-repulseagents-tooltip": "Omite verificările de separare pentru creaturile îndepărtate"
+  "optitime:setting-repulseagents-tooltip": "Omite verificările de separare pentru creaturile îndepărtate",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

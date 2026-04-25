@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Optimalizace Shaderů",
   "optitime:setting-particle-scaling": "Škálování Částic",
   "optitime:setting-gui-no-linq": "Vykreslování GUI",
-  "optitime:setting-gui-input-no-linq": "Vstup GUI",
-  "optitime:setting-ambient-sound": "Okolní Zvuk",
-  "optitime:setting-chunk-tess": "Teselace Chunků",
-  "optitime:setting-dynamic-lights": "Dynamická Světla",
-  "optitime:setting-entity-anim": "Animace Entit",
-  "optitime:setting-fly-sound": "Zvuk Létání",
-  "optitime:setting-gui-manager": "Správce GUI",
-  "optitime:setting-handbook": "Příručka",
-  "optitime:setting-occlusion": "Okluze",
-  "optitime:setting-particles": "Částice",
   "optitime:cmd-conflict-ancestral": "{0}: Nelze povolit - konflikt s Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Zakažte Ancestral Bliss pro použití této optimalizace",
   "optitime:cmd-enabled": "{0}: ZAP",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Interpolace entit",
   "optitime:setting-entityinterp-tooltip": "Plynulejší pohyb vzdálených entit v multiplayeru",
   "optitime:setting-repulseagents": "Odpuzování agentů",
-  "optitime:setting-repulseagents-tooltip": "Přeskočit kontroly oddělení entit pro vzdálené tvory"
+  "optitime:setting-repulseagents-tooltip": "Přeskočit kontroly oddělení entit pro vzdálené tvory",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

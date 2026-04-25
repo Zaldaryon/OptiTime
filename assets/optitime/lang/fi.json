@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader-optimoinnit",
   "optitime:setting-particle-scaling": "Hiukkasskaalaus",
   "optitime:setting-gui-no-linq": "GUI-renderöinti",
-  "optitime:setting-gui-input-no-linq": "GUI-syöte",
-  "optitime:setting-ambient-sound": "Ympäristöääni",
-  "optitime:setting-chunk-tess": "Chunk-tesselointi",
-  "optitime:setting-dynamic-lights": "Dynaamiset Valot",
-  "optitime:setting-entity-anim": "Entiteettianimaatiot",
-  "optitime:setting-fly-sound": "Lentoääni",
-  "optitime:setting-gui-manager": "GUI-hallinta",
-  "optitime:setting-handbook": "Käsikirja",
-  "optitime:setting-occlusion": "Peitto",
-  "optitime:setting-particles": "Hiukkaset",
   "optitime:cmd-conflict-ancestral": "{0}: Ei voi ottaa käyttöön - ristiriita Ancestral Bliss Shadersin kanssa",
   "optitime:cmd-conflict-disable": "Poista Ancestral Bliss käytöstä käyttääksesi tätä optimointia",
   "optitime:cmd-enabled": "{0}: PÄÄLLÄ",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Entiteetti-interpolaatio",
   "optitime:setting-entityinterp-tooltip": "Tasaisempi etäentiteettien liike moninpelissä",
   "optitime:setting-repulseagents": "Agenttien hylkiminen",
-  "optitime:setting-repulseagents-tooltip": "Ohita etäisten olentojen erottelutarkistukset"
+  "optitime:setting-repulseagents-tooltip": "Ohita etäisten olentojen erottelutarkistukset",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

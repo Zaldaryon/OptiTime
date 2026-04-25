@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Ottimizzazioni Shader",
   "optitime:setting-particle-scaling": "Scala Particelle",
   "optitime:setting-gui-no-linq": "Rendering GUI",
-  "optitime:setting-gui-input-no-linq": "Input GUI",
-  "optitime:setting-ambient-sound": "Suono Ambientale",
-  "optitime:setting-chunk-tess": "Tassellazione Chunk",
-  "optitime:setting-dynamic-lights": "Luci Dinamiche",
-  "optitime:setting-entity-anim": "Animazioni Entità",
-  "optitime:setting-fly-sound": "Suono Volo",
-  "optitime:setting-gui-manager": "Gestore GUI",
-  "optitime:setting-handbook": "Manuale",
-  "optitime:setting-occlusion": "Occlusione",
-  "optitime:setting-particles": "Particelle",
   "optitime:cmd-conflict-ancestral": "{0}: Impossibile attivare - conflitto con Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Disattiva Ancestral Bliss per usare questa ottimizzazione",
   "optitime:cmd-enabled": "{0}: ATTIVO",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Interpolazione Entità",
   "optitime:setting-entityinterp-tooltip": "Movimento più fluido delle entità remote in multiplayer",
   "optitime:setting-repulseagents": "Repulsione Agenti",
-  "optitime:setting-repulseagents-tooltip": "Salta i controlli di separazione per creature distanti"
+  "optitime:setting-repulseagents-tooltip": "Salta i controlli di separazione per creature distanti",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

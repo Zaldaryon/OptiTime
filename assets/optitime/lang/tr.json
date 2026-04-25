@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader Optimizasyonları",
   "optitime:setting-particle-scaling": "Partikül Ölçekleme",
   "optitime:setting-gui-no-linq": "GUI Render",
-  "optitime:setting-gui-input-no-linq": "GUI Girişi",
-  "optitime:setting-ambient-sound": "Ortam Sesi",
-  "optitime:setting-chunk-tess": "Chunk Mozaikleme",
-  "optitime:setting-dynamic-lights": "Dinamik Işıklar",
-  "optitime:setting-entity-anim": "Varlık Animasyonları",
-  "optitime:setting-fly-sound": "Uçuş Sesi",
-  "optitime:setting-gui-manager": "GUI Yöneticisi",
-  "optitime:setting-handbook": "El Kitabı",
-  "optitime:setting-occlusion": "Tıkanma",
-  "optitime:setting-particles": "Partiküller",
   "optitime:cmd-conflict-ancestral": "{0}: Etkinleştirilemez - Ancestral Bliss Shaders ile çakışma",
   "optitime:cmd-conflict-disable": "Bu optimizasyonu kullanmak için Ancestral Bliss'i devre dışı bırakın",
   "optitime:cmd-enabled": "{0}: AÇIK",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Varlık Enterpolasyonu",
   "optitime:setting-entityinterp-tooltip": "Çok oyuncuda uzak varlıkların daha akıcı hareketi",
   "optitime:setting-repulseagents": "Ajan İtmesi",
-  "optitime:setting-repulseagents-tooltip": "Uzak yaratıklar için ayırma kontrollerini atla"
+  "optitime:setting-repulseagents-tooltip": "Uzak yaratıklar için ayırma kontrollerini atla",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

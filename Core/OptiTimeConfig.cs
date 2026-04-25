@@ -284,7 +284,7 @@ namespace OptiTime
             else
             {
                 api.ShowChatMessage($"Unknown: {category}");
-                api.ShowChatMessage("Available: shaders, dynlights, entityanim, particles, occlusion, chunktess, ambientsound, flysound, bgfps, framepace, guimgr, handbook, recipe");
+                api.ShowChatMessage($"Available: {string.Join(", ", mapping.Keys)}");
             }
         }
     }

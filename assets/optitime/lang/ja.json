@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "シェーダー最適化",
   "optitime:setting-particle-scaling": "パーティクルスケーリング",
   "optitime:setting-gui-no-linq": "GUIレンダリング",
-  "optitime:setting-gui-input-no-linq": "GUI入力",
-  "optitime:setting-ambient-sound": "環境音",
-  "optitime:setting-chunk-tess": "チャンクテッセレーション",
-  "optitime:setting-dynamic-lights": "動的ライト",
-  "optitime:setting-entity-anim": "エンティティアニメーション",
-  "optitime:setting-fly-sound": "飛行音",
-  "optitime:setting-gui-manager": "GUIマネージャー",
-  "optitime:setting-handbook": "ハンドブック",
-  "optitime:setting-occlusion": "オクルージョン",
-  "optitime:setting-particles": "パーティクル",
   "optitime:cmd-conflict-ancestral": "{0}: 有効化できません - Ancestral Bliss Shadersと競合",
   "optitime:cmd-conflict-disable": "この最適化を使用するにはAncestral Blissを無効にしてください",
   "optitime:cmd-enabled": "{0}: オン",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "エンティティ補間",
   "optitime:setting-entityinterp-tooltip": "マルチプレイでのリモートエンティティの滑らかな移動",
   "optitime:setting-repulseagents": "エージェント反発",
-  "optitime:setting-repulseagents-tooltip": "遠距離のクリーチャーの分離チェックをスキップ"
+  "optitime:setting-repulseagents-tooltip": "遠距離のクリーチャーの分離チェックをスキップ",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

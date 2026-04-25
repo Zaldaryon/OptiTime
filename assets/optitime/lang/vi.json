@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Tối Ưu Shader",
   "optitime:setting-particle-scaling": "Tỷ Lệ Hạt",
   "optitime:setting-gui-no-linq": "Kết Xuất GUI",
-  "optitime:setting-gui-input-no-linq": "Đầu Vào GUI",
-  "optitime:setting-ambient-sound": "Âm Thanh Môi Trường",
-  "optitime:setting-chunk-tess": "Phân Mảnh Chunk",
-  "optitime:setting-dynamic-lights": "Ánh Sáng Động",
-  "optitime:setting-entity-anim": "Hoạt Ảnh Thực Thể",
-  "optitime:setting-fly-sound": "Âm Thanh Bay",
-  "optitime:setting-gui-manager": "Quản Lý GUI",
-  "optitime:setting-handbook": "Sổ Tay",
-  "optitime:setting-occlusion": "Che Khuất",
-  "optitime:setting-particles": "Hạt",
   "optitime:cmd-conflict-ancestral": "{0}: Không thể bật - xung đột với Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Tắt Ancestral Bliss để sử dụng tối ưu hóa này",
   "optitime:cmd-enabled": "{0}: BẬT",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Nội Suy Thực Thể",
   "optitime:setting-entityinterp-tooltip": "Chuyển động mượt mà hơn của thực thể từ xa trong chế độ nhiều người chơi",
   "optitime:setting-repulseagents": "Đẩy Lùi Tác Nhân",
-  "optitime:setting-repulseagents-tooltip": "Bỏ qua kiểm tra phân tách cho sinh vật ở xa"
+  "optitime:setting-repulseagents-tooltip": "Bỏ qua kiểm tra phân tách cho sinh vật ở xa",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Optymalizacje Shaderów",
   "optitime:setting-particle-scaling": "Skalowanie Cząstek",
   "optitime:setting-gui-no-linq": "Renderowanie GUI",
-  "optitime:setting-gui-input-no-linq": "Wejście GUI",
-  "optitime:setting-ambient-sound": "Dźwięk Otoczenia",
-  "optitime:setting-chunk-tess": "Teselacja Chunków",
-  "optitime:setting-dynamic-lights": "Dynamiczne Światła",
-  "optitime:setting-entity-anim": "Animacje Bytów",
-  "optitime:setting-fly-sound": "Dźwięk Lotu",
-  "optitime:setting-gui-manager": "Menedżer GUI",
-  "optitime:setting-handbook": "Podręcznik",
-  "optitime:setting-occlusion": "Okluzja",
-  "optitime:setting-particles": "Cząstki",
   "optitime:cmd-conflict-ancestral": "{0}: Nie można włączyć - konflikt z Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Wyłącz Ancestral Bliss aby użyć tej optymalizacji",
   "optitime:cmd-enabled": "{0}: WŁ",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Interpolacja Bytów",
   "optitime:setting-entityinterp-tooltip": "Płynniejszy ruch zdalnych bytów w trybie wieloosobowym",
   "optitime:setting-repulseagents": "Odpychanie Agentów",
-  "optitime:setting-repulseagents-tooltip": "Pomiń sprawdzanie separacji dla odległych stworzeń"
+  "optitime:setting-repulseagents-tooltip": "Pomiń sprawdzanie separacji dla odległych stworzeń",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }

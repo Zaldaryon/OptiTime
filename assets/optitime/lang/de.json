@@ -4,16 +4,6 @@
   "optitime:setting-shader-optimizations": "Shader-Optimierungen",
   "optitime:setting-particle-scaling": "Partikelskalierung",
   "optitime:setting-gui-no-linq": "GUI-Rendering",
-  "optitime:setting-gui-input-no-linq": "GUI-Eingabe",
-  "optitime:setting-ambient-sound": "Umgebungsgeräusche",
-  "optitime:setting-chunk-tess": "Chunk-Tesselierung",
-  "optitime:setting-dynamic-lights": "Dynamische Lichter",
-  "optitime:setting-entity-anim": "Entity-Animationen",
-  "optitime:setting-fly-sound": "Fluggeräusch",
-  "optitime:setting-gui-manager": "GUI-Manager",
-  "optitime:setting-handbook": "Handbuch",
-  "optitime:setting-occlusion": "Okklusion",
-  "optitime:setting-particles": "Partikel",
   "optitime:cmd-conflict-ancestral": "{0}: Kann nicht aktiviert werden - Konflikt mit Ancestral Bliss Shaders",
   "optitime:cmd-conflict-disable": "Deaktivieren Sie Ancestral Bliss, um diese Optimierung zu verwenden",
   "optitime:cmd-enabled": "{0}: AN",
@@ -76,5 +66,7 @@
   "optitime:setting-entityinterp": "Entitäts-Interpolation",
   "optitime:setting-entityinterp-tooltip": "Flüssigere Bewegung entfernter Entitäten im Multiplayer",
   "optitime:setting-repulseagents": "Abstoßung von Agenten",
-  "optitime:setting-repulseagents-tooltip": "Trennungsprüfungen für entfernte Kreaturen überspringen"
+  "optitime:setting-repulseagents-tooltip": "Trennungsprüfungen für entfernte Kreaturen überspringen",
+  "optitime:setting-recipe": "Recipe Lookup",
+  "optitime:setting-recipe-tooltip": "Faster crafting-grid lookup with previous-match reuse and candidate narrowing"
 }
