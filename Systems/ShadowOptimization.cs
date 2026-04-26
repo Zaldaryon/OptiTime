@@ -16,7 +16,7 @@ namespace OptiTime
 
         public static void SetLogger(Action<string> log) => logger = log;
 
-        public static IEnumerable<CodeInstruction> TranspileRenderShadow(IEnumerable<CodeInstruction> instructions)
+        public static IEnumerable<CodeInstruction> TranspileRenderShadow(IEnumerable<CodeInstruction> instructions, ILGenerator il)
         {
             var codes = new List<CodeInstruction>(instructions);
             var renderMethod = AccessTools.Method(typeof(MeshDataPoolManager), nameof(MeshDataPoolManager.Render));
@@ -100,7 +100,7 @@ namespace OptiTime
             if (passIndex2Loc >= 0 && loopEndLoc > passIndex2Loc)
             {
                 // Insert a branch: if (game.currentRenderStage == ShadowFar) goto skipLabel
-                var skipLabel = new Label();
+                var skipLabel = il.DefineLabel();
                 var skipLabelInstr = new CodeInstruction(OpCodes.Nop);
                 skipLabelInstr.labels.Add(skipLabel);
 
