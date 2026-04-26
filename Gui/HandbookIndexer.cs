@@ -369,7 +369,7 @@ namespace OptiTime
                 cachedGetCollectibleInterfaceMethod = AccessTools.Method(typeof(CollectibleObject), "GetCollectibleInterface");
 
                 if (cachedLiquidInterfaceType != null)
-                    cachedGetCurrentLitresMethod = AccessTools.Method(cachedLiquidInterfaceType, "GetCurrentLitres");
+                    cachedGetCurrentLitresMethod = AccessTools.Method(cachedLiquidInterfaceType, "GetCurrentLitres", new[] { typeof(ItemStack) });
 
                 if (cachedBlockLiquidContainerBaseType != null)
                     cachedGetContainablePropsMethod = AccessTools.Method(cachedBlockLiquidContainerBaseType, "GetContainableProps", new[] { typeof(ItemStack) });

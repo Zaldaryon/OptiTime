@@ -36,6 +36,7 @@ namespace OptiTime
             for (int i = 0; i < codes.Count - 4; i++)
             {
                 // Look for: ldc.i4.2 followed by ldelem.ref (loading poolsByRenderPass[2])
+                // Require preceding ldfld to avoid false matches on other ldc.i4.2 uses
                 if (codes[i].opcode == OpCodes.Ldc_I4_2 &&
                     i + 1 < codes.Count && codes[i + 1].opcode == OpCodes.Ldelem_Ref)
                 {
@@ -53,13 +54,13 @@ namespace OptiTime
 
                     // Walk backwards to find the start of this loop block.
                     // The loop starts with a local variable init (ldc.i4.0 + stloc for the loop counter).
-                    // We look for the preceding FrameProfiler.Mark or GlDisableCullFace call as anchor.
-                    for (int j = i - 1; j >= Math.Max(0, i - 10); j--)
+                    // We look for the preceding GlDisableCullFace call as anchor (not any callvirt inside the loop).
+                    var disableCullFace = AccessTools.Method(typeof(ClientPlatformAbstract), "GlDisableCullFace");
+                    for (int j = i - 1; j >= Math.Max(0, i - 30); j--)
                     {
-                        if (codes[j].opcode == OpCodes.Callvirt || codes[j].opcode == OpCodes.Call)
+                        if ((codes[j].opcode == OpCodes.Callvirt || codes[j].opcode == OpCodes.Call) &&
+                            codes[j].operand is System.Reflection.MethodInfo mi && mi == disableCullFace)
                         {
-                            // Found the call before the loop — the loop starts after it
-                            // But we need the ldc.i4.0 that initializes the loop counter
                             for (int k = j + 1; k <= i; k++)
                             {
                                 if (codes[k].opcode == OpCodes.Ldc_I4_0)

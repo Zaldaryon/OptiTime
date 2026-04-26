@@ -136,7 +136,7 @@ What it checks automatically:
 
 ## Version
 
-Current: **1.5.0**
+Current: **1.5.1**
 
 **What's New in 1.5.0:**
 - **NEW:** Entity Interpolation optimization — smoother remote entity movement in multiplayer: accelerated playback flood protection (replaces vanilla recursive queue drain), server tick rate interval correction (1/15f → 1/30f), constant velocity extrapolation with 200ms cap and exponential decay correction
