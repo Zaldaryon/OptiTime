@@ -34,7 +34,6 @@ resolve_vintage_story() {
         "${VINTAGE_STORY_HOME:-}"
         "${VINTAGE_STORY_PATH:-}"
         "$HOME/Games/vintagestory"
-        "$HOME/Games/vintagestory"
         "/mnt/c/Games/VintageStory"
         "/mnt/c/Program Files/Vintage Story"
     )

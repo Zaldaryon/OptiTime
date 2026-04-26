@@ -14,6 +14,7 @@ namespace OptiTime
         private OptiTimeConfig config;
         private Harmony harmony;
         private bool ancestralBlissDetected = false;
+        private bool runtimeUnsupported = false;
         private Action<int> viewDistanceChangedDelegate = null;
         
         // Public accessors for ConfigLib integration
@@ -81,7 +82,14 @@ namespace OptiTime
         public override void Start(ICoreAPI api)
         {
             base.Start(api);
-            
+
+            if (Environment.Version.Major < 10)
+            {
+                api.Logger.Error("[OptiTime] Requires .NET 10+ (Vintage Story 1.22.0+). Current runtime: .NET {0}. Mod will not load.", Environment.Version.Major);
+                runtimeUnsupported = true;
+                return;
+            }
+
             ancestralBlissDetected = api.ModLoader.IsModEnabled("ancestralblissshaders") || 
                                      api.ModLoader.IsModEnabled("volumetricshadingrefreshed");
         }
@@ -89,6 +97,7 @@ namespace OptiTime
         public override void AssetsLoaded(ICoreAPI api)
         {
             base.AssetsLoaded(api);
+            if (runtimeUnsupported) return;
             if (api.Side != EnumAppSide.Client)
                 return;
 
@@ -108,6 +117,8 @@ namespace OptiTime
 
         public override void StartClientSide(ICoreClientAPI api)
         {
+            if (runtimeUnsupported) return;
+
             capi = api;
             staticCapi = api;
             if (config == null)
@@ -978,6 +989,8 @@ namespace OptiTime
 
         public override void Dispose()
         {
+            if (runtimeUnsupported) return;
+
             try
             {
                 // Unregister event handlers to prevent memory leaks
