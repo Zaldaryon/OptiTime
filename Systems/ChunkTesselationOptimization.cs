@@ -19,8 +19,11 @@ namespace OptiTime
         // Only the fields needed by GetAdaptiveMultiplier (called from transpiled code)
         private static volatile FieldInfo tessChunksQueueField;
         private static volatile FieldInfo tessChunksQueuePriorityField;
-        private static volatile PropertyInfo tessChunksQueueCountProperty;
-        private static volatile FieldInfo tessChunksQueueCountField;
+
+        // Compiled delegates for per-frame access (avoid FieldInfo.GetValue reflection overhead)
+        private static volatile Func<object, object> getQueueFunc;
+        private static volatile Func<object, object> getPrioQueueFunc;
+        private static volatile Func<object, int> getQueueCountFunc;
 
         private static readonly float[] frametimeHistoryMs = new float[FRAME_HISTORY_CAPACITY];
         private static int frametimeHistoryCount;
@@ -35,8 +38,9 @@ namespace OptiTime
         {
             tessChunksQueueField = null;
             tessChunksQueuePriorityField = null;
-            tessChunksQueueCountProperty = null;
-            tessChunksQueueCountField = null;
+            getQueueFunc = null;
+            getPrioQueueFunc = null;
+            getQueueCountFunc = null;
             frametimeHistoryCount = 0;
             frametimeHistoryIndex = 0;
             frametimeHistorySumMs = 0f;
@@ -54,16 +58,16 @@ namespace OptiTime
                 if (managerInstance == null) return 3;
 
                 EnsureReflection(managerInstance.GetType());
-                if (tessChunksQueueField == null) return 3;
+                if (getQueueFunc == null) return 3;
 
-                var queue = tessChunksQueueField.GetValue(managerInstance);
+                var queue = getQueueFunc(managerInstance);
                 if (queue == null) return 3;
 
-                int queueCount = GetQueueCount(queue);
+                int queueCount = getQueueCountFunc(queue);
                 int prioCount = 0;
-                if (tessChunksQueuePriorityField != null)
+                if (getPrioQueueFunc != null)
                 {
-                    var prioQueue = tessChunksQueuePriorityField.GetValue(managerInstance);
+                    var prioQueue = getPrioQueueFunc(managerInstance);
                     if (prioQueue is Queue<TesselatedChunk> pq)
                         prioCount = pq.Count;
                 }
@@ -71,14 +75,10 @@ namespace OptiTime
                 int queueSize = queueCount + prioCount;
 
                 int baseMultiplier;
-                if (queueSize >= QUEUE_THRESHOLD_HIGH)
-                    baseMultiplier = 1;
-                else if (queueSize >= QUEUE_THRESHOLD_LOW)
-                    baseMultiplier = 2;
-                // Intentionally exceeds vanilla's hardcoded 3 in the 50-149 range
-                // to clear moderate queue backlogs (berry bushes, block entities) faster.
-                // Frame-pressure scaling below can reduce this adaptively.
-                else if (queueSize >= 50)
+                // Boost in 50-149 range to clear moderate backlogs faster.
+                // Never go below vanilla's floor of 3 — the vanilla formula already
+                // scales the budget with queue size via count/(1<<rateLimiter).
+                if (queueSize >= 50 && queueSize < QUEUE_THRESHOLD_LOW)
                     baseMultiplier = 4;
                 else
                     baseMultiplier = 3;
@@ -95,16 +95,16 @@ namespace OptiTime
                     float pressureRatio = avgFrameMs / targetFrameMs;
 
                     if (pressureRatio > 1.7f)
-                        adaptiveMultiplier = Math.Max(1, (int)MathF.Round(baseMultiplier * 0.55f));
+                        adaptiveMultiplier = Math.Max(3, (int)MathF.Round(baseMultiplier * 0.55f));
                     else if (pressureRatio > 1.3f)
-                        adaptiveMultiplier = Math.Max(1, (int)MathF.Round(baseMultiplier * 0.7f));
+                        adaptiveMultiplier = Math.Max(3, (int)MathF.Round(baseMultiplier * 0.7f));
                     else if (pressureRatio > 1.15f)
-                        adaptiveMultiplier = Math.Max(1, (int)MathF.Round(baseMultiplier * 0.85f));
+                        adaptiveMultiplier = Math.Max(3, (int)MathF.Round(baseMultiplier * 0.85f));
                     else if (pressureRatio > 1.05f)
-                        adaptiveMultiplier = Math.Max(1, (int)MathF.Round(baseMultiplier * 0.95f));
+                        adaptiveMultiplier = Math.Max(3, (int)MathF.Round(baseMultiplier * 0.95f));
                 }
 
-                adaptiveMultiplier = Math.Min(baseMultiplier, Math.Max(1, adaptiveMultiplier));
+                adaptiveMultiplier = Math.Min(baseMultiplier, Math.Max(3, adaptiveMultiplier));
 
                 if (ProfilingHelper.Enabled)
                     ProfilingHelper.Mark("opt-chunktess", $"queue={queueSize},mult={adaptiveMultiplier},avgFrame={avgFrameMs:0.00}");
@@ -205,32 +205,29 @@ namespace OptiTime
 
         private static void EnsureReflection(Type managerType)
         {
-            if (managerType == null || tessChunksQueueField != null) return;
+            if (managerType == null || getQueueFunc != null) return;
 
             tessChunksQueueField = AccessTools.Field(managerType, "tessChunksQueue");
             tessChunksQueuePriorityField = AccessTools.Field(managerType, "tessChunksQueuePriority");
 
-            if (tessChunksQueueField?.FieldType != null)
+            if (tessChunksQueueField != null)
             {
-                tessChunksQueueCountProperty = tessChunksQueueField.FieldType.GetProperty(
-                    "Count", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (tessChunksQueueCountProperty == null)
-                    tessChunksQueueCountField = AccessTools.Field(tessChunksQueueField.FieldType, "Count");
-            }
-        }
+                getQueueFunc = (obj) => tessChunksQueueField.GetValue(obj);
 
-        private static int GetQueueCount(object queue)
-        {
-            if (queue == null) return 0;
-            try
-            {
-                if (tessChunksQueueCountProperty != null)
-                    return (int)tessChunksQueueCountProperty.GetValue(queue);
-                if (tessChunksQueueCountField != null)
-                    return (int)tessChunksQueueCountField.GetValue(queue);
+                var countProp = tessChunksQueueField.FieldType.GetProperty(
+                    "Count", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var countField = countProp == null ? AccessTools.Field(tessChunksQueueField.FieldType, "Count") : null;
+
+                if (countProp != null)
+                    getQueueCountFunc = (obj) => (int)countProp.GetValue(obj);
+                else if (countField != null)
+                    getQueueCountFunc = (obj) => (int)countField.GetValue(obj);
+                else
+                    getQueueCountFunc = (_) => 0;
             }
-            catch { }
-            return 0;
+
+            if (tessChunksQueuePriorityField != null)
+                getPrioQueueFunc = (obj) => tessChunksQueuePriorityField.GetValue(obj);
         }
 
         private static int FindUploadMultiplierIndex(List<CodeInstruction> codes, System.Reflection.MethodInfo rateLimiterGetter)

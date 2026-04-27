@@ -60,7 +60,7 @@ public static class EntityInterpolationOptimization
     // Source: C# ConcurrentDictionary is lock-free for reads, fine-grained locks for writes.
     private static readonly ConcurrentDictionary<long, ExtrapolationState> extrapolationStates = new();
 
-    private struct ExtrapolationState
+    private sealed class ExtrapolationState
     {
         // F1 — error correction offset (decays exponentially)
         public double errorOffsetX, errorOffsetY, errorOffsetZ;
@@ -269,7 +269,7 @@ public static class EntityInterpolationOptimization
             }
 
             // Reset extrapolation state on teleport
-            extrapolationStates[entity.EntityId] = default;
+            extrapolationStates[entity.EntityId] = new ExtrapolationState();
         }
 
         __instance.targetYaw = entity.Pos.Yaw;
@@ -290,7 +290,7 @@ public static class EntityInterpolationOptimization
         {
             // Emergency: hard teleport (vanilla behavior, but at much higher threshold)
             __instance.PopQueue(true);
-            extrapolationStates[entity.EntityId] = default;
+            extrapolationStates[entity.EntityId] = new ExtrapolationState();
         }
         else if (queueCount > AccelerateThreshold)
         {
