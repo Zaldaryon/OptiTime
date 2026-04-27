@@ -9,26 +9,25 @@ namespace OptiTime
     {
         private const int MIN_CHUNK_THRESHOLD = 70;
         private const int MAX_CHUNK_THRESHOLD = 200;
+        private const int DEFAULT_THRESHOLD = 100;
+
+        private static int cachedThreshold = DEFAULT_THRESHOLD;
+
+        public static void UpdateViewDistance(int viewDistance)
+        {
+            int vdChunks = Math.Max(1, viewDistance / 32);
+            int threshold = vdChunks * vdChunks;
+            cachedThreshold = Math.Clamp(threshold, MIN_CHUNK_THRESHOLD, MAX_CHUNK_THRESHOLD);
+        }
+
+        public static void Cleanup()
+        {
+            cachedThreshold = DEFAULT_THRESHOLD;
+        }
 
         private static int GetChunkThreshold()
         {
-            try
-            {
-                var clientSettingsType = AccessTools.TypeByName("Vintagestory.Client.NoObf.ClientSettings");
-                if (clientSettingsType == null) return MIN_CHUNK_THRESHOLD;
-
-                var viewDistanceProp = AccessTools.Property(clientSettingsType, "ViewDistance");
-                if (viewDistanceProp == null) return MIN_CHUNK_THRESHOLD;
-
-                int viewDistance = (int)viewDistanceProp.GetValue(null);
-                int vdChunks = Math.Max(1, viewDistance / 32);
-                int threshold = vdChunks * vdChunks;
-                return Math.Clamp(threshold, MIN_CHUNK_THRESHOLD, MAX_CHUNK_THRESHOLD);
-            }
-            catch
-            {
-                return MIN_CHUNK_THRESHOLD;
-            }
+            return cachedThreshold;
         }
 
         public static IEnumerable<CodeInstruction> TranspileThreshold(IEnumerable<CodeInstruction> instructions)

@@ -185,7 +185,7 @@ namespace OptiTime
                     config.PreciseFramePacingEnabled = false;
                     config.Save(api);
                     ApplyRuntimeConfig();
-                    api.Logger.Notification("[OptiTime] Precise frame pacing auto-disabled on Linux (sched_yield latency)");
+                    api.Logger.Notification("[OptiTime] Precise frame pacing auto-disabled on non-Windows (sched_yield latency)");
                 }
                 else
                 {
@@ -694,6 +694,8 @@ namespace OptiTime
                         DynamicLightOptimization.UpdateViewDistance(initialViewDistance);
                     if (config.ParticleOptimizations)
                         ParticleOptimization.UpdateViewDistance(initialViewDistance);
+                    if (config.OcclusionCullingOptimizations)
+                        OcclusionCullingOptimization.UpdateViewDistance(initialViewDistance);
                 }
 
                 var addWatcherMethod = AccessTools.Method(clientSettings, "AddWatcher");
@@ -706,6 +708,8 @@ namespace OptiTime
                         DynamicLightOptimization.UpdateViewDistance(newViewDistance);
                     if (config.ParticleOptimizations)
                         ParticleOptimization.UpdateViewDistance(newViewDistance);
+                    if (config.OcclusionCullingOptimizations)
+                        OcclusionCullingOptimization.UpdateViewDistance(newViewDistance);
                 };
 
                 genericMethod.Invoke(inst, new object[] { "viewDistance", viewDistanceChangedDelegate });
@@ -1060,6 +1064,7 @@ namespace OptiTime
                 RecipeLookupCacheOptimization.Cleanup();
                 WeatherWindOptimization.Cleanup();
                 ShadowOptimization.Cleanup();
+                OcclusionCullingOptimization.Cleanup();
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
 

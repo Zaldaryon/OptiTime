@@ -313,7 +313,7 @@ namespace OptiTime
                 }
                 catch (Exception ex)
                 {
-                    capi?.Logger?.VerboseDebug($"[OptiTime] Error invoking custom handbook content: {ex.Message}");
+                    capi?.Logger?.Warning($"[OptiTime] Error invoking custom handbook content: {ex.Message}");
                 }
             }
 

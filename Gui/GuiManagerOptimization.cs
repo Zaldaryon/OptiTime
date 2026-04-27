@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Vintagestory.API.Client;
+using Vintagestory.Client;
+using Vintagestory.Client.NoObf;
 
 namespace OptiTime
 {
@@ -15,12 +17,13 @@ namespace OptiTime
         private static int cleanupCounter = 0;
         private static readonly System.Collections.Generic.HashSet<string> suppressedPostRenderExceptions = new System.Collections.Generic.HashSet<string>();
 
-        // Cached reflection results to avoid repeated lookups
-        private static Type screenManagerType = null;
-        private static FieldInfo frameProfilerField = null;
-        private static object frameProfilerInstance = null;
-        private static System.Reflection.MethodInfo markMethodWithObject = null;
-        private static System.Reflection.MethodInfo markMethodString = null;
+        // Cached field access — replaces dynamic dispatch
+        private static readonly AccessTools.FieldRef<ClientSystem, ClientMain> gameRef =
+            AccessTools.FieldRefAccess<ClientSystem, ClientMain>("game");
+        private static readonly AccessTools.FieldRef<ClientMain, List<GuiDialog>> openedGuisRef =
+            AccessTools.FieldRefAccess<ClientMain, List<GuiDialog>>("OpenedGuis");
+        private static readonly AccessTools.FieldRef<ClientMain, List<GuiDialog>> loadedGuisRef =
+            AccessTools.FieldRefAccess<ClientMain, List<GuiDialog>>("LoadedGuis");
         private static System.Reflection.MethodInfo onEscapePressedMethod = null;
         private static System.Reflection.MethodInfo requestFocusMethod = null;
         private static System.Reflection.MethodInfo onMouseMoveOverMethod = null;
@@ -38,23 +41,6 @@ namespace OptiTime
         {
             try
             {
-                // Cache all reflection lookups at startup
-                screenManagerType = AccessTools.TypeByName("Vintagestory.Client.NoObf.ScreenManager");
-                if (screenManagerType != null)
-                {
-                    frameProfilerField = AccessTools.Field(screenManagerType, "FrameProfiler");
-                    if (frameProfilerField != null)
-                    {
-                        frameProfilerInstance = frameProfilerField.GetValue(null);
-                        if (frameProfilerInstance != null)
-                        {
-                            var profilerType = frameProfilerInstance.GetType();
-                            markMethodWithObject = AccessTools.Method(profilerType, "Mark", new Type[] { typeof(string), typeof(object) });
-                            markMethodString = AccessTools.Method(profilerType, "Mark", new Type[] { typeof(string) });
-                        }
-                    }
-                }
-
                 guiManagerType = AccessTools.TypeByName("Vintagestory.Client.NoObf.GuiManager");
                 if (guiManagerType != null)
                 {
@@ -140,8 +126,8 @@ namespace OptiTime
                     return false;
 
                 var instance = __instance as dynamic;
-                var game = instance.game;
-                var loadedGuis = game.LoadedGuis as List<GuiDialog>;
+                var game = gameRef(__instance as ClientSystem);
+                var loadedGuis = loadedGuisRef(game);
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
@@ -205,8 +191,8 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var openedGuis = instance.game.OpenedGuis as List<GuiDialog>;
+                var game = gameRef(__instance as ClientSystem);
+                var openedGuis = openedGuisRef(game);
 
                 if (openedGuis == null || openedGuis.Count == 0)
                     return false;
@@ -231,16 +217,15 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var game = instance.game;
-                var openedGuis = game.OpenedGuis as List<GuiDialog>;
+                var game = gameRef(__instance as ClientSystem);
+                var openedGuis = openedGuisRef(game);
 
                 if (openedGuis == null)
                     return true;
 
                 if (mouseMoveCoalescingEnabled)
                 {
-                    ProcessPendingMouseMove(instance);
+                    ProcessPendingMouseMove(__instance);
                 }
 
                 // Skip rendering if player not loaded yet (prevents crash during initialization)
@@ -266,22 +251,14 @@ namespace OptiTime
                         if (guiDialog.MouseOverCursor != null)
                             mouseCursor = guiDialog.MouseOverCursor;
 
-                        // Profiler marking (using cached reflection)
-                        if (markMethodWithObject != null && frameProfilerInstance != null)
-                        {
-                            markMethodWithObject.Invoke(frameProfilerInstance, new object[] { "rendGui", guiDialog.DebugName });
-                        }
+                        ScreenManager.FrameProfiler?.Mark("rendGui", guiDialog.DebugName);
                     }
                 }
 
                 game.Platform.UseMouseCursor(mouseCursor ?? "normal");
                 game.GlPopMatrix();
 
-                // Final profiler mark (using cached reflection)
-                if (markMethodString != null && frameProfilerInstance != null)
-                {
-                    markMethodString.Invoke(frameProfilerInstance, new object[] { "rendGuiDone" });
-                }
+                ScreenManager.FrameProfiler?.Mark("rendGuiDone");
 
                 return false;
             }
@@ -296,8 +273,8 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var loadedGuis = instance.game.LoadedGuis as List<GuiDialog>;
+                var game = gameRef(__instance as ClientSystem);
+                var loadedGuis = loadedGuisRef(game);
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
@@ -310,19 +287,12 @@ namespace OptiTime
                     {
                         guiDialog.OnFinalizeFrame(dt);
 
-                        // Profiler marking (using cached reflection)
-                        if (markMethodWithObject != null && frameProfilerInstance != null)
-                        {
-                            markMethodWithObject.Invoke(frameProfilerInstance, new object[] { "gdm-finFr-", guiDialog.DebugName });
-                        }
+                        ScreenManager.FrameProfiler?.Mark("gdm-finFr-", guiDialog.DebugName);
                     }
                     catch (Exception ex)
                     {
-                        if (instance?.game?.Logger != null)
-                        {
-                            instance.game.Logger.Warning(
-                                $"[OptiTime] GuiManager input optimization skipped one dialog during OnFinalizeFrame due to exception: {guiDialog?.GetType()?.Name} :: {ex.Message}");
-                        }
+                        game.Logger?.Warning(
+                            $"[OptiTime] GuiManager input optimization skipped one dialog during OnFinalizeFrame due to exception: {guiDialog?.GetType()?.Name} :: {ex.Message}");
                     }
                 }
 
@@ -382,7 +352,7 @@ namespace OptiTime
             {
                 var instance = __instance as dynamic;
                 var game = instance.game;
-                var openedGuis = game.OpenedGuis as List<GuiDialog>;
+                var openedGuis = openedGuisRef(game);
                 int keyCode = args.KeyCode;
 
                 if (openedGuis == null || openedGuis.Count == 0)
@@ -495,7 +465,7 @@ namespace OptiTime
             {
                 var instance = __instance as dynamic;
                 var game = instance.game;
-                var loadedGuis = game.LoadedGuis as List<GuiDialog>;
+                var loadedGuis = loadedGuisRef(game);
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
@@ -534,7 +504,7 @@ namespace OptiTime
             {
                 var instance = __instance as dynamic;
                 var game = instance.game;
-                var loadedGuis = game.LoadedGuis as List<GuiDialog>;
+                var loadedGuis = loadedGuisRef(game);
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
