@@ -100,10 +100,6 @@ namespace OptiTime
                     config.AmbientSoundOptimizations = value;
                     changed = true;
                     break;
-                case "ChunkTesselationOptimizations":
-                    config.ChunkTesselationOptimizations = value;
-                    changed = true;
-                    break;
                 case "DynamicLightOptimizations":
                     config.DynamicLightOptimizations = value;
                     changed = true;

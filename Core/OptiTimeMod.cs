@@ -45,12 +45,10 @@ namespace OptiTime
         private static readonly string[] OptiTimeShaderPaths = new[]
         {
             "shaders/blur.fsh",
+            "shaders/blur.vsh",
             "shaders/chunkliquid.fsh",
             "shaders/chunkshadowmap.fsh",
-            "shaders/cloudvolumetric.fsh",
-            "shaders/godrays.fsh",
-            "shaders/ssao.fsh",
-            "shaderincludes/fogandlight.fsh"
+            "shaders/ssao.fsh"
         };
         private static readonly Dictionary<string, string> OptimizationMap = new Dictionary<string, string>
         {
@@ -59,7 +57,6 @@ namespace OptiTime
             ["entityanim"] = "EntityAnimationOptimizations",
             ["particles"] = "ParticleOptimizations",
             ["occlusion"] = "OcclusionCullingOptimizations",
-            ["chunktess"] = "ChunkTesselationOptimizations",
             ["ambientsound"] = "AmbientSoundOptimizations",
             ["flysound"] = "FlySoundOptimizations",
             ["bgfps"] = "BackgroundFpsLimiterEnabled",
@@ -70,6 +67,7 @@ namespace OptiTime
             ["weatherwind"] = "WeatherWindOptimizations",
             ["tickingblocks"] = "TickingBlocksOptimizations",
             ["shadowveg"] = "ShadowFarVegetationCullEnabled",
+            ["shadowentity"] = "EntityShadowDistanceCullEnabled",
             ["entityinterp"] = "EntityInterpolationOptimizations",
             ["repulseagents"] = "RepulseAgentsOptimizations"
         };
@@ -203,6 +201,16 @@ namespace OptiTime
                             renderFrame,
                             transpiler: new HarmonyMethod(typeof(FrameRateOptimization), nameof(FrameRateOptimization.TranspileRenderFrameSleep))
                         );
+
+                        var leaveMethod = AccessTools.Method(typeof(Vintagestory.API.Common.FrameProfilerUtil), nameof(Vintagestory.API.Common.FrameProfilerUtil.Leave));
+                        if (leaveMethod != null)
+                        {
+                            harmony.Patch(
+                                leaveMethod,
+                                prefix: new HarmonyMethod(typeof(FrameRateOptimization), nameof(FrameRateOptimization.Leave_Prefix))
+                            );
+                        }
+
                         api.Logger.Notification("[OptiTime] Precise frame pacing optimization loaded");
                     }
                 }
@@ -259,12 +267,26 @@ namespace OptiTime
             {
                 try
                 {
-                    var constructor = AccessTools.Constructor(
-                        AccessTools.TypeByName("Vintagestory.Client.NoObf.SystemRenderParticles"),
-                        new[] { AccessTools.TypeByName("Vintagestory.Client.NoObf.ClientMain") });
-                    harmony.Patch(constructor,
-                        postfix: new HarmonyMethod(typeof(ParticleOptimization), "AdjustParticlePools"));
-                    api.Logger.Notification("[OptiTime] Particle optimization loaded");
+                    var spawnMethod = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.ParticlePoolQuads:SpawnParticles",
+                        new[] { typeof(Vintagestory.API.Common.IParticlePropertiesProvider) });
+                    if (spawnMethod == null)
+                        throw new InvalidOperationException("ParticlePoolQuads.SpawnParticles not found");
+
+                    var prefix = new HarmonyMethod(typeof(ParticleOptimization), nameof(ParticleOptimization.SpawnParticlesPrefix));
+                    harmony.Patch(spawnMethod, prefix: prefix);
+
+                    // Frame-time tracking: postfix on the particle render method (called once/frame)
+                    var renderMethod = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.SystemRenderParticles:OnRenderFrame3D",
+                        new[] { typeof(float) });
+                    if (renderMethod != null)
+                    {
+                        harmony.Patch(renderMethod,
+                            postfix: new HarmonyMethod(typeof(ParticleOptimization), nameof(ParticleOptimization.UpdateFrameTime)));
+                    }
+
+                    api.Logger.Notification("[OptiTime] Particle optimization loaded (VD + frustum + occupancy + frame-time)");
                 }
                 catch (Exception ex)
                 {
@@ -293,38 +315,6 @@ namespace OptiTime
                 }
             }
             
-
-            if (config.ChunkTesselationOptimizations)
-            {
-                try
-                {
-                    ChunkTesselationOptimization.SetLogger((msg) => api.Logger.Notification(msg));
-
-                    var onBeforeFrame = AccessTools.Method(
-                        "Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame",
-                        new Type[] { typeof(float) }
-                    );
-                    if (onBeforeFrame == null)
-                    {
-                        throw new InvalidOperationException("ChunkTesselatorManager.OnBeforeFrame not found");
-                    }
-
-                    var target = onBeforeFrame;
-                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.ChunkTesselationOptimizations), "Chunk tesselation optimization", target))
-                    {
-                        harmony.Patch(
-                            target,
-                            transpiler: new HarmonyMethod(typeof(ChunkTesselationOptimization), nameof(ChunkTesselationOptimization.TranspileTesselationThrottle)));
-
-                        api.Logger.Notification("[OptiTime] Chunk tesselation optimization loaded (transpiler)");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    api.Logger.Error("[OptiTime] Failed to load chunk tesselation optimization: " + ex.Message);
-                    config.ChunkTesselationOptimizations = false;
-                }
-            }
 
             if (config.AmbientSoundOptimizations)
             {
@@ -589,6 +579,29 @@ namespace OptiTime
                 }
             }
 
+            if (config.EntityShadowDistanceCullEnabled)
+            {
+                try
+                {
+                    EntityShadowCullingOptimization.SetLogger(msg => api.Logger.Warning(msg));
+                    var onRenderShadows = AccessTools.Method("Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderFrameShadows", new Type[] { typeof(float) });
+                    if (onRenderShadows == null)
+                        throw new InvalidOperationException("SystemRenderEntities.OnRenderFrameShadows not found");
+
+                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.EntityShadowDistanceCullEnabled), "Entity shadow distance cull", onRenderShadows))
+                    {
+                        harmony.Patch(onRenderShadows,
+                            transpiler: new HarmonyMethod(typeof(EntityShadowCullingOptimization), nameof(EntityShadowCullingOptimization.TranspileOnRenderFrameShadows)));
+                        api.Logger.Notification("[OptiTime] Entity shadow distance cull loaded");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[OptiTime] Failed to load entity shadow distance cull: " + ex.Message);
+                    config.EntityShadowDistanceCullEnabled = false;
+                }
+            }
+
             if (config.EntityInterpolationOptimizations)
             {
                 try
@@ -680,10 +693,10 @@ namespace OptiTime
                 var clientSettings = AccessTools.TypeByName("Vintagestory.Client.NoObf.ClientSettings");
                 if (clientSettings == null) return;
 
-                var instProp = AccessTools.Property(clientSettings, "Inst");
-                if (instProp == null) return;
+                var instField = AccessTools.Field(clientSettings, "Inst");
+                if (instField == null) return;
 
-                var inst = instProp.GetValue(null);
+                var inst = instField.GetValue(null);
                 if (inst == null) return;
 
                 var viewDistProp = AccessTools.Property(clientSettings, "ViewDistance");
@@ -696,6 +709,8 @@ namespace OptiTime
                         ParticleOptimization.UpdateViewDistance(initialViewDistance);
                     if (config.OcclusionCullingOptimizations)
                         OcclusionCullingOptimization.UpdateViewDistance(initialViewDistance);
+                    if (config.EntityAnimationOptimizations)
+                        EntityAnimationOptimization.UpdateViewDistance(initialViewDistance);
                 }
 
                 var addWatcherMethod = AccessTools.Method(clientSettings, "AddWatcher");
@@ -710,6 +725,8 @@ namespace OptiTime
                         ParticleOptimization.UpdateViewDistance(newViewDistance);
                     if (config.OcclusionCullingOptimizations)
                         OcclusionCullingOptimization.UpdateViewDistance(newViewDistance);
+                    if (config.EntityAnimationOptimizations)
+                        EntityAnimationOptimization.UpdateViewDistance(newViewDistance);
                 };
 
                 genericMethod.Invoke(inst, new object[] { "viewDistance", viewDistanceChangedDelegate });
@@ -738,6 +755,18 @@ namespace OptiTime
 
         private bool HasAnyConflictingPatches(System.Reflection.MethodBase method)
         {
+            // Conflict policy (audit B4):
+            //   - Foreign transpilers: CONFLICT. Two transpilers on the same method risk
+            //     IL-level cascade failures that are very hard to diagnose.
+            //   - Foreign prefixes: CONFLICT. A prefix returning false can skip vanilla in
+            //     ways that interact poorly with our patches. We cannot inspect IL of the
+            //     foreign prefix to know if it returns false, so we treat all as conflicting.
+            //   - Foreign postfixes: SAFE. Multiple postfixes compose; all are invoked.
+            //   - Foreign finalizers: SAFE. Finalizers do not change control flow.
+            //
+            // Net effect: a mod that adds telemetry/HUD via postfix on a method we also
+            // patch with a postfix no longer forces our optimization off. Transpilers and
+            // prefix-skip patterns remain treated as conflicts.
             try
             {
                 if (method == null)
@@ -759,9 +788,7 @@ namespace OptiTime
                 }
 
                 return HasOtherOwner(patchInfo.Prefixes) ||
-                       HasOtherOwner(patchInfo.Postfixes) ||
-                       HasOtherOwner(patchInfo.Transpilers) ||
-                       HasOtherOwner(patchInfo.Finalizers);
+                       HasOtherOwner(patchInfo.Transpilers);
             }
             catch { }
             return false;
@@ -804,7 +831,6 @@ namespace OptiTime
             if (config.EntityAnimationOptimizations) count++;
             if (config.ParticleOptimizations) count++;
             if (config.OcclusionCullingOptimizations) count++;
-            if (config.ChunkTesselationOptimizations) count++;
             if (config.AmbientSoundOptimizations) count++;
             if (config.FlySoundOptimizations) count++;
             if (config.BackgroundFpsLimiterEnabled) count++;
@@ -815,6 +841,7 @@ namespace OptiTime
             if (config.WeatherWindOptimizations) count++;
             if (config.TickingBlocksOptimizations) count++;
             if (config.ShadowFarVegetationCullEnabled) count++;
+            if (config.EntityShadowDistanceCullEnabled) count++;
             if (config.EntityInterpolationOptimizations) count++;
             if (config.RepulseAgentsOptimizations) count++;
             if (config.ShaderOptimizations && !config.IsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations))) count++;
@@ -823,6 +850,9 @@ namespace OptiTime
                 api.Logger.Notification($"[OptiTime] {count} optimization(s) enabled");
             else
                 api.Logger.Notification("[OptiTime] No optimizations enabled. Use .optitime");
+
+            if (config.ParticleOptimizations)
+                ParticleOptimization.InitializeFrustum(api);
         }
 
         private void TryDisableOptiTimeShaders(ICoreClientAPI api, string reason)
@@ -1013,8 +1043,8 @@ namespace OptiTime
                         if (removeWatcherMethod != null && clientSettings != null)
                         {
                             var genericMethod = removeWatcherMethod.MakeGenericMethod(typeof(int));
-                            var instProp = AccessTools.Property(clientSettings, "Inst");
-                            var inst = instProp?.GetValue(null);
+                            var instField = AccessTools.Field(clientSettings, "Inst");
+                            var inst = instField?.GetValue(null);
                             if (inst != null)
                             {
                                 genericMethod.Invoke(inst, new object[] { "viewDistance", viewDistanceChangedDelegate });
@@ -1032,8 +1062,6 @@ namespace OptiTime
                 {
                     if (config.ParticleOptimizations)
                         ParticleOptimization.Cleanup();
-                    if (config.ChunkTesselationOptimizations)
-                        ChunkTesselationOptimization.Cleanup();
                     if (config.AmbientSoundOptimizations)
                         AmbientSoundOptimization.Cleanup();
                     if (config.GuiManagerOptimizations)
@@ -1050,7 +1078,6 @@ namespace OptiTime
                 {
                     // If config is null, clean up everything to be safe
                     ParticleOptimization.Cleanup();
-                    ChunkTesselationOptimization.Cleanup();
                     AmbientSoundOptimization.Cleanup();
                     GuiManagerOptimization.Cleanup();
                     FlySoundOptimization.Cleanup();
@@ -1064,6 +1091,7 @@ namespace OptiTime
                 RecipeLookupCacheOptimization.Cleanup();
                 WeatherWindOptimization.Cleanup();
                 ShadowOptimization.Cleanup();
+                EntityShadowCullingOptimization.Cleanup();
                 OcclusionCullingOptimization.Cleanup();
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
@@ -1126,6 +1154,28 @@ namespace OptiTime
                     api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-title"));
                     api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-desc"));
                 }
+            }
+
+            // Check for blood FX mods (Brutal Story, XBlood)
+            bool brutalStoryDetected = api.ModLoader.IsModEnabled("brutalstory");
+            bool xbloodDetected = api.ModLoader.IsModEnabled("xblood");
+            if (brutalStoryDetected || xbloodDetected)
+            {
+                string modName = brutalStoryDetected ? "Brutal Story" : "XBlood";
+                api.Logger.Warning("═══════════════════════════════════════════════════════");
+                api.Logger.Warning("[OptiTime] " + modName + " detected");
+                api.Logger.Warning("[OptiTime] Disabling Particle view distance scaling to preserve blood effects");
+                api.Logger.Warning("[OptiTime] All other optimizations remain active");
+                api.Logger.Warning("═══════════════════════════════════════════════════════");
+
+                config.ParticleViewDistanceScalingEnabled = false;
+                config.MarkAsConflictDisabled(nameof(OptiTimeConfig.ParticleViewDistanceScalingEnabled),
+                    modName + " compatibility mode");
+                config.Save(api);
+                ApplyRuntimeConfig();
+
+                api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-title", modName));
+                api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-desc"));
             }
 
             // Check for Electrical Progressive (Industry)

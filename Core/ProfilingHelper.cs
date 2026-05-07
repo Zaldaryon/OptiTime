@@ -248,7 +248,7 @@ namespace OptiTime
             float worst1 = WorstPercentAverage(sortedSnapshot, 0.01f);
             float avgFps = (float)(avgFrameMs > 0.0001 ? 1000.0 / avgFrameMs : 0.0);
 
-            api.ShowChatMessage("=== OptiTime Profiling ===");
+            api.ShowChatMessage("=== [OptiTime] Profiling ===");
             api.ShowChatMessage($"frames: window={sampleCount} total={totalFrames} avg={avgFrameMs:0.00}ms ({avgFps:0.0} fps) cap={lastCap:0}");
             api.ShowChatMessage($"p95={p95:0.00}ms p99={p99:0.00}ms worst1%={worst1:0.00}ms");
             api.ShowChatMessage($"min={minMs:0.00}ms max={maxMs:0.00}ms >16.7={over16} >33.3={over33} >50={over50}");

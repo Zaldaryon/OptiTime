@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
+using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.Client;
 using Vintagestory.Client.NoObf;
@@ -13,11 +14,13 @@ namespace OptiTime
 {
     public static class FrameRateOptimization
     {
-        private const double DefaultUndershootPercent = 0.075;
-        private const double DefaultYieldThresholdMs = 0.25;
-        private const int DefaultSpinWaitIterations = 32;
+        // Defaults preserve historical behaviour. Overridden by OptiTimeConfig if set.
+        public const double DefaultUndershootPercent = 0.075;
+        public const double DefaultYieldThresholdMs = 0.25;
+        public const int DefaultSpinWaitIterations = 32;
 
         private static readonly AccessTools.FieldRef<ClientPlatformWindows, Stopwatch> frameStopWatchRef;
+        private static readonly AccessTools.FieldRef<FrameProfilerUtil, ProfileEntryRange> currentEntryRef;
         private static readonly MethodInfo sleepMethod = AccessTools.Method(typeof(Thread), nameof(Thread.Sleep), new[] { typeof(int) });
         private static readonly MethodInfo replacementSleepMethod = AccessTools.Method(typeof(FrameRateOptimization), nameof(WaitForRemainingFrameTime));
 
@@ -25,6 +28,9 @@ namespace OptiTime
         private static bool preciseFramePacingEnabled;
         private static bool backgroundFpsLimiterEnabled;
         private static int backgroundMaxFps = 20;
+        private static double undershootPercent = DefaultUndershootPercent;
+        private static double yieldThresholdMs = DefaultYieldThresholdMs;
+        private static int spinWaitIterations = DefaultSpinWaitIterations;
 
         static FrameRateOptimization()
         {
@@ -36,6 +42,15 @@ namespace OptiTime
             catch
             {
                 frameStopWatchAvailable = false;
+            }
+
+            try
+            {
+                currentEntryRef = AccessTools.FieldRefAccess<FrameProfilerUtil, ProfileEntryRange>("currentEntry");
+            }
+            catch
+            {
+                currentEntryRef = null;
             }
         }
 
@@ -54,6 +69,11 @@ namespace OptiTime
             {
                 backgroundMaxFps = Math.Clamp(configuredBackgroundFps, 11, 240);
             }
+
+            // Tunable pacing knobs — clamped to sane ranges.
+            undershootPercent = Math.Clamp(config?.PreciseFramePacingUndershootPercent ?? DefaultUndershootPercent, 0.01, 0.25);
+            yieldThresholdMs = Math.Clamp(config?.PreciseFramePacingYieldThresholdMs ?? DefaultYieldThresholdMs, 0.05, 2.0);
+            spinWaitIterations = Math.Clamp(config?.PreciseFramePacingSpinIterations ?? DefaultSpinWaitIterations, 8, 256);
         }
 
         public static void Cleanup()
@@ -76,6 +96,19 @@ namespace OptiTime
             }
 
             ProfilingHelper.RecordFrame(dt, focused, platform.MaxFps);
+        }
+
+        /// <summary>
+        /// Guards against a vanilla race in FrameProfilerUtil.Leave() where currentEntry
+        /// can be null if profiling is enabled mid-frame (after Begin() already returned early).
+        /// Our frame pacing patch widens the window for this race.
+        /// </summary>
+        public static bool Leave_Prefix(FrameProfilerUtil __instance)
+        {
+            if (currentEntryRef == null)
+                return true;
+
+            return currentEntryRef(__instance) != null;
         }
 
         public static IEnumerable<CodeInstruction> TranspileRenderFrameSleep(IEnumerable<CodeInstruction> instructions)
@@ -149,7 +182,7 @@ namespace OptiTime
 
             long finalWaitTicks = Math.Max(
                 Stopwatch.Frequency / 2000,
-                (long)(targetTicks * DefaultUndershootPercent)
+                (long)(targetTicks * undershootPercent)
             );
 
             int coarseSleepMs = 0;
@@ -162,7 +195,7 @@ namespace OptiTime
                 }
             }
 
-            long yieldThresholdTicks = (long)(Stopwatch.Frequency * (DefaultYieldThresholdMs / 1000.0));
+            long yieldThresholdTicks = (long)(Stopwatch.Frequency * (yieldThresholdMs / 1000.0));
             if (yieldThresholdTicks < 1L)
                 yieldThresholdTicks = 1L;
 
@@ -178,7 +211,7 @@ namespace OptiTime
                 }
                 else
                 {
-                    Thread.SpinWait(DefaultSpinWaitIterations);
+                    Thread.SpinWait(spinWaitIterations);
                     spinCount++;
                 }
             }

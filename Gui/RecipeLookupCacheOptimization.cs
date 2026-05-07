@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -39,14 +40,17 @@ namespace OptiTime
             public CandidateEntry Candidate;
         }
 
+        // Snapshot fields are frozen after BuildSnapshot completes. The Snapshot reference
+        // itself is published atomically via the static `snapshot` field under snapshotLock;
+        // once published the frozen dictionaries are immutable and lock-free for readers.
         private sealed class Snapshot
         {
             public IWorldAccessor World;
             public int RecipeCount;
             public int Generation;
-            public Dictionary<GridRecipe, int> RecipeOrders = new();
-            public Dictionary<DirectIngredientKey, List<CandidateEntry>> Direct = new();
-            public Dictionary<EnumItemClass, List<FallbackEntry>> Fallback = new();
+            public FrozenDictionary<GridRecipe, int> RecipeOrders;
+            public FrozenDictionary<DirectIngredientKey, CandidateEntry[]> Direct;
+            public FrozenDictionary<EnumItemClass, FallbackEntry[]> Fallback;
         }
 
         private sealed class SearchState
@@ -97,6 +101,13 @@ namespace OptiTime
         private static readonly MethodInfo matchesShapeLess = AccessTools.Method(typeof(GridRecipe), "MatchesShapeLess", new[] { typeof(ItemSlot[]), typeof(IWorldAccessor), typeof(IRecipeIngredient[]) });
         private static readonly MethodInfo matchesAtPosition = AccessTools.Method(typeof(GridRecipe), "MatchesAtPosition", new[] { typeof(int), typeof(int), typeof(ItemSlot[]), typeof(int), typeof(int), typeof(IRecipeIngredient[]) });
         private static readonly PropertyInfo resolvedIngredientsProperty = AccessTools.Property(typeof(GridRecipe), "ResolvedIngredients");
+
+        // .NET 8+ MethodInvoker: zero-alloc invocation for up to 4 args; for >4 args the
+        // Span<object?> overload still amortizes dispatch cost vs MethodInfo.Invoke.
+        // Created lazily to handle the case where AccessTools.Method returns null.
+        private static readonly System.Reflection.MethodInvoker matchesWithWorldInvoker = matchesWithWorld != null ? System.Reflection.MethodInvoker.Create(matchesWithWorld) : null;
+        private static readonly System.Reflection.MethodInvoker matchesShapeLessInvoker = matchesShapeLess != null ? System.Reflection.MethodInvoker.Create(matchesShapeLess) : null;
+        private static readonly System.Reflection.MethodInvoker matchesAtPositionInvoker = matchesAtPosition != null ? System.Reflection.MethodInvoker.Create(matchesAtPosition) : null;
 
         public static bool MatchesWithWorld_Prefix(GridRecipe __instance, IPlayer forPlayer, IWorldAccessor world, ItemSlot[] ingredients, int gridWidth, ref bool __result)
         {
@@ -261,19 +272,29 @@ namespace OptiTime
 
             if (recipe.Shapeless)
             {
-                if (matchesShapeLess == null) return false;
-                matched = (bool)matchesShapeLess.Invoke(recipe, new object[] { ingredients, world, resolved });
+                if (matchesShapeLessInvoker == null) return false;
+                matched = (bool)matchesShapeLessInvoker.Invoke(recipe, ingredients, world, resolved);
                 return true;
             }
 
-            if (matchesAtPosition == null) return false;
+            if (matchesAtPositionInvoker == null) return false;
 
             int gridHeight = ingredients.Length / gridWidth;
+            // 6-arg MethodInvoker overload requires Span<object?>; reference-type stackalloc
+            // isn't permitted, so allocate one heap object[6] outside the loop and reuse the
+            // slots that don't change between iterations.
+            object[] args = new object[6];
+            args[2] = ingredients;
+            args[3] = gridWidth;
+            args[4] = recipe.Width;
+            args[5] = resolved;
             for (int col = 0; col <= gridWidth - recipe.Width; col++)
             {
                 for (int row = 0; row <= gridHeight - recipe.Height; row++)
                 {
-                    if ((bool)matchesAtPosition.Invoke(recipe, new object[] { col, row, ingredients, gridWidth, recipe.Width, resolved }))
+                    args[0] = col;
+                    args[1] = row;
+                    if ((bool)matchesAtPositionInvoker.Invoke(recipe, args))
                     {
                         matched = true;
                         return true;
@@ -311,9 +332,12 @@ namespace OptiTime
 
         private static Snapshot BuildSnapshot(IWorldAccessor world)
         {
-            var snap = new Snapshot { World = world, RecipeCount = world.GridRecipes.Count, Generation = ++generation };
+            int recipeCount = world.GridRecipes.Count;
+            var recipeOrders = new Dictionary<GridRecipe, int>(recipeCount);
+            var directBuilder = new Dictionary<DirectIngredientKey, List<CandidateEntry>>();
+            var fallbackBuilder = new Dictionary<EnumItemClass, List<FallbackEntry>>();
 
-            for (int recipeOrder = 0; recipeOrder < world.GridRecipes.Count; recipeOrder++)
+            for (int recipeOrder = 0; recipeOrder < recipeCount; recipeOrder++)
             {
                 GridRecipe recipe = world.GridRecipes[recipeOrder];
                 if (recipe == null || !recipe.Enabled)
@@ -321,7 +345,7 @@ namespace OptiTime
                     continue;
                 }
 
-                snap.RecipeOrders[recipe] = recipeOrder;
+                recipeOrders[recipe] = recipeOrder;
 
                 CraftingRecipeIngredient[] resolved = GetResolvedIngredients(recipe);
                 if (resolved == null || resolved.Length == 0)
@@ -339,18 +363,18 @@ namespace OptiTime
                     CandidateEntry candidate = new() { Recipe = recipe, RecipeOrder = recipeOrder };
                     if (TryGetDirectKey(ingredient, out DirectIngredientKey directKey))
                     {
-                        if (!snap.Direct.TryGetValue(directKey, out List<CandidateEntry> directList))
+                        if (!directBuilder.TryGetValue(directKey, out List<CandidateEntry> directList))
                         {
-                            snap.Direct[directKey] = directList = new List<CandidateEntry>();
+                            directBuilder[directKey] = directList = new List<CandidateEntry>();
                         }
 
                         directList.Add(candidate);
                     }
                     else
                     {
-                        if (!snap.Fallback.TryGetValue(ingredient.Type, out List<FallbackEntry> fallbackList))
+                        if (!fallbackBuilder.TryGetValue(ingredient.Type, out List<FallbackEntry> fallbackList))
                         {
-                            snap.Fallback[ingredient.Type] = fallbackList = new List<FallbackEntry>();
+                            fallbackBuilder[ingredient.Type] = fallbackList = new List<FallbackEntry>();
                         }
 
                         fallbackList.Add(new FallbackEntry { Ingredient = ingredient, Candidate = candidate });
@@ -358,7 +382,26 @@ namespace OptiTime
                 }
             }
 
-            return snap;
+            var directFrozen = new Dictionary<DirectIngredientKey, CandidateEntry[]>(directBuilder.Count);
+            foreach (var kvp in directBuilder)
+            {
+                directFrozen[kvp.Key] = kvp.Value.ToArray();
+            }
+            var fallbackFrozen = new Dictionary<EnumItemClass, FallbackEntry[]>(fallbackBuilder.Count);
+            foreach (var kvp in fallbackBuilder)
+            {
+                fallbackFrozen[kvp.Key] = kvp.Value.ToArray();
+            }
+
+            return new Snapshot
+            {
+                World = world,
+                RecipeCount = recipeCount,
+                Generation = ++generation,
+                RecipeOrders = recipeOrders.ToFrozenDictionary(),
+                Direct = directFrozen.ToFrozenDictionary(),
+                Fallback = fallbackFrozen.ToFrozenDictionary(),
+            };
         }
 
         private static GridRecipe[] GetGridCandidates(Snapshot snap, ItemSlot[] slots)
@@ -411,14 +454,14 @@ namespace OptiTime
 
             List<CandidateEntry> candidates = new();
             DirectIngredientKey directKey = new(stack.Class, stack.Collectible?.Code?.ToShortString() ?? string.Empty);
-            if (snap.Direct.TryGetValue(directKey, out List<CandidateEntry> direct))
+            if (snap.Direct.TryGetValue(directKey, out CandidateEntry[] direct))
             {
                 candidates.AddRange(direct);
             }
 
-            if (snap.Fallback.TryGetValue(stack.Class, out List<FallbackEntry> fallback))
+            if (snap.Fallback.TryGetValue(stack.Class, out FallbackEntry[] fallback))
             {
-                for (int i = 0; i < fallback.Count; i++)
+                for (int i = 0; i < fallback.Length; i++)
                 {
                     if (fallback[i].Ingredient.SatisfiesAsIngredient(stack, false))
                     {
@@ -551,8 +594,9 @@ namespace OptiTime
 
         private static bool InvokeRecipeMatches(GridRecipe recipe, IPlayer player, IWorldAccessor world, ItemSlot[] slots, int gridWidth)
         {
-            if (matchesWithWorld == null) return false;
-            return (bool)matchesWithWorld.Invoke(recipe, new object[] { player, world, slots, gridWidth });
+            if (matchesWithWorldInvoker == null) return false;
+            // 4-arg MethodInvoker overload: zero-alloc dispatch.
+            return (bool)matchesWithWorldInvoker.Invoke(recipe, player, world, slots, gridWidth);
         }
 
         private static void ApplyMatch(InventoryCraftingGrid inventory, GridRecipe recipe, ItemSlot[] slots, ItemSlot outputSlot, int outputSlotId)

@@ -378,6 +378,60 @@ namespace OptiTime
             }
         }
 
+        private sealed class ItemBuckets
+        {
+            // Items that pass each per-attribute check exactly once during pre-classification.
+            // Each bucket corresponds to one container behavior's eligibility predicate, so we
+            // can dispatch container → matching-bucket directly and avoid O(N×C) re-testing.
+            public readonly List<ItemStack> Shelf = new();          // ShelfLayoutMethod returns non-null
+            public readonly List<ItemStack> ToolOrRackable = new(); // Tool != null OR attr["rackable"]
+            public readonly List<ItemStack> Moldrackable = new();
+            public readonly List<ItemStack> Bookshelveable = new();
+            public readonly List<ItemStack> Scrollrackable = new();
+            public readonly List<ItemStack> Displaycaseable = new();
+            public readonly List<ItemStack> AntlerMountable = new();
+            public readonly List<ItemStack> Omokable = new();
+            public readonly List<ItemStack> WaterTight = new();     // attr["waterTightContainerProps"].Exists
+            public readonly List<ItemStack> Crockable = new();
+            public readonly List<ItemStack> All = new();            // anything with non-null Collectible; for AnimalTrap (per-pair test)
+        }
+
+        private static ItemBuckets BuildItemBuckets(ItemStack[] allStacks)
+        {
+            var b = new ItemBuckets();
+            foreach (var item in allStacks)
+            {
+                if (item?.Collectible == null) continue;
+                b.All.Add(item);
+
+                if (cachedShelfLayoutMethod != null)
+                {
+                    try
+                    {
+                        var layout = cachedShelfLayoutMethod.Invoke(null, new object[] { item });
+                        if (layout != null) b.Shelf.Add(item);
+                    }
+                    catch { }
+                }
+
+                var attr = item.ItemAttributes as JsonObject;
+                if (item.Collectible.Tool != null || attr?["rackable"].AsBool() == true)
+                    b.ToolOrRackable.Add(item);
+
+                if (attr == null) continue;
+
+                if (attr["moldrackable"].AsBool()) b.Moldrackable.Add(item);
+                if (attr["bookshelveable"].AsBool()) b.Bookshelveable.Add(item);
+                if (attr["scrollrackable"].AsBool()) b.Scrollrackable.Add(item);
+                if (attr["displaycaseable"].AsBool()) b.Displaycaseable.Add(item);
+                if (attr["antlerMountable"].AsBool()) b.AntlerMountable.Add(item);
+                if (attr["omokpiece"].AsBool()) b.Omokable.Add(item);
+                if (attr["waterTightContainerProps"].Exists) b.WaterTight.Add(item);
+                if (attr["crockable"].AsBool()) b.Crockable.Add(item);
+            }
+            return b;
+        }
+
         private static void IndexStorageRelationships(ICoreClientAPI capi, ItemStack[] allStacks)
         {
             try
@@ -397,47 +451,30 @@ namespace OptiTime
                     }
                 }
 
-                // Index storage relationships with the same directional rules the vanilla handbook uses.
-                foreach (var item in allStacks)
+                // Pre-filter: only stacks whose Collectible is a known container type need the inner loop.
+                var containers = new List<ItemStack>();
+                foreach (var stack in allStacks)
                 {
-                    if (item?.Collectible == null) continue;
+                    if (stack?.Collectible == null) continue;
+                    if (IsKnownContainerType(stack.Collectible))
+                        containers.Add(stack);
+                }
 
-                    foreach (var container in allStacks)
+                // Pre-bucket items by which storage-attribute predicates they satisfy. Reduces the
+                // index loop from O(N×C) per-pair re-tests (~75 000 at typical N=1500, C=50) to
+                // O(N + C×|bucket|) where each container only iterates the matching bucket
+                // (~15 000 in the same scenario). See Documentation/optimization-audit-1.22.2.md §4.1.
+                var buckets = BuildItemBuckets(allStacks);
+
+                foreach (var container in containers)
+                {
+                    try
                     {
-                        if (container?.Collectible == null) continue;
-
-                        try
-                        {
-                            if (CanItemBeStoredInContainer(capi, item, container))
-                            {
-                                string itemKey = GetStackKey(capi.World, item);
-                                storableInCache.AddOrUpdate(itemKey,
-                                    key =>
-                                    {
-                                        var queue = new ConcurrentQueue<ItemStack>();
-                                        queue.Enqueue(container);
-                                        return queue;
-                                    },
-                                    (key, queue) => { queue.Enqueue(container); return queue; });
-                            }
-
-                            if (CanContainerStoreItem(capi, container, item))
-                            {
-                                string containerKey = GetStackKey(capi.World, container);
-                                storedInCache.AddOrUpdate(containerKey,
-                                    key =>
-                                    {
-                                        var queue = new ConcurrentQueue<ItemStack>();
-                                        queue.Enqueue(item);
-                                        return queue;
-                                    },
-                                    (key, queue) => { queue.Enqueue(item); return queue; });
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            capi?.Logger?.VerboseDebug($"[OptiTime] Error checking storage relationship: {ex.Message}");
-                        }
+                        DispatchContainer(capi, container, buckets);
+                    }
+                    catch (Exception ex)
+                    {
+                        capi?.Logger?.VerboseDebug($"[OptiTime] Error indexing container: {ex.Message}");
                     }
                 }
             }
@@ -445,6 +482,141 @@ namespace OptiTime
             {
                 capi?.Logger?.Error($"[OptiTime] Error indexing storage relationships: {ex.Message}");
             }
+        }
+
+        // Per-container-type dispatch. Each branch calls the existing pair predicates on a
+        // pre-filtered item list, so the results match the vanilla full-loop semantics
+        // exactly while doing materially fewer checks.
+        private static void DispatchContainer(ICoreClientAPI capi, ItemStack container, ItemBuckets buckets)
+        {
+            var collectible = container.Collectible;
+
+            if (cachedBlockShelfType != null && cachedBlockShelfType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.Shelf) Pair(capi, item, container);
+            }
+            if (cachedBlockToolRackType != null && cachedBlockToolRackType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.ToolOrRackable) Pair(capi, item, container);
+            }
+            if (cachedBlockMoldRackType != null && cachedBlockMoldRackType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.Moldrackable) Pair(capi, item, container);
+            }
+            if (cachedBlockBookshelfType != null && cachedBlockBookshelfType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.Bookshelveable) Pair(capi, item, container);
+            }
+            if (cachedBlockScrollRackType != null && cachedBlockScrollRackType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.Scrollrackable) Pair(capi, item, container);
+            }
+            if (cachedBlockDisplayCaseType != null && cachedBlockDisplayCaseType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.Displaycaseable) Pair(capi, item, container);
+            }
+            if (cachedBlockAntlerMountType != null && cachedBlockAntlerMountType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.AntlerMountable) Pair(capi, item, container);
+            }
+            if (cachedBlockOmokTableType != null && cachedBlockOmokTableType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.Omokable) Pair(capi, item, container);
+            }
+            if (cachedBlockCrockType != null && cachedBlockCrockType.IsInstanceOfType(collectible))
+            {
+                foreach (var item in buckets.Crockable) Pair(capi, item, container);
+            }
+            if (cachedLiquidInterfaceType != null && cachedLiquidInterfaceType.IsInstanceOfType(collectible))
+            {
+                // Liquid containers test against:
+                //  - waterTight items (for storableIn — "item is a liquid pourable into container")
+                //  - any item with containable-props (for storedIn — "container holds item")
+                // The All bucket is the conservative superset; the per-pair CanContainerStoreItem
+                // method still filters internally on whenFilled / litres==0.
+                foreach (var item in buckets.WaterTight) Pair(capi, item, container);
+                foreach (var item in buckets.All) PairOnlyStoredIn(capi, item, container);
+            }
+            if (cachedBlockAnimalTrapType != null && cachedBlockAnimalTrapType.IsInstanceOfType(collectible))
+            {
+                // Bait acceptance is fully per-pair (IsAppetizingBait + CanFitBait depend on the
+                // specific trap). No useful pre-filter; iterate all items.
+                foreach (var item in buckets.All) Pair(capi, item, container);
+            }
+        }
+
+        private static void Pair(ICoreClientAPI capi, ItemStack item, ItemStack container)
+        {
+            try
+            {
+                if (CanItemBeStoredInContainer(capi, item, container))
+                {
+                    string itemKey = GetStackKey(capi.World, item);
+                    storableInCache.AddOrUpdate(itemKey,
+                        key =>
+                        {
+                            var queue = new ConcurrentQueue<ItemStack>();
+                            queue.Enqueue(container);
+                            return queue;
+                        },
+                        (key, queue) => { queue.Enqueue(container); return queue; });
+                }
+
+                if (CanContainerStoreItem(capi, container, item))
+                {
+                    string containerKey = GetStackKey(capi.World, container);
+                    storedInCache.AddOrUpdate(containerKey,
+                        key =>
+                        {
+                            var queue = new ConcurrentQueue<ItemStack>();
+                            queue.Enqueue(item);
+                            return queue;
+                        },
+                        (key, queue) => { queue.Enqueue(item); return queue; });
+                }
+            }
+            catch (Exception ex)
+            {
+                capi?.Logger?.VerboseDebug($"[OptiTime] Error checking storage relationship: {ex.Message}");
+            }
+        }
+
+        private static void PairOnlyStoredIn(ICoreClientAPI capi, ItemStack item, ItemStack container)
+        {
+            try
+            {
+                if (CanContainerStoreItem(capi, container, item))
+                {
+                    string containerKey = GetStackKey(capi.World, container);
+                    storedInCache.AddOrUpdate(containerKey,
+                        key =>
+                        {
+                            var queue = new ConcurrentQueue<ItemStack>();
+                            queue.Enqueue(item);
+                            return queue;
+                        },
+                        (key, queue) => { queue.Enqueue(item); return queue; });
+                }
+            }
+            catch (Exception ex)
+            {
+                capi?.Logger?.VerboseDebug($"[OptiTime] Error in liquid-container storedIn check: {ex.Message}");
+            }
+        }
+
+        private static bool IsKnownContainerType(Vintagestory.API.Common.CollectibleObject collectible)
+        {
+            return (cachedBlockShelfType != null && cachedBlockShelfType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockToolRackType != null && cachedBlockToolRackType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockMoldRackType != null && cachedBlockMoldRackType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockBookshelfType != null && cachedBlockBookshelfType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockScrollRackType != null && cachedBlockScrollRackType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockDisplayCaseType != null && cachedBlockDisplayCaseType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockAntlerMountType != null && cachedBlockAntlerMountType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockOmokTableType != null && cachedBlockOmokTableType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockAnimalTrapType != null && cachedBlockAnimalTrapType.IsInstanceOfType(collectible)) ||
+                   (cachedBlockCrockType != null && cachedBlockCrockType.IsInstanceOfType(collectible)) ||
+                   (cachedLiquidInterfaceType != null && cachedLiquidInterfaceType.IsInstanceOfType(collectible));
         }
 
         private static bool CanItemBeStoredInContainer(ICoreClientAPI capi, ItemStack item, ItemStack container)

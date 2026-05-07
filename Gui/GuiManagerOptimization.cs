@@ -14,7 +14,6 @@ namespace OptiTime
         private static List<GuiDialog> cachedLoadedGuis = new List<GuiDialog>();
         private static List<GuiDialog> cachedOpenedGuis = new List<GuiDialog>();
         private static List<GuiDialog> cachedReversedGuis = new List<GuiDialog>();
-        private static int cleanupCounter = 0;
         private static readonly System.Collections.Generic.HashSet<string> suppressedPostRenderExceptions = new System.Collections.Generic.HashSet<string>();
 
         // Cached field access — replaces dynamic dispatch
@@ -63,7 +62,6 @@ namespace OptiTime
             cachedOpenedGuis.TrimExcess();
             cachedReversedGuis.TrimExcess();
             suppressedPostRenderExceptions.Clear();
-            cleanupCounter = 0;
 
             // Don't clear reflection caches - they're reusable
             pendingMouseMoveEvent = null;
@@ -92,15 +90,6 @@ namespace OptiTime
         {
             cachedLoadedGuis.Clear();
             cachedLoadedGuis.AddRange(loadedGuis);
-
-            // Trim excess capacity every 1000 frames to prevent unbounded growth
-            if (++cleanupCounter >= 1000)
-            {
-                cachedLoadedGuis.TrimExcess();
-                cachedOpenedGuis.TrimExcess();
-                cachedReversedGuis.TrimExcess();
-                cleanupCounter = 0;
-            }
         }
 
         private static void UpdateCachedOpenedGuis(List<GuiDialog> openedGuis)

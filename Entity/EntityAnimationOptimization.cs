@@ -9,8 +9,21 @@ namespace OptiTime
     public class EntityAnimationOptimization
     {
         private static byte frameCounter;
-        private const double CLOSE_DIST_SQ = 2304.0;   // 48 blocks
-        private const double MEDIUM_DIST_SQ = 6400.0;  // 80 blocks
+        // LOD thresholds scaled with the active client view distance (audit B6).
+        // Defaults match the historical hardcoded values at VD = 256:
+        //   close   = max(32, VD / 4)     → 48 at VD=192, 64 at VD=256, 128 at VD=512
+        //   medium  = max(64, VD / 2)     → 80 at VD=160, 128 at VD=256, 256 at VD=512
+        // UpdateViewDistance is called from OptiTimeMod.RegisterViewDistanceWatcher.
+        private static double closeDistSq = 64.0 * 64.0;       // VD=256 default
+        private static double mediumDistSq = 128.0 * 128.0;    // VD=256 default
+
+        public static void UpdateViewDistance(int viewDistance)
+        {
+            double close = System.Math.Max(32.0, viewDistance / 4.0);
+            double medium = System.Math.Max(64.0, viewDistance / 2.0);
+            closeDistSq = close * close;
+            mediumDistSq = medium * medium;
+        }
 
         private static readonly AccessTools.FieldRef<ClientSystem, ClientMain> gameRef =
             AccessTools.FieldRefAccess<ClientSystem, ClientMain>("game");
@@ -78,8 +91,8 @@ namespace OptiTime
                         entity.IsRendered = true;
                         entityRenderer.BeforeRender(dt);
 
-                        bool shouldUpdate = isPlayer || allowOutside || distSq < CLOSE_DIST_SQ ||
-                            (distSq < MEDIUM_DIST_SQ ? mediumFrame : farFrame);
+                        bool shouldUpdate = isPlayer || allowOutside || distSq < closeDistSq ||
+                            (distSq < mediumDistSq ? mediumFrame : farFrame);
 
                         if (shouldUpdate)
                         {

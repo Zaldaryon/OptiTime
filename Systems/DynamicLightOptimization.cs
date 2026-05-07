@@ -12,6 +12,7 @@ namespace OptiTime
     public class DynamicLightOptimization
     {
         private static int cachedViewDistance = 256;
+        private static float cachedLightRadius = 45f; // matches GetOptimalLightRadius(256)
         private static readonly EntityDistanceComparer comparer = new EntityDistanceComparer();
 
         private static readonly AccessTools.FieldRef<ClientSystem, ClientMain> gameRef =
@@ -69,7 +70,7 @@ namespace OptiTime
 
                 game.shUniforms.PointLightsCount = 0;
                 Vec3d plrPos = game.EntityPlayer.Pos.XYZ;
-                float lightRadius = GetOptimalLightRadius(cachedViewDistance);
+                float lightRadius = cachedLightRadius;
 
                 Entity[] entities = game.GetEntitiesAround(plrPos, lightRadius, lightRadius,
                     (ActionConsumable<Entity>)(e => e.LightHsv != null && e.LightHsv[2] > 0));
@@ -97,7 +98,11 @@ namespace OptiTime
             }
         }
 
-        public static void UpdateViewDistance(int newViewDistance) => cachedViewDistance = newViewDistance;
+        public static void UpdateViewDistance(int newViewDistance)
+        {
+            cachedViewDistance = newViewDistance;
+            cachedLightRadius = GetOptimalLightRadius(newViewDistance);
+        }
 
         private static void AddPointLight(ClientMain game, int maxDynLights, Vec4d inval, Vec4d outval, Vec3f outval3, byte[] lighthsv, EntityPos pos)
         {

@@ -45,17 +45,6 @@ if (-not $gridMatches) { $failed++ }
 Emit-Check "GridRecipe.MatchesShapeLess" ($null -ne $gridShapeLess) ([string]$gridShapeLess)
 if (-not $gridShapeLess) { $failed++ }
 
-$chunk = $lib.GetType("Vintagestory.Client.NoObf.ChunkTesselatorManager")
-$onBefore = if ($chunk) { $chunk.GetMethod("OnBeforeFrame", [Type[]]@([single])) } else { $null }
-$queue = if ($chunk) { $chunk.GetField("tessChunksQueue", $nonPublicInstance) } else { $null }
-$prio = if ($chunk) { $chunk.GetField("tessChunksQueuePriority", $nonPublicInstance) } else { $null }
-Emit-Check "ChunkTesselatorManager.OnBeforeFrame" ($null -ne $onBefore) ([string]$onBefore)
-if (-not $onBefore) { $failed++ }
-Emit-Check "ChunkTesselatorManager.tessChunksQueue" ($null -ne $queue) ($(if ($queue) { $queue.FieldType.FullName } else { "" }))
-if (-not $queue) { $failed++ }
-Emit-Check "ChunkTesselatorManager.tessChunksQueuePriority" ($null -ne $prio) ($(if ($prio) { $prio.FieldType.FullName } else { "" }))
-if (-not $prio) { $failed++ }
-
 $liquid = $survival.GetType("Vintagestory.GameContent.BlockLiquidContainerBase")
 $itemStack = $api.GetType("Vintagestory.API.Common.ItemStack")
 $containable = if ($liquid -and $itemStack) { $liquid.GetMethod("GetContainableProps", [System.Reflection.BindingFlags]::Public -bor [System.Reflection.BindingFlags]::Static, $null, [Type[]]@($itemStack), $null) } else { $null }
@@ -66,14 +55,6 @@ $recipeOpt = $mod.GetType("OptiTime.RecipeLookupCacheOptimization")
 $recipePrefix = if ($recipeOpt) { $recipeOpt.GetMethod("Matches_Prefix", $anyStatic) } else { $null }
 Emit-Check "Recipe prefix exists" ($null -ne $recipePrefix) ([string]$recipePrefix)
 if (-not $recipePrefix) { $failed++ }
-
-$chunkOpt = $mod.GetType("OptiTime.ChunkTesselationOptimization")
-$chunkPrefix = if ($chunkOpt) { $chunkOpt.GetMethod("OnBeforeFrame_Prefix", $anyStatic) } else { $null }
-$getMul = if ($chunkOpt) { $chunkOpt.GetMethod("GetAdaptiveMultiplier", $anyStatic) } else { $null }
-Emit-Check "Chunk prefix exists" ($null -ne $chunkPrefix) ([string]$chunkPrefix)
-if (-not $chunkPrefix) { $failed++ }
-Emit-Check "Chunk adaptive multiplier exists" ($null -ne $getMul) ([string]$getMul)
-if (-not $getMul) { $failed++ }
 
 $handbook = $mod.GetType("OptiTime.HandbookOptimization")
 $dirA = if ($handbook) { $handbook.GetMethod("CanItemBeStoredInContainer", $anyStatic) } else { $null }

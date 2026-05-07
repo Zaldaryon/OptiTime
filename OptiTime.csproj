@@ -3,12 +3,18 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>OptiTime</AssemblyName>
-    <Version>1.5.0</Version>
+    <Version>1.5.7</Version>
     <UseAppHost>false</UseAppHost>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <EnableObfuscation>false</EnableObfuscation>
+    <TieredCompilation>true</TieredCompilation>
+    <TieredPGO>true</TieredPGO>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OptiTime.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="VintagestoryAPI">
@@ -46,6 +52,12 @@
     <Compile Remove="vs-sourcecode\**" />
     <EmbeddedResource Remove="vs-sourcecode\**" />
     <None Remove="vs-sourcecode\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="OptiTime.Tests\**" />
+    <EmbeddedResource Remove="OptiTime.Tests\**" />
+    <None Remove="OptiTime.Tests\**" />
   </ItemGroup>
 
   <Target Name="Package" AfterTargets="Build">

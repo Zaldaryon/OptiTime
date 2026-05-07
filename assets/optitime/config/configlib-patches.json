@@ -166,12 +166,43 @@
       "comment": "optitime:setting-shadowveg-tooltip"
     },
     {
+      "code": "EntityShadowDistanceCullEnabled",
+      "type": "boolean",
+      "default": true,
+      "ingui": "optitime:setting-shadowentity",
+      "comment": "optitime:setting-shadowentity-tooltip"
+    },
+    {
       "code": "BackgroundMaxFps",
       "type": "integer",
       "default": 20,
       "range": { "min": 5, "max": 60 },
       "ingui": "optitime:setting-background-maxfps",
       "comment": "optitime:setting-background-maxfps-tooltip"
+    },
+    {
+      "code": "PreciseFramePacingUndershootPercent",
+      "type": "float",
+      "default": 0.075,
+      "range": { "min": 0.01, "max": 0.25 },
+      "ingui": "optitime:setting-pacing-undershoot",
+      "comment": "optitime:setting-pacing-undershoot-tooltip"
+    },
+    {
+      "code": "PreciseFramePacingYieldThresholdMs",
+      "type": "float",
+      "default": 0.25,
+      "range": { "min": 0.05, "max": 2.0 },
+      "ingui": "optitime:setting-pacing-yield-threshold",
+      "comment": "optitime:setting-pacing-yield-threshold-tooltip"
+    },
+    {
+      "code": "PreciseFramePacingSpinIterations",
+      "type": "integer",
+      "default": 32,
+      "range": { "min": 8, "max": 256 },
+      "ingui": "optitime:setting-pacing-spin-iterations",
+      "comment": "optitime:setting-pacing-spin-iterations-tooltip"
     }
   ]
 }

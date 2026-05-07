@@ -235,12 +235,16 @@ public static class EntityInterpolationOptimization
     ///
     /// Zero reflection — all fields are public, accessed via direct cast.
     /// </summary>
-    private static bool Prefix_OnReceivedServerPos(
+    internal static bool Prefix_OnReceivedServerPos(
         EntityBehaviorInterpolatePosition __instance,
         bool isTeleport,
         ref EnumHandling handled)
     {
         var entity = __instance.entity;
+
+        // Projectiles use BehaviorPassivePhysics — let vanilla handle them entirely
+        if (entity is IProjectile) return true;
+
         float tickInterval = entity.Attributes.GetInt("tickDiff", 1) * CorrectedInterval;
 
         __instance.PushQueue(new PositionSnapshot(entity.Pos, tickInterval, isTeleport));
@@ -318,7 +322,6 @@ public static class EntityInterpolationOptimization
 
             state.isExtrapolating = false;
             state.extrapolationTime = 0;
-            extrapolationStates[entity.EntityId] = state;
         }
 
         handled = EnumHandling.PreventSubsequent;
@@ -337,7 +340,7 @@ public static class EntityInterpolationOptimization
     ///
     /// Zero reflection — all fields accessed via direct cast.
     /// </summary>
-    private static void Postfix_OnRenderFrame(
+    internal static void Postfix_OnRenderFrame(
         EntityBehaviorInterpolatePosition __instance,
         float dt)
     {
@@ -347,14 +350,22 @@ public static class EntityInterpolationOptimization
         // Skip if mounted — position controlled by mount seat system
         if (agent?.MountedOn != null) return;
 
+        // Projectiles use BehaviorPassivePhysics — skip all interpolation enhancements
+        if (entity is IProjectile) return;
+
         int wait = __instance.wait;
         long entityId = entity.EntityId;
 
-        if (!extrapolationStates.TryGetValue(entityId, out var state))
-            state = new ExtrapolationState();
+        var state = extrapolationStates.GetOrAdd(entityId, static _ => new ExtrapolationState());
 
         var pL = __instance.pL;
         var pN = __instance.pN;
+
+        if (!entity.Alive)
+        {
+            ResetF1State(state);
+            return;
+        }
 
         // F6 — Track pLL history for Hermite tangents.
         // PopQueue does: pL = pN; pN = dequeue(). We need the pL BEFORE the pop.
@@ -396,7 +407,6 @@ public static class EntityInterpolationOptimization
             }
             // Beyond cap: hold at last extrapolated position (don't snap back to pN)
 
-            extrapolationStates[entityId] = state;
             return;
         }
 
@@ -423,13 +433,6 @@ public static class EntityInterpolationOptimization
         // F6 — Hermite spline interpolation with 3-point history
         if (hermiteEnabled && wait == 0 && pN.interval > 0 && !pN.isTeleport && state.hasPLL)
         {
-            // Skip for projectiles — they have competing physics simulation (BehaviorPassivePhysics)
-            if (entity is IProjectile)
-            {
-                extrapolationStates[entityId] = state;
-                return;
-            }
-
             float delta = __instance.dtAccum / pN.interval;
             delta = Math.Clamp(delta, 0f, 1f);
 
@@ -501,8 +504,14 @@ public static class EntityInterpolationOptimization
                 state.pLL = pL;
             }
         }
+    }
 
-        extrapolationStates[entityId] = state;
+    private static void ResetF1State(ExtrapolationState state)
+    {
+        state.errorOffsetX = state.errorOffsetY = state.errorOffsetZ = 0;
+        state.lastVelX = state.lastVelY = state.lastVelZ = 0;
+        state.extrapolationTime = 0;
+        state.isExtrapolating = false;
     }
 
     #endregion

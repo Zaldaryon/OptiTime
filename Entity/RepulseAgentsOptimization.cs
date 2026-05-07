@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
@@ -78,13 +79,14 @@ public static class RepulseAgentsOptimization
         // Never cull the player entity — it runs the expensive WalkEntities query
         if (entity == player.Entity) return true;
 
-        // Real-time squared horizontal distance — no sqrt, ~3ns cost
-        var playerPos = player.Entity.Pos;
-        double dx = entity.Pos.X - playerPos.X;
-        double dz = entity.Pos.Z - playerPos.Z;
+        return !IsBeyondCullDistance(entity.Pos.X, entity.Pos.Z, player.Entity.Pos.X, player.Entity.Pos.Z);
+    }
 
-        if (dx * dx + dz * dz > CullDistanceSq) return false;
-
-        return true;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsBeyondCullDistance(double ex, double ez, double px, double pz)
+    {
+        double dx = ex - px;
+        double dz = ez - pz;
+        return dx * dx + dz * dz > CullDistanceSq;
     }
 }

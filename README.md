@@ -2,6 +2,8 @@
 
 Clientside performance optimizations for Vintage Story through shader optimization and code patches.
 
+Current version: 1.5.8
+
 ## Performance Gains
 
 **Shader Optimizations (quality-preserving cuts):**
@@ -11,7 +13,6 @@ Clientside performance optimizations for Vintage Story through shader optimizati
 **Code Optimizations:**
 - **Ambient Sounds** - Update sound positions only when the player moves meaningfully.
 - **Background FPS Limiter** - Lowers the frame cap when the window is unfocused.
-- **Chunk Tesselation** - Adaptive throttle/boost by real queue size (normal + priority) to keep uploads smooth.
 - **Dynamic Lights** - Cull lights based on view distance.
 - **Entity Animations** - Distance-based LOD for animation updates (conservative thresholds: 48/80 blocks).
 - **Entity Interpolation** - Smoother remote entity movement in multiplayer (flood protection, interval correction, extrapolation).
@@ -21,7 +22,7 @@ Clientside performance optimizations for Vintage Story through shader optimizati
 - **Handbook** - Cached relationships for faster page loading after indexing.
 - **Recipe Lookup** - Safer crafting-grid lookup with previous-match reuse, positive-result revalidation, and candidate narrowing (default on, opt-out).
 - **Occlusion Culling** - Dynamic enable gate based on view distance (clamped 70–200 chunks).
-- **Particles** - High-distance particle budget scaling (default on, opt-out) with conservative thresholds.
+- **Particles** - Probabilistic spawn rejection at high view distances (384+: 25%, 512+: 50% fewer spawns).
 - **Repulse Agents** - Distance-based cull for entity separation checks (skip non-player entities beyond 64 blocks).
 - **Ticking Blocks** - Reuse BlockPos in particle tick loop to eliminate 30K-90K heap allocations/sec.
 - **Weather Wind** - Throttle wind speed lookups from every frame to every 4th frame.
@@ -49,7 +50,7 @@ Use `.optitime` command in-game:
 ```
 
 **Available optimizations:**
-`ambientsound`, `bgfps`, `chunktess`, `dynlights`, `entityanim`, `entityinterp`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `repulseagents`, `shaders`, `shadowveg`, `tickingblocks`, `weatherwind`
+`ambientsound`, `bgfps`, `dynlights`, `entityanim`, `entityinterp`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `repulseagents`, `shaders`, `shadowveg`, `tickingblocks`, `weatherwind`
 
 ### ConfigLib GUI (Optional)
 
