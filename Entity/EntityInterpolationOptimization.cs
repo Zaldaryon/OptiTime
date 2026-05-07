@@ -318,7 +318,6 @@ public static class EntityInterpolationOptimization
 
             state.isExtrapolating = false;
             state.extrapolationTime = 0;
-            extrapolationStates[entity.EntityId] = state;
         }
 
         handled = EnumHandling.PreventSubsequent;
@@ -350,8 +349,7 @@ public static class EntityInterpolationOptimization
         int wait = __instance.wait;
         long entityId = entity.EntityId;
 
-        if (!extrapolationStates.TryGetValue(entityId, out var state))
-            state = new ExtrapolationState();
+        var state = extrapolationStates.GetOrAdd(entityId, static _ => new ExtrapolationState());
 
         var pL = __instance.pL;
         var pN = __instance.pN;
@@ -396,7 +394,6 @@ public static class EntityInterpolationOptimization
             }
             // Beyond cap: hold at last extrapolated position (don't snap back to pN)
 
-            extrapolationStates[entityId] = state;
             return;
         }
 
@@ -426,7 +423,6 @@ public static class EntityInterpolationOptimization
             // Skip for projectiles — they have competing physics simulation (BehaviorPassivePhysics)
             if (entity is IProjectile)
             {
-                extrapolationStates[entityId] = state;
                 return;
             }
 
@@ -501,8 +497,6 @@ public static class EntityInterpolationOptimization
                 state.pLL = pL;
             }
         }
-
-        extrapolationStates[entityId] = state;
     }
 
     #endregion

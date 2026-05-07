@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
+using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.Client;
 using Vintagestory.Client.NoObf;
@@ -18,6 +19,7 @@ namespace OptiTime
         private const int DefaultSpinWaitIterations = 32;
 
         private static readonly AccessTools.FieldRef<ClientPlatformWindows, Stopwatch> frameStopWatchRef;
+        private static readonly AccessTools.FieldRef<FrameProfilerUtil, ProfileEntryRange> currentEntryRef;
         private static readonly MethodInfo sleepMethod = AccessTools.Method(typeof(Thread), nameof(Thread.Sleep), new[] { typeof(int) });
         private static readonly MethodInfo replacementSleepMethod = AccessTools.Method(typeof(FrameRateOptimization), nameof(WaitForRemainingFrameTime));
 
@@ -36,6 +38,15 @@ namespace OptiTime
             catch
             {
                 frameStopWatchAvailable = false;
+            }
+
+            try
+            {
+                currentEntryRef = AccessTools.FieldRefAccess<FrameProfilerUtil, ProfileEntryRange>("currentEntry");
+            }
+            catch
+            {
+                currentEntryRef = null;
             }
         }
 
@@ -76,6 +87,19 @@ namespace OptiTime
             }
 
             ProfilingHelper.RecordFrame(dt, focused, platform.MaxFps);
+        }
+
+        /// <summary>
+        /// Guards against a vanilla race in FrameProfilerUtil.Leave() where currentEntry
+        /// can be null if profiling is enabled mid-frame (after Begin() already returned early).
+        /// Our frame pacing patch widens the window for this race.
+        /// </summary>
+        public static bool Leave_Prefix(FrameProfilerUtil __instance)
+        {
+            if (currentEntryRef == null)
+                return true;
+
+            return currentEntryRef(__instance) != null;
         }
 
         public static IEnumerable<CodeInstruction> TranspileRenderFrameSleep(IEnumerable<CodeInstruction> instructions)

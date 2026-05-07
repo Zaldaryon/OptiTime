@@ -203,6 +203,16 @@ namespace OptiTime
                             renderFrame,
                             transpiler: new HarmonyMethod(typeof(FrameRateOptimization), nameof(FrameRateOptimization.TranspileRenderFrameSleep))
                         );
+
+                        var leaveMethod = AccessTools.Method(typeof(Vintagestory.API.Common.FrameProfilerUtil), nameof(Vintagestory.API.Common.FrameProfilerUtil.Leave));
+                        if (leaveMethod != null)
+                        {
+                            harmony.Patch(
+                                leaveMethod,
+                                prefix: new HarmonyMethod(typeof(FrameRateOptimization), nameof(FrameRateOptimization.Leave_Prefix))
+                            );
+                        }
+
                         api.Logger.Notification("[OptiTime] Precise frame pacing optimization loaded");
                     }
                 }
@@ -680,10 +690,10 @@ namespace OptiTime
                 var clientSettings = AccessTools.TypeByName("Vintagestory.Client.NoObf.ClientSettings");
                 if (clientSettings == null) return;
 
-                var instProp = AccessTools.Property(clientSettings, "Inst");
-                if (instProp == null) return;
+                var instField = AccessTools.Field(clientSettings, "Inst");
+                if (instField == null) return;
 
-                var inst = instProp.GetValue(null);
+                var inst = instField.GetValue(null);
                 if (inst == null) return;
 
                 var viewDistProp = AccessTools.Property(clientSettings, "ViewDistance");
@@ -1013,8 +1023,8 @@ namespace OptiTime
                         if (removeWatcherMethod != null && clientSettings != null)
                         {
                             var genericMethod = removeWatcherMethod.MakeGenericMethod(typeof(int));
-                            var instProp = AccessTools.Property(clientSettings, "Inst");
-                            var inst = instProp?.GetValue(null);
+                            var instField = AccessTools.Field(clientSettings, "Inst");
+                            var inst = instField?.GetValue(null);
                             if (inst != null)
                             {
                                 genericMethod.Invoke(inst, new object[] { "viewDistance", viewDistanceChangedDelegate });
@@ -1126,6 +1136,28 @@ namespace OptiTime
                     api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-title"));
                     api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-desc"));
                 }
+            }
+
+            // Check for blood FX mods (Brutal Story, XBlood)
+            bool brutalStoryDetected = api.ModLoader.IsModEnabled("brutalstory");
+            bool xbloodDetected = api.ModLoader.IsModEnabled("xblood");
+            if (brutalStoryDetected || xbloodDetected)
+            {
+                string modName = brutalStoryDetected ? "Brutal Story" : "XBlood";
+                api.Logger.Warning("═══════════════════════════════════════════════════════");
+                api.Logger.Warning("[OptiTime] " + modName + " detected");
+                api.Logger.Warning("[OptiTime] Disabling Particle view distance scaling to preserve blood effects");
+                api.Logger.Warning("[OptiTime] All other optimizations remain active");
+                api.Logger.Warning("═══════════════════════════════════════════════════════");
+
+                config.ParticleViewDistanceScalingEnabled = false;
+                config.MarkAsConflictDisabled(nameof(OptiTimeConfig.ParticleViewDistanceScalingEnabled),
+                    modName + " compatibility mode");
+                config.Save(api);
+                ApplyRuntimeConfig();
+
+                api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-title", modName));
+                api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-desc"));
             }
 
             // Check for Electrical Progressive (Industry)
