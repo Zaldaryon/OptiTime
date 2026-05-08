@@ -49,6 +49,8 @@
   "optitime:compat-overhaullib-desc": "ปิดการปรับปรุงแอนิเมชันเอนทิตีเพื่อป้องกันความขัดแย้ง",
   "optitime:compat-electricalprogressive-title": "[OptiTime] เปิดโหมดความเข้ากันได้กับ Electrical Progressive",
   "optitime:compat-electricalprogressive-desc": "ปิดการปรับปรุงแฮนด์บุ๊กเพื่อป้องกันความขัดแย้ง",
+  "optitime:compat-bloodfx-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-bloodfx-desc": "Particle view distance scaling disabled to preserve blood effects",
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",

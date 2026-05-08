@@ -49,6 +49,8 @@
   "optitime:compat-overhaullib-desc": "Çakışmaları önlemek için varlık animasyonu optimizasyonu devre dışı bırakıldı",
   "optitime:compat-electricalprogressive-title": "[OptiTime] Electrical Progressive uyumluluk modu etkinleştirildi",
   "optitime:compat-electricalprogressive-desc": "Çakışmaları önlemek için el kitabı optimizasyonu devre dışı bırakıldı",
+  "optitime:compat-bloodfx-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-bloodfx-desc": "Particle view distance scaling disabled to preserve blood effects",
   "optitime:setting-background-fps": "Background FPS Limiter",
   "optitime:setting-background-fps-tooltip": "Lower the frame cap when the window is unfocused",
   "optitime:setting-frame-pacing": "Precise Frame Pacing",

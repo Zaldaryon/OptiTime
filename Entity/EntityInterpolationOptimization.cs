@@ -241,6 +241,10 @@ public static class EntityInterpolationOptimization
         ref EnumHandling handled)
     {
         var entity = __instance.entity;
+
+        // Projectiles use BehaviorPassivePhysics — let vanilla handle them entirely
+        if (entity is IProjectile) return true;
+
         float tickInterval = entity.Attributes.GetInt("tickDiff", 1) * CorrectedInterval;
 
         __instance.PushQueue(new PositionSnapshot(entity.Pos, tickInterval, isTeleport));
@@ -318,7 +322,6 @@ public static class EntityInterpolationOptimization
 
             state.isExtrapolating = false;
             state.extrapolationTime = 0;
-            extrapolationStates[entity.EntityId] = state;
         }
 
         handled = EnumHandling.PreventSubsequent;
@@ -347,11 +350,13 @@ public static class EntityInterpolationOptimization
         // Skip if mounted — position controlled by mount seat system
         if (agent?.MountedOn != null) return;
 
+        // Projectiles use BehaviorPassivePhysics — skip all interpolation enhancements
+        if (entity is IProjectile) return;
+
         int wait = __instance.wait;
         long entityId = entity.EntityId;
 
-        if (!extrapolationStates.TryGetValue(entityId, out var state))
-            state = new ExtrapolationState();
+        var state = extrapolationStates.GetOrAdd(entityId, static _ => new ExtrapolationState());
 
         var pL = __instance.pL;
         var pN = __instance.pN;
@@ -396,7 +401,6 @@ public static class EntityInterpolationOptimization
             }
             // Beyond cap: hold at last extrapolated position (don't snap back to pN)
 
-            extrapolationStates[entityId] = state;
             return;
         }
 
@@ -423,13 +427,6 @@ public static class EntityInterpolationOptimization
         // F6 — Hermite spline interpolation with 3-point history
         if (hermiteEnabled && wait == 0 && pN.interval > 0 && !pN.isTeleport && state.hasPLL)
         {
-            // Skip for projectiles — they have competing physics simulation (BehaviorPassivePhysics)
-            if (entity is IProjectile)
-            {
-                extrapolationStates[entityId] = state;
-                return;
-            }
-
             float delta = __instance.dtAccum / pN.interval;
             delta = Math.Clamp(delta, 0f, 1f);
 
@@ -501,8 +498,6 @@ public static class EntityInterpolationOptimization
                 state.pLL = pL;
             }
         }
-
-        extrapolationStates[entityId] = state;
     }
 
     #endregion
