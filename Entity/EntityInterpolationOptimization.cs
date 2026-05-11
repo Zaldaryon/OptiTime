@@ -361,6 +361,12 @@ public static class EntityInterpolationOptimization
         var pL = __instance.pL;
         var pN = __instance.pN;
 
+        if (!entity.Alive)
+        {
+            ResetF1State(state);
+            return;
+        }
+
         // F6 — Track pLL history for Hermite tangents.
         // PopQueue does: pL = pN; pN = dequeue(). We need the pL BEFORE the pop.
         // Strategy: store current pL each frame. When pL changes (pop happened),
@@ -498,6 +504,14 @@ public static class EntityInterpolationOptimization
                 state.pLL = pL;
             }
         }
+    }
+
+    private static void ResetF1State(ExtrapolationState state)
+    {
+        state.errorOffsetX = state.errorOffsetY = state.errorOffsetZ = 0;
+        state.lastVelX = state.lastVelY = state.lastVelZ = 0;
+        state.extrapolationTime = 0;
+        state.isExtrapolating = false;
     }
 
     #endregion

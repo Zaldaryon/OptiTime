@@ -2,6 +2,8 @@
 
 Clientside performance optimizations for Vintage Story through shader optimization and code patches.
 
+Current version: 1.5.7
+
 ## Performance Gains
 
 **Shader Optimizations (quality-preserving cuts):**
@@ -108,7 +110,6 @@ OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-gam
 
 ## Documentation
 
-See `Documentation/Description/` for detailed information about each optimization.
 
 ## Automated Smoke Tests
 
