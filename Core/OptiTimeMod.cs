@@ -5,6 +5,7 @@ using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common.Entities;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -650,6 +651,7 @@ namespace OptiTime
                 InitializeOptimizations(capi);
                 RegisterViewDistanceWatcher(capi);
                 InitializeHandbookOptimization(capi);
+                RegisterDiagModules();
             }, 100);
         }
 
@@ -967,6 +969,18 @@ namespace OptiTime
                 return;
             }
 
+            if (command.Equals("interpdiag", StringComparison.OrdinalIgnoreCase))
+            {
+                HandleInterpDiagCommand(args);
+                return;
+            }
+
+            if (command.Equals("diag", StringComparison.OrdinalIgnoreCase))
+            {
+                HandleDiagCommand(args);
+                return;
+            }
+
             if (command.Equals("status", StringComparison.OrdinalIgnoreCase))
             {
                 config.PrintStatus(capi);
@@ -1231,6 +1245,102 @@ namespace OptiTime
                     break;
                 default:
                     capi.ShowChatMessage(Lang.Get("optitime:profiling-usage"));
+                    break;
+            }
+        }
+
+        private void RegisterDiagModules()
+        {
+            DiagRegistry.Clear();
+            if (config.EntityInterpolationOptimizations) DiagRegistry.Register(new ModuleEntityInterp());
+            if (config.RepulseAgentsOptimizations) DiagRegistry.Register(new ModuleRepulse());
+            if (config.EntityAnimationOptimizations) DiagRegistry.Register(new ModuleEntityAnim());
+            if (config.DynamicLightOptimizations) DiagRegistry.Register(new ModuleDynLights());
+            if (config.FlySoundOptimizations) DiagRegistry.Register(new ModuleFlySound());
+            if (config.BackgroundFpsLimiterEnabled) DiagRegistry.Register(new ModuleBgFps());
+            if (config.WeatherWindOptimizations) DiagRegistry.Register(new ModuleWeatherWind());
+            if (config.ShadowFarVegetationCullEnabled) DiagRegistry.Register(new ModuleShadowVeg());
+            if (config.EntityShadowDistanceCullEnabled) DiagRegistry.Register(new ModuleShadowEntity());
+            if (config.TickingBlocksOptimizations) DiagRegistry.Register(new ModuleTickingBlocks());
+            if (config.ParticleOptimizations) DiagRegistry.Register(new ModuleParticles());
+            if (config.OcclusionCullingOptimizations) DiagRegistry.Register(new ModuleOcclusion());
+            if (config.AmbientSoundOptimizations) DiagRegistry.Register(new ModuleAmbientSound());
+            if (config.GuiManagerOptimizations) DiagRegistry.Register(new ModuleGuiMgr());
+            if (config.HandbookOptimizations) DiagRegistry.Register(new ModuleHandbook());
+            if (config.RecipeLookupOptimizations) DiagRegistry.Register(new ModuleRecipe());
+            if (config.PreciseFramePacingEnabled) DiagRegistry.Register(new ModuleFramePace(true));
+            else DiagRegistry.Register(new ModuleFramePace(false));
+            if (config.ShaderOptimizations) DiagRegistry.Register(new ModuleShaders());
+        }
+
+        private void HandleDiagCommand(CmdArgs args)
+        {
+            if (args.Length < 2)
+            {
+                DiagRegistry.ListModules(capi);
+                return;
+            }
+
+            string target = args[1].ToLower();
+            string action = args.Length >= 3 ? args[2].ToLower() : "dump";
+
+            if (target == "all")
+            {
+                switch (action)
+                {
+                    case "on": DiagRegistry.EnableAll(); capi.ShowChatMessage("[OptiTime] All diag modules enabled"); break;
+                    case "off": DiagRegistry.DisableAll(); capi.ShowChatMessage("[OptiTime] All diag modules disabled"); break;
+                    case "dump": DiagRegistry.DumpAll(capi); break;
+                    case "reset": DiagRegistry.ResetAll(); capi.ShowChatMessage("[OptiTime] All diag modules reset"); break;
+                    default: capi.ShowChatMessage("[OptiTime] usage: .optitime diag all on|off|dump|reset"); break;
+                }
+                return;
+            }
+
+            var module = DiagRegistry.Get(target);
+            if (module == null)
+            {
+                capi.ShowChatMessage($"[OptiTime] Unknown diag module: {target}");
+                DiagRegistry.ListModules(capi);
+                return;
+            }
+
+            switch (action)
+            {
+                case "on": module.Enable(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: ON"); break;
+                case "off": module.Disable(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: OFF"); break;
+                case "dump": module.Dump(capi); break;
+                case "reset": module.Reset(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: reset"); break;
+                default: capi.ShowChatMessage("[OptiTime] usage: .optitime diag <module> on|off|dump|reset"); break;
+            }
+        }
+
+        private void HandleInterpDiagCommand(CmdArgs args)
+        {
+            if (args.Length < 2)
+            {
+                capi.ShowChatMessage("[OptiTime] .optitime interpdiag on/off/dump/reset — measures observed entity-position packet cadence");
+                return;
+            }
+            switch (args[1].ToLower())
+            {
+                case "on":
+                    EntityInterpolationOptimization.SetDiagnosticEnabled(true);
+                    capi.ShowChatMessage("[OptiTime] EntityInterp diag: ON — run `.optitime interpdiag dump` after ~30s of nearby entity activity");
+                    break;
+                case "off":
+                    EntityInterpolationOptimization.SetDiagnosticEnabled(false);
+                    capi.ShowChatMessage("[OptiTime] EntityInterp diag: OFF");
+                    break;
+                case "dump":
+                    EntityInterpolationOptimization.DumpDiagnostic(capi);
+                    break;
+                case "reset":
+                    EntityInterpolationOptimization.ResetDiagnostic();
+                    capi.ShowChatMessage("[OptiTime] EntityInterp diag counters reset");
+                    break;
+                default:
+                    capi.ShowChatMessage("[OptiTime] usage: .optitime interpdiag on|off|dump|reset");
                     break;
             }
         }

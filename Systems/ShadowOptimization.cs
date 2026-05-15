@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using Vintagestory.API.Client;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -15,6 +16,16 @@ namespace OptiTime
         private static Action<string> logger;
 
         public static void SetLogger(Action<string> log) => logger = log;
+
+        /// <summary>
+        /// Called from transpiled IL. Returns true if vegetation should be culled (far shadow pass).
+        /// </summary>
+        public static bool ShouldCullVegetation(int currentRenderStage)
+        {
+            bool cull = currentRenderStage == (int)EnumRenderStage.ShadowFar;
+            ModuleShadowVeg.OnShadowFrame(cull);
+            return cull;
+        }
 
         public static IEnumerable<CodeInstruction> TranspileRenderShadow(IEnumerable<CodeInstruction> instructions, ILGenerator il)
         {
@@ -109,8 +120,8 @@ namespace OptiTime
                     new CodeInstruction(OpCodes.Ldarg_0), // this (ChunkRenderer)
                     new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ChunkRenderer), "game")),
                     new CodeInstruction(OpCodes.Ldfld, currentRenderStageField),
-                    new CodeInstruction(OpCodes.Ldc_I4, (int)EnumRenderStage.ShadowFar),
-                    new CodeInstruction(OpCodes.Beq, skipLabel)
+                    new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ShadowOptimization), nameof(ShouldCullVegetation))),
+                    new CodeInstruction(OpCodes.Brtrue, skipLabel)
                 };
 
                 codes.InsertRange(passIndex2Loc, checkInstructions);

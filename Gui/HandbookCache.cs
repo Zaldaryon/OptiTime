@@ -10,6 +10,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.API.Datastructures;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -61,6 +62,7 @@ namespace OptiTime
         // Indexing state
         private static bool isIndexed = false;
         private static bool isIndexing = false;
+        public static bool IsIndexed => isIndexed;
         private static readonly System.Threading.Lock indexLock = new();
         private static System.Threading.CancellationTokenSource indexCts = null;
         private static int disposeGeneration = 0;
@@ -284,15 +286,18 @@ namespace OptiTime
             string key = GetStackKey(capi.World, stack);
             if (isFrozen && frozenBlockDropsCache != null && frozenBlockDropsCache.TryGetValue(key, out var frozenResult))
             {
+                ModuleHandbook.OnCacheLookup(true);
                 return frozenResult.Length > 0 ? frozenResult.ToList() : new List<ItemStack>();
             }
             if (blockDropsCache.TryGetValue(key, out var result))
             {
+                ModuleHandbook.OnCacheLookup(true);
                 var list = result.ToList();
                 // Sort by original allStacks order to match vanilla behavior
                 SortByAllStacksOrder(capi, list);
                 return list;
             }
+            ModuleHandbook.OnCacheLookup(false);
             return new List<ItemStack>();
         }
 

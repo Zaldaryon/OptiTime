@@ -2,6 +2,7 @@ using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -27,6 +28,7 @@ namespace OptiTime
 
         private static int GetChunkThreshold()
         {
+            ModuleOcclusion.OnFrame(true);
             return cachedThreshold;
         }
 
