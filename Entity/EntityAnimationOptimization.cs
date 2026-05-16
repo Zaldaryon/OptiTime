@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -93,6 +94,9 @@ namespace OptiTime
 
                         bool shouldUpdate = isPlayer || allowOutside || distSq < closeDistSq ||
                             (distSq < mediumDistSq ? mediumFrame : farFrame);
+
+                        int lodTier = (distSq < closeDistSq || isPlayer || allowOutside) ? 0 : (distSq < mediumDistSq ? 1 : 2);
+                        ModuleEntityAnim.OnEntity(lodTier, shouldUpdate);
 
                         if (shouldUpdate)
                         {

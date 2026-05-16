@@ -9,6 +9,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.Client;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -95,6 +96,7 @@ namespace OptiTime
                 platform.MaxFps = backgroundMaxFps;
             }
 
+            ModuleBgFps.OnFrame(focused);
             ProfilingHelper.RecordFrame(dt, focused, platform.MaxFps);
         }
 

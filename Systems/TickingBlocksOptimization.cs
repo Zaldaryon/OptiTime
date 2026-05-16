@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using Vintagestory.API.MathTools;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -85,6 +86,9 @@ namespace OptiTime
                         new CodeInstruction(OpCodes.Stloc, tempZ),
                         new CodeInstruction(OpCodes.Stloc, tempY),
                         new CodeInstruction(OpCodes.Stloc, tempX),
+                        // Diag: count each reused iteration
+                        new CodeInstruction(OpCodes.Ldc_I4_1),
+                        new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ModuleTickingBlocks), nameof(ModuleTickingBlocks.OnTick))),
                         new CodeInstruction(OpCodes.Ldloc, reusableLocal),
                         new CodeInstruction(OpCodes.Ldloc, tempX),
                         new CodeInstruction(OpCodes.Ldloc, tempY),

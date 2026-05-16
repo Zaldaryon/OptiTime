@@ -4,6 +4,7 @@ using System.Reflection;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -40,8 +41,13 @@ namespace OptiTime
                 else if (lastPlayerPos != null)
                 {
                     if (currentPos.SquareDistanceTo(lastPlayerPos) < 0.09)
+                    {
+                        ModuleAmbientSound.OnCall(true);
                         return false;
+                    }
                 }
+
+                ModuleAmbientSound.OnCall(false);
 
                 if (lastPlayerPos == null)
                     lastPlayerPos = new Vec3d();

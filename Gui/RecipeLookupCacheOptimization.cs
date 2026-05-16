@@ -10,6 +10,7 @@ using HarmonyLib;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
 using Vintagestory.Common;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -45,7 +46,6 @@ namespace OptiTime
         // once published the frozen dictionaries are immutable and lock-free for readers.
         private sealed class Snapshot
         {
-            public IWorldAccessor World;
             public int RecipeCount;
             public int Generation;
             public FrozenDictionary<GridRecipe, int> RecipeOrders;
@@ -157,6 +157,7 @@ namespace OptiTime
                 {
                     ApplyMatch(__instance, state.PreviousRecipe, slots, outputSlot, slotCount);
                     StoreBounded(positiveMatchCache, positiveMatchOrder, positiveKey, state.PreviousRecipe, MaxPositiveCache);
+                    ModuleRecipe.OnLookup(true);
                     return false;
                 }
 
@@ -166,6 +167,7 @@ namespace OptiTime
                 {
                     state.PreviousRecipe = cached;
                     ApplyMatch(__instance, cached, slots, outputSlot, slotCount);
+                    ModuleRecipe.OnLookup(true);
                     return false;
                 }
 
@@ -191,10 +193,12 @@ namespace OptiTime
                         state.PreviousRecipe = recipe;
                         ApplyMatch(__instance, recipe, slots, outputSlot, slotCount);
                         StoreBounded(positiveMatchCache, positiveMatchOrder, positiveKey, recipe, MaxPositiveCache);
+                        ModuleRecipe.OnLookup(false); // found via full search, not cache
                         return false;
                     }
                 }
 
+                ModuleRecipe.OnLookup(false);
                 __instance.dirtySlots.Add(slotCount);
                 return false;
             }
@@ -312,20 +316,22 @@ namespace OptiTime
                 return null;
             }
 
-            if (snapshot != null && ReferenceEquals(snapshot.World, world) && snapshot.RecipeCount == world.GridRecipes.Count)
+            int currentCount = world.GridRecipes.Count;
+            if (snapshot != null && snapshot.RecipeCount == currentCount)
             {
                 return snapshot;
             }
 
             lock (snapshotLock)
             {
-                if (snapshot != null && ReferenceEquals(snapshot.World, world) && snapshot.RecipeCount == world.GridRecipes.Count)
+                if (snapshot != null && snapshot.RecipeCount == currentCount)
                 {
                     return snapshot;
                 }
 
                 snapshot = BuildSnapshot(world);
                 ResetCaches();
+                ModuleRecipe.OnInvalidation();
                 return snapshot;
             }
         }
@@ -395,7 +401,6 @@ namespace OptiTime
 
             return new Snapshot
             {
-                World = world,
                 RecipeCount = recipeCount,
                 Generation = ++generation,
                 RecipeOrders = recipeOrders.ToFrozenDictionary(),

@@ -30,6 +30,7 @@ namespace OptiTime
         public bool RecipeLookupOptimizations { get; set; } = true;
         public bool EnableProfiling { get; set; } = false;
         public bool ShaderOptimizations { get; set; } = true;
+        public bool BlurOptimizationEnabled { get; set; } = false;
         public bool WeatherWindOptimizations { get; set; } = true;
         public bool TickingBlocksOptimizations { get; set; } = true;
         public bool ShadowFarVegetationCullEnabled { get; set; } = true;
@@ -63,6 +64,7 @@ namespace OptiTime
                 [nameof(HandbookOptimizations)] = v => HandbookOptimizations = v,
                 [nameof(RecipeLookupOptimizations)] = v => RecipeLookupOptimizations = v,
                 [nameof(ShaderOptimizations)] = v => ShaderOptimizations = v,
+                [nameof(BlurOptimizationEnabled)] = v => BlurOptimizationEnabled = v,
                 [nameof(WeatherWindOptimizations)] = v => WeatherWindOptimizations = v,
                 [nameof(TickingBlocksOptimizations)] = v => TickingBlocksOptimizations = v,
                 [nameof(ShadowFarVegetationCullEnabled)] = v => ShadowFarVegetationCullEnabled = v,
@@ -86,6 +88,7 @@ namespace OptiTime
                 [nameof(HandbookOptimizations)] = () => HandbookOptimizations,
                 [nameof(RecipeLookupOptimizations)] = () => RecipeLookupOptimizations,
                 [nameof(ShaderOptimizations)] = () => ShaderOptimizations,
+                [nameof(BlurOptimizationEnabled)] = () => BlurOptimizationEnabled,
                 [nameof(WeatherWindOptimizations)] = () => WeatherWindOptimizations,
                 [nameof(TickingBlocksOptimizations)] = () => TickingBlocksOptimizations,
                 [nameof(ShadowFarVegetationCullEnabled)] = () => ShadowFarVegetationCullEnabled,
@@ -107,6 +110,7 @@ namespace OptiTime
                     if (config != null)
                     {
                         config.InitializeAccessors();
+                        ApplyNewOptionDefaults(config, configPath);
                         api.Logger.Notification("[OptiTime] Configuration loaded successfully");
                         return config;
                     }
@@ -117,10 +121,33 @@ namespace OptiTime
                 api.Logger.Error($"[OptiTime] Error loading configuration: {ex.Message}");
             }
 
-            var defaultConfig = new OptiTimeConfig();
+            var defaultConfig = CreateFirstInstallConfig();
             defaultConfig.Save(api);
             api.Logger.Notification("[OptiTime] Created default configuration file");
             return defaultConfig;
+        }
+
+        /// <summary>
+        /// Fresh install: enable visual shader options by default.
+        /// </summary>
+        private static OptiTimeConfig CreateFirstInstallConfig()
+        {
+            var config = new OptiTimeConfig
+            {
+                BlurOptimizationEnabled = true
+            };
+            return config;
+        }
+
+        /// <summary>
+        /// Existing config upgraded from older version: options absent from JSON
+        /// stay disabled (false) so existing users aren't surprised by visual changes.
+        /// </summary>
+        private static void ApplyNewOptionDefaults(OptiTimeConfig config, string configPath)
+        {
+            string raw = File.ReadAllText(configPath);
+            if (!raw.Contains("\"BlurOptimizationEnabled\""))
+                config.BlurOptimizationEnabled = true;
         }
 
         public void Save(ICoreClientAPI api)
@@ -150,12 +177,13 @@ namespace OptiTime
                 nameof(GuiManagerOptimizations) => "GUI render/input LINQ removal (input patches optional)",
                 nameof(HandbookOptimizations) => "Cached handbook relationships after async indexing",
                 nameof(RecipeLookupOptimizations) => "Early dimension rejection for impossible crafting matches",
-                nameof(ShaderOptimizations) => "OptiTime shader rewrites: 9-tap linear-sampling blur, VBAO SSAO, chunkshadowmap alpha discard, chunkliquid",
+                nameof(ShaderOptimizations) => "OptiTime shader rewrites: chunkshadowmap alpha discard, chunkliquid droplet hash",
+                nameof(BlurOptimizationEnabled) => "Replace vanilla 17-tap blur with optimized 9-tap linear-sampling blur (may appear slightly different)",
                 nameof(WeatherWindOptimizations) => "Throttle wind speed lookups from every frame to every 4th frame",
                 nameof(TickingBlocksOptimizations) => "Reuse BlockPos in particle tick loop to reduce GC pressure",
                 nameof(ShadowFarVegetationCullEnabled) => "Skip vegetation in far shadow cascade (removes leaf/grass shadows at distance)",
                 nameof(EntityShadowDistanceCullEnabled) => "Skip entity shadows beyond 80 blocks (sub-pixel in shadow map at default quality)",
-                nameof(EntityInterpolationOptimizations) => "Smoother remote entity movement in multiplayer (extrapolation, interval correction, flood protection)",
+                nameof(EntityInterpolationOptimizations) => "Smoother remote entity movement in multiplayer (flood protection)",
                 nameof(RepulseAgentsOptimizations) => "Skip entity separation checks for distant creatures (>64 blocks)",
                 _ => "Unknown optimization"
             };
@@ -209,6 +237,7 @@ namespace OptiTime
         {
             api.ShowChatMessage("=== [OptiTime] Status ===");
             PrintOptStatus(api, "shaders", ShaderOptimizations, nameof(ShaderOptimizations));
+            PrintOptStatus(api, "blur", BlurOptimizationEnabled, nameof(BlurOptimizationEnabled));
             PrintOptStatus(api, "dynlights", DynamicLightOptimizations, nameof(DynamicLightOptimizations));
             PrintOptStatus(api, "entityanim", EntityAnimationOptimizations, nameof(EntityAnimationOptimizations));
             PrintOptStatus(api, "particles", ParticleOptimizations, nameof(ParticleOptimizations));
@@ -256,6 +285,7 @@ namespace OptiTime
             var mapping = new Dictionary<string, (bool enabled, string name, string descKey)>
             {
                 ["shaders"] = (ShaderOptimizations, "Shaders", nameof(ShaderOptimizations)),
+                ["blur"] = (BlurOptimizationEnabled, "Blur Optimization", nameof(BlurOptimizationEnabled)),
                 ["dynlights"] = (DynamicLightOptimizations, "Dynamic Lights", nameof(DynamicLightOptimizations)),
                 ["entityanim"] = (EntityAnimationOptimizations, "Entity Animations", nameof(EntityAnimationOptimizations)),
                 ["particles"] = (ParticleOptimizations, "Particles", nameof(ParticleOptimizations)),

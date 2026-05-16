@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -47,7 +48,9 @@ namespace OptiTime
             var ePos = entity.Pos;
             double dx = ePos.X - pPos.X;
             double dz = ePos.Z - pPos.Z;
-            return dx * dx + dz * dz > CullDistanceSq;
+            bool culled = dx * dx + dz * dz > CullDistanceSq;
+            ModuleShadowEntity.OnEntity(culled);
+            return culled;
         }
 
         public static IEnumerable<CodeInstruction> TranspileOnRenderFrameShadows(IEnumerable<CodeInstruction> instructions, ILGenerator il)

@@ -5,6 +5,7 @@ using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.Client;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -249,6 +250,7 @@ namespace OptiTime
 
                 ScreenManager.FrameProfiler?.Mark("rendGuiDone");
 
+                ModuleGuiMgr.OnRender(true);
                 return false;
             }
             catch

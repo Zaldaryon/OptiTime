@@ -6,6 +6,7 @@ using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.API.MathTools;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -81,6 +82,8 @@ namespace OptiTime
                     comparer.plrPos = plrPos;
                     PartialSort(entities, maxDynLights, comparer);
                 }
+
+                ModuleDynLights.OnFrame(entityCount, entities.Length);
 
                 for (int i = 0; i < entityCount; i++)
                     AddPointLight(game, maxDynLights, inval, outval, outval3, entities[i].LightHsv, entities[i].Pos);

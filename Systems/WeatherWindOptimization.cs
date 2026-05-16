@@ -2,6 +2,7 @@ using HarmonyLib;
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using Vintagestory.API.MathTools;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -26,6 +27,8 @@ namespace OptiTime
             Vintagestory.API.Common.IBlockAccessor ba, Vec3d pos)
         {
             frameCounter++;
+            bool isSkipped = initialized && frameCounter % UpdateInterval != 0;
+            ModuleWeatherWind.OnTick(isSkipped);
             if (!initialized || frameCounter % UpdateInterval == 0)
             {
                 var r = ba.GetWindSpeedAt(pos);

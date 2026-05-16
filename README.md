@@ -2,7 +2,7 @@
 
 Clientside performance optimizations for Vintage Story through shader optimization and code patches.
 
-Current version: 1.5.8
+Current version: 1.5.10
 
 ## Performance Gains
 
@@ -15,7 +15,7 @@ Current version: 1.5.8
 - **Background FPS Limiter** - Lowers the frame cap when the window is unfocused.
 - **Dynamic Lights** - Cull lights based on view distance.
 - **Entity Animations** - Distance-based LOD for animation updates (conservative thresholds: 48/80 blocks).
-- **Entity Interpolation** - Smoother remote entity movement in multiplayer (flood protection, interval correction, extrapolation).
+- **Entity Interpolation** - Smoother remote entity movement in multiplayer (flood protection).
 - **Fly Sound** - Volume updates only on meaningful changes.
 - **Frame Pacing** - Hybrid sleep/yield/spin frame pacing when VSync is off.
 - **GUI Manager** - LINQ-free render iteration with conflict auto-disable (opt-out); input patches optional/off by default.
