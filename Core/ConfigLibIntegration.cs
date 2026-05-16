@@ -80,6 +80,10 @@ namespace OptiTime
                     config.ShaderOptimizations = value;
                     changed = true;
                     break;
+                case "BlurOptimizationEnabled":
+                    config.BlurOptimizationEnabled = value;
+                    changed = true;
+                    break;
                 case "ParticleViewDistanceScalingEnabled":
                     config.ParticleViewDistanceScalingEnabled = value;
                     changed = true;
@@ -150,6 +154,10 @@ namespace OptiTime
                     break;
                 case "ShadowFarVegetationCullEnabled":
                     config.ShadowFarVegetationCullEnabled = value;
+                    changed = true;
+                    break;
+                case "EntityShadowDistanceCullEnabled":
+                    config.EntityShadowDistanceCullEnabled = value;
                     changed = true;
                     break;
                 case "EntityInterpolationOptimizations":

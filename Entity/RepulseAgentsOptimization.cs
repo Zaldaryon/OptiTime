@@ -4,6 +4,7 @@ using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
+using OptiTime.Diagnostics;
 
 namespace OptiTime;
 
@@ -79,7 +80,10 @@ public static class RepulseAgentsOptimization
         // Never cull the player entity — it runs the expensive WalkEntities query
         if (entity == player.Entity) return true;
 
-        return !IsBeyondCullDistance(entity.Pos.X, entity.Pos.Z, player.Entity.Pos.X, player.Entity.Pos.Z);
+        bool skip = IsBeyondCullDistance(entity.Pos.X, entity.Pos.Z, player.Entity.Pos.X, player.Entity.Pos.Z);
+        ModuleRepulse.OnTrigger();
+        if (skip) ModuleRepulse.OnSkipped();
+        return !skip;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

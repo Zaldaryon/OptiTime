@@ -5,6 +5,7 @@ using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -140,6 +141,7 @@ namespace OptiTime
                 float vdReject = cachedViewDistance >= 512 ? 0.50f : 0.25f;
                 if (rng.NextDouble() < vdReject)
                 {
+                    ModuleParticles.OnSpawn(false, true, false, false, false);
                     __result = 0;
                     return false;
                 }
@@ -148,9 +150,13 @@ namespace OptiTime
             // --- TECHNIQUE 2: Frustum culling on spawn position ---
             if (frustumAvailable)
             {
-                Vec3d pos = particleProperties.Pos;
+                Vec3d pos;
+                try { pos = particleProperties.Pos; }
+                catch { pos = null; } // ExplosionSmokeParticles can throw IndexOutOfRange on async thread
+
                 if (pos != null && !frustumCuller.SphereInFrustum(pos.X, pos.Y, pos.Z, 16.0))
                 {
+                    ModuleParticles.OnSpawn(false, false, true, false, false);
                     __result = 0;
                     return false;
                 }
@@ -167,6 +173,7 @@ namespace OptiTime
                     float rejectChance = pressure * 0.5f; // max 50% extra rejection
                     if (rng.NextDouble() < rejectChance)
                     {
+                        ModuleParticles.OnSpawn(false, false, false, true, false);
                         __result = 0;
                         return false;
                     }
@@ -178,11 +185,13 @@ namespace OptiTime
             {
                 if (rng.NextDouble() > spawnMultiplier)
                 {
+                    ModuleParticles.OnSpawn(false, false, false, false, true);
                     __result = 0;
                     return false;
                 }
             }
 
+            ModuleParticles.OnSpawn(true, false, false, false, false);
             return true;
         }
     }

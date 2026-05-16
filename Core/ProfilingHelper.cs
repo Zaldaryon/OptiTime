@@ -19,6 +19,7 @@ namespace OptiTime
         private const float SpikeThresholdMs = 33.3f;
 
         private static bool enabled = false;
+        private static volatile bool framePacingDiagEnabled = false;
         private static ICoreClientAPI capi = null;
         private static object frameProfiler = null;
         private static MethodInfo markString = null;
@@ -56,6 +57,11 @@ namespace OptiTime
         public static void SetEnabled(bool enable)
         {
             enabled = enable;
+        }
+
+        public static void SetFramePacingDiagEnabled(bool enable)
+        {
+            framePacingDiagEnabled = enable;
         }
 
         public static void Cleanup()
@@ -133,7 +139,7 @@ namespace OptiTime
 
         public static void RecordFramePacingWait(int coarseSleepMs, int yieldCount, int spinCount, double overshootMs)
         {
-            if (!enabled) return;
+            if (!enabled && !framePacingDiagEnabled) return;
 
             lock (counterLock)
             {
@@ -151,12 +157,35 @@ namespace OptiTime
 
         public static void RecordFramePacingFallback(int sleepMs)
         {
-            if (!enabled) return;
+            if (!enabled && !framePacingDiagEnabled) return;
 
             lock (counterLock)
             {
                 preciseFallbackFrames++;
                 preciseSleepMsTotal += sleepMs;
+            }
+        }
+
+        public static (long precise, long fallback, long sleepMs, double avgOvershoot, double maxOvershoot) GetFramePacingStats()
+        {
+            lock (counterLock)
+            {
+                double avg = preciseWaitFrames > 0 ? preciseOvershootMsTotal / preciseWaitFrames : 0;
+                return (preciseWaitFrames, preciseFallbackFrames, preciseSleepMsTotal, avg, preciseOvershootMsMax);
+            }
+        }
+
+        public static void ResetFramePacing()
+        {
+            lock (counterLock)
+            {
+                preciseWaitFrames = 0;
+                preciseFallbackFrames = 0;
+                preciseSleepMsTotal = 0;
+                preciseYieldLoops = 0;
+                preciseSpinLoops = 0;
+                preciseOvershootMsTotal = 0;
+                preciseOvershootMsMax = 0;
             }
         }
 

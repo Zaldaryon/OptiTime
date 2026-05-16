@@ -2,6 +2,7 @@ using HarmonyLib;
 using System;
 using Vintagestory.API.Client;
 using Vintagestory.Client.NoObf;
+using OptiTime.Diagnostics;
 
 namespace OptiTime
 {
@@ -44,6 +45,11 @@ namespace OptiTime
                     {
                         flySound.SetVolume(newVolume);
                         lastVolume = newVolume;
+                        ModuleFlySound.OnCall(false);
+                    }
+                    else
+                    {
+                        ModuleFlySound.OnCall(true);
                     }
 
                     curVolumeRef(__instance) = newVolume;
