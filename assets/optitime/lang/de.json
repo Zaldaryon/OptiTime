@@ -55,6 +55,8 @@
   "optitime:compat-bloodfx-desc": "Partikel-Sichtweiten-Skalierung deaktiviert um Bluteffekte zu erhalten",
   "optitime:compat-coriaender-title": "[OptiTime] Kompatibilitätsmodus mit CoriaenderShaders aktiviert",
   "optitime:compat-coriaender-desc": "Shader-Dateiersetzungen deaktiviert (chunkliquid, chunkshadowmap); VBAO/blur bleiben unabhängig",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Hintergrund-FPS-Begrenzer",
   "optitime:setting-background-fps-tooltip": "Bildrate senken, wenn das Fenster nicht fokussiert ist",
   "optitime:setting-frame-pacing": "Präzises Frame-Pacing",

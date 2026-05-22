@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "Fjarlægðarbreytingar agna óvirkar til að varðveita blóðáhrif",
   "optitime:compat-coriaender-title": "[OptiTime] CoriaenderShaders samhæfnistilstand virkt",
   "optitime:compat-coriaender-desc": "Shader skráarskipti óvirk (chunkliquid, chunkshadowmap); VBAO/blur eru óháð",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Bakgrunns FPS Takmörkun",
   "optitime:setting-background-fps-tooltip": "Lækka rammatak þegar glugginn er ekki í fókus",
   "optitime:setting-frame-pacing": "Nákvæm rammatímasetning",

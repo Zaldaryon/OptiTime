@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "Részecske látótávolság-méretezés kikapcsolva a vérhatások megőrzéséhez",
   "optitime:compat-coriaender-title": "[OptiTime] CoriaenderShaders kompatibilitási mód engedélyezve",
   "optitime:compat-coriaender-desc": "Shader-fájl cserék kikapcsolva (chunkliquid, chunkshadowmap); VBAO/blur független marad",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Háttér FPS Korlátozó",
   "optitime:setting-background-fps-tooltip": "Képkocka-korlát csökkentése amikor az ablak nincs fókuszban",
   "optitime:setting-frame-pacing": "Precíz Képkocka-ütemezés",

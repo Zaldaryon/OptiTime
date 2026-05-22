@@ -604,7 +604,22 @@ namespace OptiTime
 
             if (config.EntityShadowDistanceCullEnabled)
             {
+                // At shadowQuality=1 the far cascade range is 60 blocks, which is smaller
+                // than our 80-block cull distance — the transpiler would never cull anything.
+                int shadowQ = 0;
                 try
+                {
+                    var csType = AccessTools.TypeByName("Vintagestory.Client.NoObf.ClientSettings");
+                    var prop = csType?.GetProperty("ShadowMapQuality", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    if (prop != null) shadowQ = (int)prop.GetValue(null);
+                }
+                catch { }
+
+                if (shadowQ <= 1)
+                {
+                    api.Logger.Notification("[OptiTime] Entity shadow distance cull skipped (shadowQuality=1, cascade range 60 < cull distance 80)");
+                }
+                else try
                 {
                     EntityShadowCullingOptimization.SetLogger(msg => api.Logger.Warning(msg));
                     var onRenderShadows = AccessTools.Method("Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderFrameShadows", new Type[] { typeof(float) });
@@ -1284,6 +1299,25 @@ namespace OptiTime
 
                 api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-title"));
                 api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-desc"));
+            }
+
+            // Check for smoke/firearms mods whose particles spawn via off-thread pools
+            bool realSmokeDetected = api.ModLoader.IsModEnabled("realsmoke");
+            bool firearmsDetected = api.ModLoader.IsModEnabled("maltiezfirearms") ||
+                                    api.ModLoader.IsModEnabled("extrafirearms");
+            if (realSmokeDetected || firearmsDetected)
+            {
+                string modName = realSmokeDetected ? "Real Smoke" : "Firearms";
+                api.Logger.Notification("═══════════════════════════════════════════════════════");
+                api.Logger.Notification("[OptiTime] " + modName + " detected");
+                api.Logger.Notification("[OptiTime] Particle rejection disabled on off-thread pools");
+                api.Logger.Notification("[OptiTime] Main-thread particle optimizations remain active");
+                api.Logger.Notification("═══════════════════════════════════════════════════════");
+
+                ParticleOptimization.SetSkipOffthreadRejection(true);
+
+                api.ShowChatMessage(Lang.Get("optitime:compat-smoke-title", modName));
+                api.ShowChatMessage(Lang.Get("optitime:compat-smoke-desc"));
             }
         }
 

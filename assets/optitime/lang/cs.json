@@ -55,6 +55,8 @@
   "optitime:compat-bloodfx-desc": "Škálování vzdálenosti částic vypnuto pro zachování krvavých efektů",
   "optitime:compat-coriaender-title": "[OptiTime] Režim kompatibility s CoriaenderShaders aktivován",
   "optitime:compat-coriaender-desc": "Nahrazování souborů shaderů vypnuto (chunkliquid, chunkshadowmap); VBAO/blur zůstávají nezávislé",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Omezení FPS na pozadí",
   "optitime:setting-background-fps-tooltip": "Snížit limit snímků, když je okno mimo fokus",
   "optitime:setting-frame-pacing": "Přesné časování snímků",

@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "Масштабування частинок за відстанню вимкнено для збереження ефектів крові",
   "optitime:compat-coriaender-title": "[OptiTime] Режим сумісності з CoriaenderShaders увімкнено",
   "optitime:compat-coriaender-desc": "Заміну файлів шейдерів вимкнено (chunkliquid, chunkshadowmap); VBAO/blur залишаються незалежними",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Обмежувач FPS у фоні",
   "optitime:setting-background-fps-tooltip": "Знизити ліміт кадрів, коли вікно не у фокусі",
   "optitime:setting-frame-pacing": "Точне розподілення кадрів",

@@ -42,6 +42,12 @@ namespace OptiTime
         private static double preciseOvershootMsTotal = 0;
         private static double preciseOvershootMsMax = 0;
 
+        // Ring buffer for p99 overshoot calculation
+        private const int OvershootRingSize = 1024;
+        private static readonly double[] overshootRing = new double[OvershootRingSize];
+        private static int overshootRingIndex = 0;
+        private static int overshootRingCount = 0;
+
         private static string lastSpikeSummary = null;
 
         public static bool Enabled => enabled;
@@ -152,6 +158,9 @@ namespace OptiTime
                 {
                     preciseOvershootMsMax = overshootMs;
                 }
+                overshootRing[overshootRingIndex] = overshootMs;
+                overshootRingIndex = (overshootRingIndex + 1) % OvershootRingSize;
+                if (overshootRingCount < OvershootRingSize) overshootRingCount++;
             }
         }
 
@@ -166,12 +175,22 @@ namespace OptiTime
             }
         }
 
-        public static (long precise, long fallback, long sleepMs, double avgOvershoot, double maxOvershoot) GetFramePacingStats()
+        public static (long precise, long fallback, long sleepMs, double avgOvershoot, double maxOvershoot, double p99Overshoot) GetFramePacingStats()
         {
             lock (counterLock)
             {
                 double avg = preciseWaitFrames > 0 ? preciseOvershootMsTotal / preciseWaitFrames : 0;
-                return (preciseWaitFrames, preciseFallbackFrames, preciseSleepMsTotal, avg, preciseOvershootMsMax);
+                double p99 = 0;
+                if (overshootRingCount > 0)
+                {
+                    var sorted = new double[overshootRingCount];
+                    Array.Copy(overshootRing, 0, sorted, 0, overshootRingCount);
+                    Array.Sort(sorted);
+                    int idx = (int)Math.Ceiling(sorted.Length * 0.99) - 1;
+                    if (idx >= sorted.Length) idx = sorted.Length - 1;
+                    p99 = sorted[idx];
+                }
+                return (preciseWaitFrames, preciseFallbackFrames, preciseSleepMsTotal, avg, preciseOvershootMsMax, p99);
             }
         }
 
@@ -186,6 +205,9 @@ namespace OptiTime
                 preciseSpinLoops = 0;
                 preciseOvershootMsTotal = 0;
                 preciseOvershootMsMax = 0;
+                Array.Clear(overshootRing, 0, overshootRing.Length);
+                overshootRingIndex = 0;
+                overshootRingCount = 0;
             }
         }
 
@@ -323,6 +345,9 @@ namespace OptiTime
                 preciseSpinLoops = 0;
                 preciseOvershootMsTotal = 0;
                 preciseOvershootMsMax = 0;
+                Array.Clear(overshootRing, 0, overshootRing.Length);
+                overshootRingIndex = 0;
+                overshootRingCount = 0;
                 lastSpikeSummary = null;
             }
         }

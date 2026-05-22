@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "Kan efektlerini korumak için partikül görüş mesafesi ölçeklemesi devre dışı bırakıldı",
   "optitime:compat-coriaender-title": "[OptiTime] CoriaenderShaders uyumluluk modu etkinleştirildi",
   "optitime:compat-coriaender-desc": "Shader dosya değişimleri devre dışı bırakıldı (chunkliquid, chunkshadowmap); VBAO/blur bağımsız kalır",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Arka Plan FPS Sınırlayıcı",
   "optitime:setting-background-fps-tooltip": "Pencere odakta değilken kare sınırını düşür",
   "optitime:setting-frame-pacing": "Hassas Kare Zamanlaması",

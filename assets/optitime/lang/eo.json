@@ -55,6 +55,8 @@
   "optitime:compat-bloodfx-desc": "Partikla viddistanca skalado malŝaltita por konservi sang-efektojn",
   "optitime:compat-coriaender-title": "[OptiTime] Kongrueca reĝimo kun CoriaenderShaders aktivigita",
   "optitime:compat-coriaender-desc": "Ŝadilaj dosier-anstataŭigoj malŝaltitaj (chunkliquid, chunkshadowmap); VBAO/blur restas sendependaj",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Fona FPS-limigilo",
   "optitime:setting-background-fps-tooltip": "Malplialtigi la bildofrekvencan limon kiam la fenestro estas nefokusita",
   "optitime:setting-frame-pacing": "Preciza kadra tempoplanado",

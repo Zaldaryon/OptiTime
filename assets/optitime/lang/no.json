@@ -55,6 +55,8 @@
   "optitime:compat-bloodfx-desc": "Partikkelskalering for synsvidde deaktivert for å bevare blodeffekter",
   "optitime:compat-coriaender-title": "[OptiTime] CoriaenderShaders kompatibilitetsmodus aktivert",
   "optitime:compat-coriaender-desc": "Shader-filerstatninger deaktivert (chunkliquid, chunkshadowmap); VBAO/blur forblir uavhengige",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Bakgrunns-FPS-begrenser",
   "optitime:setting-background-fps-tooltip": "Senk bildefrekvensgrensen når vinduet er ufokusert",
   "optitime:setting-frame-pacing": "Presis bildetakt",
