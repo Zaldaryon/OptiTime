@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "已停用粒子視距縮放以保留血液效果",
   "optitime:compat-coriaender-title": "[OptiTime] 已啟用 CoriaenderShaders 相容模式",
   "optitime:compat-coriaender-desc": "已停用著色器檔案替換（chunkliquid、chunkshadowmap）；VBAO/blur保持獨立",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "背景FPS限制器",
   "optitime:setting-background-fps-tooltip": "視窗失焦時降低幀率上限",
   "optitime:setting-frame-pacing": "精確幀步調",

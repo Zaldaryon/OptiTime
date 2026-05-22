@@ -14,7 +14,7 @@ public static class DiagLog
     public static void Line(ICoreClientAPI api, string moduleShortName, string content)
     {
         string line = $"[OptiTime/diag/{moduleShortName}] {content}";
-        api.ShowChatMessage(line);
+        api.ShowChatMessage(line.Replace("<", "&lt;").Replace(">", "&gt;"));
         api.Logger.Notification(line);
     }
 

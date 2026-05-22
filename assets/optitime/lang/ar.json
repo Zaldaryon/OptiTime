@@ -55,6 +55,8 @@
   "optitime:compat-bloodfx-desc": "تم تعطيل تحجيم مسافة رؤية الجسيمات للحفاظ على تأثيرات الدم",
   "optitime:compat-coriaender-title": "[OptiTime] تم تفعيل وضع التوافق مع CoriaenderShaders",
   "optitime:compat-coriaender-desc": "تم تعطيل استبدال ملفات الشيدر (chunkliquid، chunkshadowmap)؛ VBAO/blur يبقيان مستقلين",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "محدد FPS في الخلفية",
   "optitime:setting-background-fps-tooltip": "خفض حد الإطارات عندما تكون النافذة غير مركزة",
   "optitime:setting-frame-pacing": "توقيت الإطارات الدقيق",

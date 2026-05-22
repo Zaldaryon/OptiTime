@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "血液エフェクトを保持するためパーティクル視距離スケーリングを無効化",
   "optitime:compat-coriaender-title": "[OptiTime] CoriaenderShaders 互換モードを有効化",
   "optitime:compat-coriaender-desc": "シェーダーファイル置換を無効化（chunkliquid、chunkshadowmap）; VBAO/blurは独立して動作",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "バックグラウンドFPSリミッター",
   "optitime:setting-background-fps-tooltip": "ウィンドウが非アクティブ時にフレーム上限を下げる",
   "optitime:setting-frame-pacing": "精密フレームペーシング",

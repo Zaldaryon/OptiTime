@@ -35,6 +35,14 @@ namespace OptiTime
         private static readonly AccessTools.FieldRef<ParticlePoolQuads, int> poolSizeRef =
             AccessTools.FieldRefAccess<ParticlePoolQuads, int>("poolSize");
 
+        // --- Smoke/firearms mod compatibility ---
+        // When mods like RealSmoke or firearms mods are present, their particles are spawned
+        // via OnAsyncParticleTick on off-thread pools. Rejecting those breaks smoke visuals.
+        // We skip all rejection on off-thread pools when these mods are detected.
+        private static readonly AccessTools.FieldRef<ParticlePoolQuads, bool> offthreadRef =
+            AccessTools.FieldRefAccess<ParticlePoolQuads, bool>("offthread");
+        private static bool skipOffthreadRejection;
+
         // --- Frame-time throttle state ---
         private static float spawnMultiplier = 1.0f;
         private static long lastFrameTimestamp;
@@ -48,6 +56,8 @@ namespace OptiTime
         private static Random Rng => tRandom ??= new Random();
 
         public static void SetLogger(Action<string> log) => logger = log;
+
+        public static void SetSkipOffthreadRejection(bool skip) => skipOffthreadRejection = skip;
 
         public static void ConfigureScaling(bool enabled)
         {
@@ -71,7 +81,7 @@ namespace OptiTime
                 frustumAvailable = frustumCuller != null;
 
                 int maxFps = ClientSettings.MaxFPS;
-                targetFrameMs = maxFps > 0 ? 1000f / maxFps : 16.67f;
+                targetFrameMs = Math.Max(maxFps > 0 ? 1000f / maxFps : 16.67f, 16.67f);
             }
             catch
             {
@@ -109,6 +119,7 @@ namespace OptiTime
         {
             cachedViewDistance = 256;
             scalingEnabled = false;
+            skipOffthreadRejection = false;
             logger = null;
             frustumCuller = null;
             frustumAvailable = false;
@@ -131,6 +142,10 @@ namespace OptiTime
 
             // Critical particles always pass
             if (particleProperties == null || particleProperties.IgnoreUserConfig)
+                return true;
+
+            // Smoke/firearms mod compatibility: never reject particles on off-thread pools
+            if (skipOffthreadRejection && offthreadRef(__instance))
                 return true;
 
             var rng = Rng;

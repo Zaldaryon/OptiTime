@@ -31,7 +31,7 @@ public sealed class ModuleFramePace : IDiagModule
             DiagLog.Line(api, "framepace", "DISABLED in config (PreciseFramePacingEnabled=false)");
             return;
         }
-        var (precise, fallback, sleepMs, avgOvershoot, maxOvershoot) = ProfilingHelper.GetFramePacingStats();
-        DiagLog.Line(api, "framepace", $"precise={precise} fallback={fallback} sleepMs={sleepMs} avgOvershoot={avgOvershoot:F2} maxOvershoot={maxOvershoot:F2}");
+        var (precise, fallback, sleepMs, avgOvershoot, maxOvershoot, p99Overshoot) = ProfilingHelper.GetFramePacingStats();
+        DiagLog.Line(api, "framepace", $"precise={precise} fallback={fallback} sleepMs={sleepMs} avgOvershoot={avgOvershoot:F2} p99Overshoot={p99Overshoot:F2} maxOvershoot={maxOvershoot:F2}");
     }
 }

@@ -1,6 +1,7 @@
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.Client.NoObf;
 using OptiTime.Diagnostics;
@@ -54,6 +55,16 @@ namespace OptiTime
 
                     bool isPlayer = entity == game.EntityPlayer;
                     bool allowOutside = entity.AllowOutsideLoadedRange;
+
+                    // Projectiles (arrows, bobbers, etc.) must always render fully —
+                    // they rely on accurate IsRendered state for cloth/rope physics
+                    if (!isPlayer && entity is IProjectile)
+                    {
+                        entity.IsRendered = true;
+                        entityRenderer.BeforeRender(dt);
+                        entity.AnimManager?.OnClientFrame(dt);
+                        continue;
+                    }
 
                     if (!isPlayer && entity.Pos.Dimension != dimension)
                     {

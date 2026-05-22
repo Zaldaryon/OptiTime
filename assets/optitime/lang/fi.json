@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "Hiukkasten katseluetäisyysskaalaus poistettu käytöstä veritehosteiden säilyttämiseksi",
   "optitime:compat-coriaender-title": "[OptiTime] CoriaenderShaders-yhteensopivuustila käytössä",
   "optitime:compat-coriaender-desc": "Shader-tiedostokorvaukset poistettu käytöstä (chunkliquid, chunkshadowmap); VBAO/blur pysyvät riippumattomina",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Taustan FPS-rajoitin",
   "optitime:setting-background-fps-tooltip": "Laske ruutukattoa kun ikkuna ei ole aktiivinen",
   "optitime:setting-frame-pacing": "Tarkka ruudunjakso",

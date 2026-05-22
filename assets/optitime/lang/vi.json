@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "Đã tắt chia tỷ lệ hạt theo khoảng cách nhìn để giữ hiệu ứng máu",
   "optitime:compat-coriaender-title": "[OptiTime] Đã bật chế độ tương thích với CoriaenderShaders",
   "optitime:compat-coriaender-desc": "Đã tắt thay thế tệp shader (chunkliquid, chunkshadowmap); VBAO/blur vẫn độc lập",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Giới Hạn FPS Nền",
   "optitime:setting-background-fps-tooltip": "Giảm giới hạn khung hình khi cửa sổ không được chọn",
   "optitime:setting-frame-pacing": "Nhịp Khung Hình Chính Xác",

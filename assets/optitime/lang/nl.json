@@ -57,6 +57,8 @@
   "optitime:compat-bloodfx-desc": "Deeltjes-zichtafstandschaling uitgeschakeld om bloedeffecten te behouden",
   "optitime:compat-coriaender-title": "[OptiTime] CoriaenderShaders compatibiliteitsmodus ingeschakeld",
   "optitime:compat-coriaender-desc": "Shader-bestandsvervangingen uitgeschakeld (chunkliquid, chunkshadowmap); VBAO/blur blijven onafhankelijk",
+  "optitime:compat-smoke-title": "[OptiTime] {0} compatibility mode enabled",
+  "optitime:compat-smoke-desc": "Particle rejection bypassed for off-thread spawns (smoke/firearms visuals preserved)",
   "optitime:setting-background-fps": "Achtergrond FPS-begrenzer",
   "optitime:setting-background-fps-tooltip": "Framelimiet verlagen wanneer het venster niet gefocust is",
   "optitime:setting-frame-pacing": "Precieze framepacing",
