@@ -56,8 +56,7 @@ namespace OptiTime
                     bool isPlayer = entity == game.EntityPlayer;
                     bool allowOutside = entity.AllowOutsideLoadedRange;
 
-                    // Projectiles (arrows, bobbers, etc.) must always render fully —
-                    // they rely on accurate IsRendered state for cloth/rope physics
+                    // Projectiles (arrows, bobbers, etc.) must always render fully
                     if (!isPlayer && entity is IProjectile)
                     {
                         entity.IsRendered = true;
@@ -69,6 +68,7 @@ namespace OptiTime
                     if (!isPlayer && entity.Pos.Dimension != dimension)
                     {
                         entity.IsRendered = false;
+                        entity.AnimManager?.OnClientFrame(dt);
                         continue;
                     }
 
@@ -77,6 +77,7 @@ namespace OptiTime
                     if (!isPlayer && !allowOutside && distSq > maxAnimationDistSq)
                     {
                         entity.IsRendered = false;
+                        entity.AnimManager?.OnClientFrame(dt);
                         continue;
                     }
 
@@ -87,6 +88,7 @@ namespace OptiTime
                     if (!inFrustum && !isPlayer && !allowOutside)
                     {
                         entity.IsRendered = false;
+                        entity.AnimManager?.OnClientFrame(dt);
                         continue;
                     }
 
@@ -120,21 +122,15 @@ namespace OptiTime
                             }
                             game.api.World.FrameProfiler.Mark("esr-afteranim");
                         }
+                        else
+                        {
+                            entity.AnimManager?.OnClientFrame(dt);
+                        }
                     }
                     else
                     {
                         entity.IsRendered = false;
-                        if (isPlayer || allowOutside)
-                        {
-                            game.api.World.FrameProfiler.Mark("esr-beforeanim");
-                            try { entity.AnimManager?.OnClientFrame(dt); }
-                            catch (Exception)
-                            {
-                                game.Logger.Error($"Animations error for entity {entity.Code.ToShortString()} at {entity.Pos.AsBlockPos?.ToString()}");
-                                throw;
-                            }
-                            game.api.World.FrameProfiler.Mark("esr-afteranim");
-                        }
+                        entity.AnimManager?.OnClientFrame(dt);
                     }
                 }
 

@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Ütemezés Yield Küszöb (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Ezen hátralévő idő alatt váltás Thread.Yield()-ről Thread.SpinWait()-re. Alacsonyabb = pontosabb időzítés de több CPU. Alapértelmezett 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Ütemezés Spin Iterációk",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterációk Thread.SpinWait hívásonként az utolsó időszelet elégetésekor. Alapértelmezett 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterációk Thread.SpinWait hívásonként az utolsó időszelet elégetésekor. Alapértelmezett 32.",
+  "optitime:setting-suppress-compat": "Kompatibilitási üzenetek elrejtése",
+  "optitime:setting-suppress-compat-tooltip": "Mod-ütközési értesítések elrejtése a chatben világbetöltéskor (az info továbbra is naplózva)"
 }

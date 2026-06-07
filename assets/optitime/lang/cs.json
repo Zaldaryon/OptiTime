@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Práh Yield časování (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Pod tímto zbývajícím časem přepnout z Thread.Yield() na Thread.SpinWait(). Nižší = přesnější časování, ale více CPU. Výchozí 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Iterace Spin časování",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterací na volání Thread.SpinWait při spalování posledního časového úseku. Výchozí 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterací na volání Thread.SpinWait při spalování posledního časového úseku. Výchozí 32.",
+  "optitime:setting-suppress-compat": "Potlačit zprávy o kompatibilitě",
+  "optitime:setting-suppress-compat-tooltip": "Skrýt upozornění na konflikty modů v chatu při načtení světa (info zůstane v logu)"
 }

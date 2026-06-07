@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Prah yield rozloženia (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Pod týmto zostávajúcim časom sa prepne z Thread.Yield() na Thread.SpinWait(). Nižšie = presnejšie, ale väčšia záťaž CPU. Predvolené 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Iterácie spin rozloženia",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterácií na volanie Thread.SpinWait pri dopaľovaní posledného časového úseku. Predvolené 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterácií na volanie Thread.SpinWait pri dopaľovaní posledného časového úseku. Predvolené 32.",
+  "optitime:setting-suppress-compat": "Potlačiť správy o kompatibilite",
+  "optitime:setting-suppress-compat-tooltip": "Skryť upozornenia na konflikty modov v chate pri načítaní sveta (info zostáva v logu)"
 }

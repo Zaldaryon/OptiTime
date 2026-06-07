@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "เกณฑ์ yield ของจังหวะ (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "ต่ำกว่าเวลาที่เหลือนี้จะเปลี่ยนจาก Thread.Yield() เป็น Thread.SpinWait() ต่ำกว่า = จังหวะแน่นขึ้นแต่ใช้ CPU มากขึ้น ค่าเริ่มต้น 0.25 ms",
   "optitime:setting-pacing-spin-iterations": "จำนวนรอบ spin ของจังหวะ",
-  "optitime:setting-pacing-spin-iterations-tooltip": "จำนวนรอบต่อการเรียก Thread.SpinWait เมื่อเผาช่วงเวลาสุดท้าย ค่าเริ่มต้น 32"
+  "optitime:setting-pacing-spin-iterations-tooltip": "จำนวนรอบต่อการเรียก Thread.SpinWait เมื่อเผาช่วงเวลาสุดท้าย ค่าเริ่มต้น 32",
+  "optitime:setting-suppress-compat": "ซ่อนข้อความความเข้ากันได้",
+  "optitime:setting-suppress-compat-tooltip": "ซ่อนการแจ้งเตือนความขัดแย้งของม็อดในแชทเมื่อโหลดโลก (ข้อมูลยังคงบันทึกในล็อก)"
 }

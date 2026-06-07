@@ -116,8 +116,8 @@ function Scan-IlPattern {
 function Get-LatestLog {
     $logDirs = @(
         (Join-Path $env:APPDATA "VintagestoryData\\Logs"),
-        ":USERPROFILE\AppData\Roaming\VintagestoryData\Logs",
-        ":USERPROFILE\AppData\Roaming\VintagestoryData\Logs"
+        ":APPDATA\VintagestoryData\Logs",
+        ":APPDATA\VintagestoryData\Logs"
     ) | Select-Object -Unique
 
     $logs = foreach ($dir in $logDirs) {

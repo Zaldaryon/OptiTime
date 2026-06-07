@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Limiar de Yield da Cadência (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Abaixo deste tempo restante, alternar de Thread.Yield() para Thread.SpinWait(). Menor = temporização mais precisa mas mais CPU. Padrão 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Iterações de Spin da Cadência",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterações por chamada Thread.SpinWait ao consumir a fatia final de tempo. Padrão 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterações por chamada Thread.SpinWait ao consumir a fatia final de tempo. Padrão 32.",
+  "optitime:setting-suppress-compat": "Ocultar mensagens de compatibilidade",
+  "optitime:setting-suppress-compat-tooltip": "Ocultar notificações de conflitos de mods no chat ao carregar o mundo (info permanece no log)"
 }

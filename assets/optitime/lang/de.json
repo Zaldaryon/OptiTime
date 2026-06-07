@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Yield-Schwelle für Pacing (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Unter dieser Restzeit wird von Thread.Yield() auf Thread.SpinWait() umgeschaltet. Niedriger = genaueres Timing aber mehr CPU. Standard 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Spin-Iterationen für Pacing",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterationen pro Thread.SpinWait-Aufruf beim Verbrauchen der letzten Zeitscheibe. Standard 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterationen pro Thread.SpinWait-Aufruf beim Verbrauchen der letzten Zeitscheibe. Standard 32.",
+  "optitime:setting-suppress-compat": "Kompatibilitätsmeldungen unterdrücken",
+  "optitime:setting-suppress-compat-tooltip": "Mod-Konfliktmeldungen im Chat beim Laden der Welt ausblenden (Info wird weiterhin protokolliert)"
 }

@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "حد Yield للتوقيت (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "أقل من هذا الوقت المتبقي، التبديل من Thread.Yield() إلى Thread.SpinWait(). أقل = توقيت أدق لكن استخدام أكثر للمعالج. الافتراضي 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "تكرارات Spin للتوقيت",
-  "optitime:setting-pacing-spin-iterations-tooltip": "التكرارات لكل استدعاء Thread.SpinWait عند استهلاك شريحة الوقت الأخيرة. الافتراضي 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "التكرارات لكل استدعاء Thread.SpinWait عند استهلاك شريحة الوقت الأخيرة. الافتراضي 32.",
+  "optitime:setting-suppress-compat": "إخفاء رسائل التوافق",
+  "optitime:setting-suppress-compat-tooltip": "إخفاء إشعارات تعارض المودات في الدردشة عند تحميل العالم (تبقى في السجل)"
 }

@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Yield-sojlo por tempoplano (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Sub ĉi tiu restanta tempo, ŝanĝi de Thread.Yield() al Thread.SpinWait(). Pli malalta = pli strikta tempizo sed pli da CPU. Defaŭlte 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Spin-iteracioj por tempoplano",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iteracioj per Thread.SpinWait-voko kiam brulanta la lastan tempopecon. Defaŭlte 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iteracioj per Thread.SpinWait-voko kiam brulanta la lastan tempopecon. Defaŭlte 32.",
+  "optitime:setting-suppress-compat": "Kaŝi kongruecajn mesaĝojn",
+  "optitime:setting-suppress-compat-tooltip": "Kaŝi modkonfliktajn sciigojn en babilejo dum mondŝarĝo (info restas en protokolo)"
 }

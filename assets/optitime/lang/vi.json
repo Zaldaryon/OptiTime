@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Ngưỡng Yield Nhịp (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Dưới thời gian còn lại này, chuyển từ Thread.Yield() sang Thread.SpinWait(). Thấp hơn = thời gian chính xác hơn nhưng dùng CPU nhiều hơn. Mặc định 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Vòng Lặp Spin Nhịp",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Số vòng lặp mỗi lần gọi Thread.SpinWait khi đốt lát thời gian cuối cùng. Mặc định 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Số vòng lặp mỗi lần gọi Thread.SpinWait khi đốt lát thời gian cuối cùng. Mặc định 32.",
+  "optitime:setting-suppress-compat": "Ẩn thông báo tương thích",
+  "optitime:setting-suppress-compat-tooltip": "Ẩn thông báo xung đột mod trong trò chuyện khi tải thế giới (thông tin vẫn được ghi log)"
 }

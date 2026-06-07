@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Pacing Yield Threshold (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Below this remaining-time, switch from Thread.Yield() to Thread.SpinWait(). Lower = tighter timing but more CPU. Default 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Pacing Spin Iterations",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterations per Thread.SpinWait call when burning the final time slice. Default 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterations per Thread.SpinWait call when burning the final time slice. Default 32.",
+  "optitime:setting-suppress-compat": "Suppress Compatibility Messages",
+  "optitime:setting-suppress-compat-tooltip": "Hide mod conflict notifications in chat on world load (info still logged)"
 }

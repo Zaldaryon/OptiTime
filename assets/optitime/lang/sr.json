@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Праг yield распоређивања (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Испод овог преосталог времена прелази се са Thread.Yield() на Thread.SpinWait(). Ниже = прецизније, али више CPU. Подразумевано 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Итерације spin распоређивања",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Итерација по позиву Thread.SpinWait при сагоревању последњег временског одсечка. Подразумевано 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Итерација по позиву Thread.SpinWait при сагоревању последњег временског одсечка. Подразумевано 32.",
+  "optitime:setting-suppress-compat": "Сакриј поруке о компатибилности",
+  "optitime:setting-suppress-compat-tooltip": "Сакриј обавештења о сукобу модова у ћаскању при учитавању света (информације се и даље бележе)"
 }

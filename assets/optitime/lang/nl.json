@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Pacing yield-drempel (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Onder deze resterende tijd, schakel over van Thread.Yield() naar Thread.SpinWait(). Lager = nauwkeurigere timing maar meer CPU. Standaard 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Pacing spin-iteraties",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iteraties per Thread.SpinWait-aanroep bij het opbranden van het laatste tijdsegment. Standaard 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iteraties per Thread.SpinWait-aanroep bij het opbranden van het laatste tijdsegment. Standaard 32.",
+  "optitime:setting-suppress-compat": "Compatibiliteitsberichten verbergen",
+  "optitime:setting-suppress-compat-tooltip": "Verberg mod-conflictmeldingen in de chat bij het laden van de wereld (info wordt nog steeds gelogd)"
 }

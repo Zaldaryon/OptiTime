@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "페이싱 yield 임계값 (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "이 잔여 시간 이하에서 Thread.Yield()에서 Thread.SpinWait()로 전환. 낮을수록 = 더 정확한 타이밍, CPU 사용량 증가. 기본값 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "페이싱 스핀 반복 횟수",
-  "optitime:setting-pacing-spin-iterations-tooltip": "마지막 시간 슬라이스를 소진할 때 Thread.SpinWait 호출당 반복 횟수. 기본값 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "마지막 시간 슬라이스를 소진할 때 Thread.SpinWait 호출당 반복 횟수. 기본값 32.",
+  "optitime:setting-suppress-compat": "호환성 메시지 숨기기",
+  "optitime:setting-suppress-compat-tooltip": "월드 로드 시 모드 충돌 알림을 채팅에서 숨기기 (로그에는 기록됨)"
 }

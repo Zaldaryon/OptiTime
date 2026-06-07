@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "ペーシングyield閾値 (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "この残り時間以下でThread.Yield()からThread.SpinWait()に切り替え。低い = より正確なタイミングだがCPU使用量増加。デフォルト0.25 ms。",
   "optitime:setting-pacing-spin-iterations": "ペーシングスピン反復回数",
-  "optitime:setting-pacing-spin-iterations-tooltip": "最後の時間スライスを消費する際のThread.SpinWait呼び出しごとの反復回数。デフォルト32。"
+  "optitime:setting-pacing-spin-iterations-tooltip": "最後の時間スライスを消費する際のThread.SpinWait呼び出しごとの反復回数。デフォルト32。",
+  "optitime:setting-suppress-compat": "互換性メッセージを非表示",
+  "optitime:setting-suppress-compat-tooltip": "ワールド読み込み時のMOD競合通知をチャットで非表示にする（ログには記録されます）"
 }

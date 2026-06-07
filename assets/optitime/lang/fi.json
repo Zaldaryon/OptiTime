@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Jakson yield-kynnys (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Tämän jäljellä olevan ajan alapuolella vaihdetaan Thread.Yield()-kutsusta Thread.SpinWait()-kutsuun. Matalampi = tarkempi ajoitus mutta enemmän CPU:ta. Oletus 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Jakson spin-iteraatiot",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iteraatiot per Thread.SpinWait-kutsu poltettaessa viimeistä aikaviipalaetta. Oletus 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iteraatiot per Thread.SpinWait-kutsu poltettaessa viimeistä aikaviipalaetta. Oletus 32.",
+  "optitime:setting-suppress-compat": "Piilota yhteensopivuusviestit",
+  "optitime:setting-suppress-compat-tooltip": "Piilota modiristiriitailmoitukset chatista maailman latautuessa (tiedot kirjataan silti lokiin)"
 }

@@ -174,6 +174,12 @@ namespace OptiTime
                 positiveMatchCache.TryRemove(positiveKey, out _);
                 GridRecipe[] candidates = GetGridCandidates(snap, slots);
 
+                if (candidates.Length == 0 && CountNonEmpty(slots) > 0)
+                {
+                    // Narrowing missed this combination — fall through to vanilla
+                    return true;
+                }
+
                 for (int pass = 0; pass < 2; pass++)
                 {
                     bool shapeless = pass == 1;

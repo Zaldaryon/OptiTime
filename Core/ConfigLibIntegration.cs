@@ -172,6 +172,10 @@ namespace OptiTime
                     config.BackgroundMaxFps = tree.GetInt("value", 20);
                     changed = true;
                     break;
+                case "SuppressCompatibilityMessages":
+                    config.SuppressCompatibilityMessages = value;
+                    changed = true;
+                    break;
             }
 
             if (changed)

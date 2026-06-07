@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Prag Yield Cadență (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Sub acest timp rămas, comută de la Thread.Yield() la Thread.SpinWait(). Mai mic = temporizare mai precisă dar mai mult CPU. Implicit 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Iterații Spin Cadență",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterații per apel Thread.SpinWait la consumarea ultimei felii de timp. Implicit 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterații per apel Thread.SpinWait la consumarea ultimei felii de timp. Implicit 32.",
+  "optitime:setting-suppress-compat": "Ascunde mesajele de compatibilitate",
+  "optitime:setting-suppress-compat-tooltip": "Ascunde notificările de conflict de moduri din chat la încărcarea lumii (info rămâne în jurnal)"
 }

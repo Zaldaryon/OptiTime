@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Próg yield taktowania (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Poniżej tego pozostałego czasu przełącz z Thread.Yield() na Thread.SpinWait(). Niżej = dokładniejsze taktowanie ale więcej CPU. Domyślnie 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Iteracje spin taktowania",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iteracje na wywołanie Thread.SpinWait przy spalaniu ostatniego wycinka czasu. Domyślnie 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iteracje na wywołanie Thread.SpinWait przy spalaniu ostatniego wycinka czasu. Domyślnie 32.",
+  "optitime:setting-suppress-compat": "Ukryj komunikaty o kompatybilności",
+  "optitime:setting-suppress-compat-tooltip": "Ukryj powiadomienia o konfliktach modów na czacie przy ładowaniu świata (info nadal w logach)"
 }

@@ -71,7 +71,13 @@ namespace OptiTime
             ["shadowveg"] = "ShadowFarVegetationCullEnabled",
             ["shadowentity"] = "EntityShadowDistanceCullEnabled",
             ["entityinterp"] = "EntityInterpolationOptimizations",
-            ["repulseagents"] = "RepulseAgentsOptimizations"
+            ["repulseagents"] = "RepulseAgentsOptimizations",
+            ["suppress"] = "SuppressCompatibilityMessages"
+        };
+
+        private static readonly HashSet<string> NoRestartRequired = new HashSet<string>
+        {
+            nameof(OptiTimeConfig.SuppressCompatibilityMessages)
         };
 
         public override bool ShouldLoad(EnumAppSide forSide)
@@ -1087,7 +1093,8 @@ namespace OptiTime
                     config.Save(capi);
                     ApplyRuntimeConfig();
                     capi.ShowChatMessage(Lang.Get("optitime:cmd-enabled", command));
-                    capi.ShowChatMessage(Lang.Get("optitime:cmd-restart-required"));
+                    if (!NoRestartRequired.Contains(optName))
+                        capi.ShowChatMessage(Lang.Get("optitime:cmd-restart-required"));
                 }
                 else if (action.Equals("off", StringComparison.OrdinalIgnoreCase))
                 {
@@ -1095,7 +1102,8 @@ namespace OptiTime
                     config.Save(capi);
                     ApplyRuntimeConfig();
                     capi.ShowChatMessage(Lang.Get("optitime:cmd-disabled", command));
-                    capi.ShowChatMessage(Lang.Get("optitime:cmd-restart-required"));
+                    if (!NoRestartRequired.Contains(optName))
+                        capi.ShowChatMessage(Lang.Get("optitime:cmd-restart-required"));
                 }
                 else
                 {
@@ -1213,8 +1221,11 @@ namespace OptiTime
                 api.Logger.Notification("[OptiTime]   - All code optimizations: Active");
                 api.Logger.Notification("═══════════════════════════════════════════════════════");
                 
-                api.ShowChatMessage(Lang.Get("optitime:compat-ancestral-title"));
-                api.ShowChatMessage(Lang.Get("optitime:compat-ancestral-desc"));
+                if (!config.SuppressCompatibilityMessages)
+                {
+                    api.ShowChatMessage(Lang.Get("optitime:compat-ancestral-title"));
+                    api.ShowChatMessage(Lang.Get("optitime:compat-ancestral-desc"));
+                }
             }
 
             // Check for Combat Overhaul / Overhaullib
@@ -1232,15 +1243,18 @@ namespace OptiTime
                 config.MarkAsConflictDisabled(nameof(OptiTimeConfig.EntityAnimationOptimizations), combatOverhaulDetected ? "Combat Overhaul compatibility mode" : "Overhaullib compatibility mode");
                 config.Save(api);
                 
-                if (combatOverhaulDetected)
+                if (!config.SuppressCompatibilityMessages)
                 {
-                    api.ShowChatMessage(Lang.Get("optitime:compat-overhaul-title"));
-                    api.ShowChatMessage(Lang.Get("optitime:compat-overhaul-desc"));
-                }
-                else
-                {
-                    api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-title"));
-                    api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-desc"));
+                    if (combatOverhaulDetected)
+                    {
+                        api.ShowChatMessage(Lang.Get("optitime:compat-overhaul-title"));
+                        api.ShowChatMessage(Lang.Get("optitime:compat-overhaul-desc"));
+                    }
+                    else
+                    {
+                        api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-title"));
+                        api.ShowChatMessage(Lang.Get("optitime:compat-overhaullib-desc"));
+                    }
                 }
             }
 
@@ -1262,8 +1276,11 @@ namespace OptiTime
                 config.Save(api);
                 ApplyRuntimeConfig();
 
-                api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-title", modName));
-                api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-desc"));
+                if (!config.SuppressCompatibilityMessages)
+                {
+                    api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-title", modName));
+                    api.ShowChatMessage(Lang.Get("optitime:compat-bloodfx-desc"));
+                }
             }
 
             // Check for Electrical Progressive (Industry)
@@ -1279,8 +1296,11 @@ namespace OptiTime
                 config.MarkAsConflictDisabled(nameof(OptiTimeConfig.HandbookOptimizations), "Electrical Progressive compatibility mode");
                 config.Save(api);
 
-                api.ShowChatMessage(Lang.Get("optitime:compat-electricalprogressive-title"));
-                api.ShowChatMessage(Lang.Get("optitime:compat-electricalprogressive-desc"));
+                if (!config.SuppressCompatibilityMessages)
+                {
+                    api.ShowChatMessage(Lang.Get("optitime:compat-electricalprogressive-title"));
+                    api.ShowChatMessage(Lang.Get("optitime:compat-electricalprogressive-desc"));
+                }
             }
 
             // Check for CoriaenderShaders (runtime shader patching via regex on chunkliquid)
@@ -1297,8 +1317,11 @@ namespace OptiTime
                 config.MarkAsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations), "CoriaenderShaders compatibility mode");
                 config.Save(api);
 
-                api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-title"));
-                api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-desc"));
+                if (!config.SuppressCompatibilityMessages)
+                {
+                    api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-title"));
+                    api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-desc"));
+                }
             }
 
             // Check for smoke/firearms mods whose particles spawn via off-thread pools
@@ -1316,8 +1339,11 @@ namespace OptiTime
 
                 ParticleOptimization.SetSkipOffthreadRejection(true);
 
-                api.ShowChatMessage(Lang.Get("optitime:compat-smoke-title", modName));
-                api.ShowChatMessage(Lang.Get("optitime:compat-smoke-desc"));
+                if (!config.SuppressCompatibilityMessages)
+                {
+                    api.ShowChatMessage(Lang.Get("optitime:compat-smoke-title", modName));
+                    api.ShowChatMessage(Lang.Get("optitime:compat-smoke-desc"));
+                }
             }
         }
 

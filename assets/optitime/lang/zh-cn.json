@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "步调Yield阈值（毫秒）",
   "optitime:setting-pacing-yield-threshold-tooltip": "低于此剩余时间时从Thread.Yield()切换到Thread.SpinWait()。越低 = 时序越精确但CPU使用越多。默认0.25毫秒。",
   "optitime:setting-pacing-spin-iterations": "步调Spin迭代次数",
-  "optitime:setting-pacing-spin-iterations-tooltip": "燃烧最后时间片时每次Thread.SpinWait调用的迭代次数。默认32。"
+  "optitime:setting-pacing-spin-iterations-tooltip": "燃烧最后时间片时每次Thread.SpinWait调用的迭代次数。默认32。",
+  "optitime:setting-suppress-compat": "隐藏兼容性消息",
+  "optitime:setting-suppress-compat-tooltip": "在加载世界时隐藏聊天中的模组冲突通知（信息仍记录在日志中）"
 }

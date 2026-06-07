@@ -37,6 +37,7 @@ namespace OptiTime
         public bool EntityShadowDistanceCullEnabled { get; set; } = true;
         public bool EntityInterpolationOptimizations { get; set; } = true;
         public bool RepulseAgentsOptimizations { get; set; } = true;
+        public bool SuppressCompatibilityMessages { get; set; } = false;
 
         private Dictionary<string, Action<bool>> optimizationSetters;
         private Dictionary<string, Func<bool>> optimizationGetters;
@@ -71,6 +72,7 @@ namespace OptiTime
                 [nameof(EntityShadowDistanceCullEnabled)] = v => EntityShadowDistanceCullEnabled = v,
                 [nameof(EntityInterpolationOptimizations)] = v => EntityInterpolationOptimizations = v,
                 [nameof(RepulseAgentsOptimizations)] = v => RepulseAgentsOptimizations = v,
+                [nameof(SuppressCompatibilityMessages)] = v => SuppressCompatibilityMessages = v,
                 [nameof(EnableProfiling)] = v => EnableProfiling = v
             };
 
@@ -95,6 +97,7 @@ namespace OptiTime
                 [nameof(EntityShadowDistanceCullEnabled)] = () => EntityShadowDistanceCullEnabled,
                 [nameof(EntityInterpolationOptimizations)] = () => EntityInterpolationOptimizations,
                 [nameof(RepulseAgentsOptimizations)] = () => RepulseAgentsOptimizations,
+                [nameof(SuppressCompatibilityMessages)] = () => SuppressCompatibilityMessages,
                 [nameof(EnableProfiling)] = () => EnableProfiling
             };
         }
@@ -185,6 +188,7 @@ namespace OptiTime
                 nameof(EntityShadowDistanceCullEnabled) => "Skip entity shadows beyond 80 blocks (sub-pixel in shadow map at default quality)",
                 nameof(EntityInterpolationOptimizations) => "Smoother remote entity movement in multiplayer (flood protection)",
                 nameof(RepulseAgentsOptimizations) => "Skip entity separation checks for distant creatures (>64 blocks)",
+                nameof(SuppressCompatibilityMessages) => "Hide mod conflict notifications in chat on world load (info still logged)",
                 _ => "Unknown optimization"
             };
         }
@@ -255,6 +259,7 @@ namespace OptiTime
             PrintOptStatus(api, "shadowentity", EntityShadowDistanceCullEnabled, nameof(EntityShadowDistanceCullEnabled));
             PrintOptStatus(api, "entityinterp", EntityInterpolationOptimizations, nameof(EntityInterpolationOptimizations));
             PrintOptStatus(api, "repulseagents", RepulseAgentsOptimizations, nameof(RepulseAgentsOptimizations));
+            PrintOptStatus(api, "suppress", SuppressCompatibilityMessages, nameof(SuppressCompatibilityMessages));
             api.ShowChatMessage($"profiling: {(EnableProfiling ? "ON" : "OFF")}");
         }
         
@@ -302,7 +307,8 @@ namespace OptiTime
                 ["shadowveg"] = (ShadowFarVegetationCullEnabled, "Shadow Far Vegetation Cull", nameof(ShadowFarVegetationCullEnabled)),
                 ["shadowentity"] = (EntityShadowDistanceCullEnabled, "Entity Shadow Distance Cull", nameof(EntityShadowDistanceCullEnabled)),
                 ["entityinterp"] = (EntityInterpolationOptimizations, "Entity Interpolation", nameof(EntityInterpolationOptimizations)),
-                ["repulseagents"] = (RepulseAgentsOptimizations, "Repulse Agents", nameof(RepulseAgentsOptimizations))
+                ["repulseagents"] = (RepulseAgentsOptimizations, "Repulse Agents", nameof(RepulseAgentsOptimizations)),
+                ["suppress"] = (SuppressCompatibilityMessages, "Suppress Compatibility Messages", nameof(SuppressCompatibilityMessages))
             };
 
             if (mapping.TryGetValue(catLower, out var info))

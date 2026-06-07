@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Zamanlama Yield Eşiği (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Bu kalan sürenin altında Thread.Yield()'dan Thread.SpinWait()'e geç. Düşük = daha sıkı zamanlama ama daha fazla CPU. Varsayılan 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Zamanlama Spin Yinelemeleri",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Son zaman dilimini tüketirken Thread.SpinWait çağrısı başına yineleme sayısı. Varsayılan 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Son zaman dilimini tüketirken Thread.SpinWait çağrısı başına yineleme sayısı. Varsayılan 32.",
+  "optitime:setting-suppress-compat": "Uyumluluk mesajlarını gizle",
+  "optitime:setting-suppress-compat-tooltip": "Dünya yüklenirken sohbetteki mod çakışma bildirimlerini gizle (bilgi hâlâ günlüğe kaydedilir)"
 }

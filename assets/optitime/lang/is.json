@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Rammatímasetning yield-þröskuldur (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Undir þessum tíma sem eftir er, skipta úr Thread.Yield() í Thread.SpinWait(). Lægra = nákvæmari tímasetning en meiri CPU. Sjálfgefið 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Rammatímasetning snúningsítranir",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Ítranir á hvert Thread.SpinWait kall þegar síðasti tímasneiður er brenndur. Sjálfgefið 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Ítranir á hvert Thread.SpinWait kall þegar síðasti tímasneiður er brenndur. Sjálfgefið 32.",
+  "optitime:setting-suppress-compat": "Fela samhæfniskilaboð",
+  "optitime:setting-suppress-compat-tooltip": "Fela tilkynningar um mod-árekstra í spjalli við heimshleðslu (upplýsingar eru enn skráðar)"
 }

@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Порог yield синхронизации (мс)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Ниже этого остатка времени переключается с Thread.Yield() на Thread.SpinWait(). Меньше = точнее, но больше нагрузка на ЦП. По умолчанию 0.25 мс.",
   "optitime:setting-pacing-spin-iterations": "Итерации spin синхронизации",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Итераций за вызов Thread.SpinWait при дожигании последнего отрезка времени. По умолчанию 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Итераций за вызов Thread.SpinWait при дожигании последнего отрезка времени. По умолчанию 32.",
+  "optitime:setting-suppress-compat": "Скрыть сообщения совместимости",
+  "optitime:setting-suppress-compat-tooltip": "Скрыть уведомления о конфликтах модов в чате при загрузке мира (информация сохраняется в логах)"
 }

@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Yield-tröskel för taktning (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Under denna återstående tid växlas från Thread.Yield() till Thread.SpinWait(). Lägre = stramare timing men mer CPU. Standard 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Spin-iterationer för taktning",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterationer per Thread.SpinWait-anrop vid förbränning av sista tidsskivan. Standard 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterationer per Thread.SpinWait-anrop vid förbränning av sista tidsskivan. Standard 32.",
+  "optitime:setting-suppress-compat": "Dölj kompatibilitetsmeddelanden",
+  "optitime:setting-suppress-compat-tooltip": "Dölj mod-konfliktnotiser i chatten vid världsladdning (info loggas fortfarande)"
 }

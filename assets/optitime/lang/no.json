@@ -82,5 +82,7 @@
   "optitime:setting-pacing-yield-threshold": "Bildetakt yield-terskel (ms)",
   "optitime:setting-pacing-yield-threshold-tooltip": "Under denne gjenværende tiden byttes det fra Thread.Yield() til Thread.SpinWait(). Lavere = strammere timing men mer CPU. Standard 0.25 ms.",
   "optitime:setting-pacing-spin-iterations": "Bildetakt spin-iterasjoner",
-  "optitime:setting-pacing-spin-iterations-tooltip": "Iterasjoner per Thread.SpinWait-kall når siste tidsskive forbrukes. Standard 32."
+  "optitime:setting-pacing-spin-iterations-tooltip": "Iterasjoner per Thread.SpinWait-kall når siste tidsskive forbrukes. Standard 32.",
+  "optitime:setting-suppress-compat": "Skjul kompatibilitetsmeldinger",
+  "optitime:setting-suppress-compat-tooltip": "Skjul mod-konfliktvarslinger i chatten ved verdensinnlasting (info logges fortsatt)"
 }
