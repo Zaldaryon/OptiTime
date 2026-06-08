@@ -2,7 +2,7 @@
 
 Clientside performance optimizations for Vintage Story through shader optimization and code patches.
 
-Current version: 1.5.13
+Current version: 1.5.14
 
 ## Performance Gains
 

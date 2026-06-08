@@ -138,6 +138,13 @@ namespace OptiTime
                     slots[i] = __instance[i];
                 }
 
+                // OptiTime never touches fishing: defer any grid holding a fishing pole
+                // or bait to vanilla so the fishing/cloth-rope systems run unmodified.
+                if (FishingCompat.GridInvolvesFishing(slots))
+                {
+                    return true;
+                }
+
                 ItemSlot outputSlot = __instance[slotCount];
                 IPlayer player = __instance.Player;
                 IWorldAccessor world = __instance.Api.World;
@@ -217,6 +224,12 @@ namespace OptiTime
         private static bool MatchesPrefixCore(GridRecipe recipe, IPlayer player, IWorldAccessor world, ItemSlot[] ingredients, int gridWidth, ref bool result)
         {
             if (recipe == null || player?.Entity?.Api == null)
+            {
+                return true;
+            }
+
+            // OptiTime never touches fishing: let vanilla evaluate fishing/bait recipes.
+            if (FishingCompat.IsFishingRecipe(recipe))
             {
                 return true;
             }

@@ -144,6 +144,11 @@ namespace OptiTime
             if (particleProperties == null || particleProperties.IgnoreUserConfig)
                 return true;
 
+            // Water splash particles (incl. the fishing bobber's splash) are never culled —
+            // OptiTime stays out of fishing visuals.
+            if (particleProperties is WaterSplashParticles)
+                return true;
+
             // Smoke/firearms mod compatibility: never reject particles on off-thread pools
             if (skipOffthreadRejection && offthreadRef(__instance))
                 return true;
