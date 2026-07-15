@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -65,125 +66,133 @@ namespace OptiTime
                 return;
             }
 
-            // Get the new value
-            var value = tree.GetBool("value");
-
-            // Update OptiTime config
             var config = OptiTimeMod.Config;
             if (config == null) return;
 
-            bool changed = false;
+            if (!TryApplySetting(config, code, tree, out string feedback))
+            {
+                return;
+            }
+
+            OptiTimeMod.SaveConfig();
+            feedback ??= tree.GetBool("value") ? Lang.Get("optitime:status-on") : Lang.Get("optitime:status-off");
+            api?.ShowChatMessage(Lang.Get("optitime:configlib-setting-changed", code, feedback));
+        }
+
+        internal static bool TryApplySetting(OptiTimeConfig config, string code, ITreeAttribute tree, out string feedback)
+        {
+            feedback = null;
+            if (config == null || tree == null || string.IsNullOrWhiteSpace(code))
+            {
+                return false;
+            }
+
+            bool value = tree.GetBool("value");
+            bool changed = true;
 
             switch (code)
             {
                 case "ShaderOptimizations":
                     config.ShaderOptimizations = value;
-                    changed = true;
                     break;
                 case "BlurOptimizationEnabled":
                     config.BlurOptimizationEnabled = value;
-                    changed = true;
                     break;
                 case "ParticleViewDistanceScalingEnabled":
                     config.ParticleViewDistanceScalingEnabled = value;
-                    changed = true;
                     break;
                 case "GuiManagerNoLinqEnabled":
                     config.GuiManagerNoLinqEnabled = value;
-                    changed = true;
                     break;
                 case "GuiManagerInputNoLinqEnabled":
                     config.GuiManagerInputNoLinqEnabled = value;
-                    changed = true;
                     break;
                 case "GuiManagerMouseMoveCoalescingEnabled":
                     config.GuiManagerMouseMoveCoalescingEnabled = value;
-                    changed = true;
                     break;
                 case "AmbientSoundOptimizations":
                     config.AmbientSoundOptimizations = value;
-                    changed = true;
                     break;
                 case "DynamicLightOptimizations":
                     config.DynamicLightOptimizations = value;
-                    changed = true;
                     break;
                 case "EntityAnimationOptimizations":
                     config.EntityAnimationOptimizations = value;
-                    changed = true;
                     break;
                 case "FlySoundOptimizations":
                     config.FlySoundOptimizations = value;
-                    changed = true;
                     break;
                 case "BackgroundFpsLimiterEnabled":
                     config.BackgroundFpsLimiterEnabled = value;
-                    changed = true;
                     break;
                 case "PreciseFramePacingEnabled":
                     config.PreciseFramePacingEnabled = value;
-                    changed = true;
                     break;
                 case "GuiManagerOptimizations":
                     config.GuiManagerOptimizations = value;
-                    changed = true;
                     break;
                 case "HandbookOptimizations":
                     config.HandbookOptimizations = value;
-                    changed = true;
                     break;
                 case "RecipeLookupOptimizations":
                     config.RecipeLookupOptimizations = value;
-                    changed = true;
                     break;
                 case "OcclusionCullingOptimizations":
                     config.OcclusionCullingOptimizations = value;
-                    changed = true;
                     break;
                 case "ParticleOptimizations":
                     config.ParticleOptimizations = value;
-                    changed = true;
                     break;
                 case "WeatherWindOptimizations":
                     config.WeatherWindOptimizations = value;
-                    changed = true;
                     break;
                 case "TickingBlocksOptimizations":
                     config.TickingBlocksOptimizations = value;
-                    changed = true;
                     break;
                 case "ShadowFarVegetationCullEnabled":
                     config.ShadowFarVegetationCullEnabled = value;
-                    changed = true;
                     break;
                 case "EntityShadowDistanceCullEnabled":
                     config.EntityShadowDistanceCullEnabled = value;
-                    changed = true;
                     break;
                 case "EntityInterpolationOptimizations":
                     config.EntityInterpolationOptimizations = value;
-                    changed = true;
                     break;
                 case "RepulseAgentsOptimizations":
                     config.RepulseAgentsOptimizations = value;
-                    changed = true;
                     break;
                 case "BackgroundMaxFps":
-                    config.BackgroundMaxFps = tree.GetInt("value", 20);
-                    changed = true;
+                    config.BackgroundMaxFps = tree.GetInt("value", config.BackgroundMaxFps);
+                    feedback = config.BackgroundMaxFps.ToString(CultureInfo.InvariantCulture);
+                    break;
+                case "PreciseFramePacingUndershootPercent":
+                    float undershootPercent = tree.GetFloat("value", (float)config.PreciseFramePacingUndershootPercent);
+                    feedback = undershootPercent.ToString(CultureInfo.InvariantCulture);
+                    config.PreciseFramePacingUndershootPercent = double.Parse(feedback, CultureInfo.InvariantCulture);
+                    break;
+                case "PreciseFramePacingYieldThresholdMs":
+                    float yieldThresholdMs = tree.GetFloat("value", (float)config.PreciseFramePacingYieldThresholdMs);
+                    feedback = yieldThresholdMs.ToString(CultureInfo.InvariantCulture);
+                    config.PreciseFramePacingYieldThresholdMs = double.Parse(feedback, CultureInfo.InvariantCulture);
+                    break;
+                case "PreciseFramePacingSpinIterations":
+                    config.PreciseFramePacingSpinIterations = tree.GetInt("value", config.PreciseFramePacingSpinIterations);
+                    feedback = config.PreciseFramePacingSpinIterations.ToString(CultureInfo.InvariantCulture);
                     break;
                 case "SuppressCompatibilityMessages":
                     config.SuppressCompatibilityMessages = value;
-                    changed = true;
+                    break;
+                default:
+                    changed = false;
                     break;
             }
 
-            if (changed)
+            if (!changed)
             {
-                OptiTimeMod.SaveConfig();
-                string status = value ? Lang.Get("optitime:status-on") : Lang.Get("optitime:status-off");
-                api?.ShowChatMessage(Lang.Get("optitime:configlib-setting-changed", code, status));
+                return false;
             }
+
+            return true;
         }
     }
 }

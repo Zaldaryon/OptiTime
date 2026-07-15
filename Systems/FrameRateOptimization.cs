@@ -19,6 +19,7 @@ namespace OptiTime
         public const double DefaultUndershootPercent = 0.075;
         public const double DefaultYieldThresholdMs = 0.25;
         public const int DefaultSpinWaitIterations = 32;
+        internal const int MinimumBackgroundFps = 5;
 
         private static readonly AccessTools.FieldRef<ClientPlatformWindows, Stopwatch> frameStopWatchRef;
         private static readonly AccessTools.FieldRef<FrameProfilerUtil, ProfileEntryRange> currentEntryRef;
@@ -68,7 +69,7 @@ namespace OptiTime
             }
             else
             {
-                backgroundMaxFps = Math.Clamp(configuredBackgroundFps, 11, 240);
+                backgroundMaxFps = Math.Clamp(configuredBackgroundFps, MinimumBackgroundFps, 240);
             }
 
             // Tunable pacing knobs — clamped to sane ranges.

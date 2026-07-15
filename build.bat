@@ -13,7 +13,7 @@ REM ) else (
 REM     echo Building OptiTime mod without obfuscation (Obfuscar not found^)...
 REM     set "BUILD_TYPE=DEOBFUSCATED"
 REM )
-REM 
+REM
 REM Clean previous builds
 if exist bin rmdir /s /q bin
 
@@ -60,7 +60,7 @@ if %BUILD_EXIT% EQU 0 (
     if defined ZIP_NAME (
         REM Remove old OptiTime versions from Mods folder
         del "%APPDATA%\VintagestoryData\Mods\OptiTime*.zip" 2>NUL || echo.
-        
+
         REM Copy new version to VintagestoryData Mods folder
         copy "bin\!ZIP_NAME!" "%APPDATA%\VintagestoryData\Mods\" >NUL 2>&1 || echo.
         echo Mod packaged successfully: !ZIP_NAME! [!BUILD_TYPE!]

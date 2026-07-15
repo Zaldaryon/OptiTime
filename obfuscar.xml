@@ -12,7 +12,7 @@
     <SkipMethod type="OptiTime.ParticleOptimization" name="GetParticleScale" />
     <SkipMethod type="OptiTime.OcclusionCullingOptimization" name="OptimizeOcclusionCulling" />
   </Module>
-  
+
   <AssemblySearchPath path="$(InPath)" />
   <AssemblySearchPath path="C:\Games\VintageStory" />
   <AssemblySearchPath path="C:\Games\VintageStory\Lib" />

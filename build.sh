@@ -80,6 +80,10 @@ rm -rf bin
 dotnet build OptiTime.csproj -c Release -v quiet /p:RestoreSources= /p:RestoreIgnoreFailedSources=true 2>&1 \
     | grep -iE 'warning|error' || true
 
+echo "Running tests..."
+dotnet test OptiTime.Tests/OptiTime.Tests.csproj -c Release -v minimal \
+    /p:RestoreSources= /p:RestoreIgnoreFailedSources=true
+
 MOD_VERSION="$(grep -oP '"version"\s*:\s*"\K[^"]+' modinfo.json)"
 TFM="$(grep -oP '<TargetFramework>\K[^<]+' OptiTime.csproj)"
 RELEASE_DIR="$SCRIPT_DIR/bin/Release/${TFM}"

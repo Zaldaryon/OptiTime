@@ -2,13 +2,13 @@
 
 Clientside performance optimizations for Vintage Story through shader optimization and code patches.
 
-Current version: 1.5.14
+Current version: 1.5.15
 
 ## Performance Gains
 
 **Shader Optimizations (quality-preserving cuts):**
-- **Liquid Droplets** — Droplet hash sin → fract (cheaper GPU operation, equivalent visual).
-- **Shadow Alpha** — Shadow map discard threshold raised (0.02 → 0.15) for better early-Z.
+- **Liquid Droplets** - Droplet hash sin → fract (cheaper GPU operation, equivalent visual).
+- **Shadow Alpha** - Shadow map discard threshold raised (0.02 → 0.15) for better early-Z.
 
 **Code Optimizations:**
 - **Ambient Sounds** - Update sound positions only when the player moves meaningfully.
@@ -21,7 +21,7 @@ Current version: 1.5.14
 - **GUI Manager** - LINQ-free render iteration with conflict auto-disable (opt-out); input patches optional/off by default.
 - **Handbook** - Cached relationships for faster page loading after indexing.
 - **Recipe Lookup** - Safer crafting-grid lookup with previous-match reuse, positive-result revalidation, and candidate narrowing (default on, opt-out).
-- **Occlusion Culling** - Dynamic enable gate based on view distance (clamped 70–200 chunks).
+- **Occlusion Culling** - Dynamic enable gate based on view distance (clamped 70-200 chunks).
 - **Particles** - Probabilistic spawn rejection at high view distances (384+: 25%, 512+: 50% fewer spawns).
 - **Repulse Agents** - Distance-based cull for entity separation checks (skip non-player entities beyond 64 blocks).
 - **Ticking Blocks** - Reuse BlockPos in particle tick loop to eliminate 30K-90K heap allocations/sec.
@@ -59,9 +59,11 @@ OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-gam
 1. Install ConfigLib mod (optional dependency)
 2. Use `.configlib` command to open GUI
 3. Navigate to OptiTime settings
-4. Changes apply immediately (restart may be required for some settings)
+4. Changes are saved immediately; some take effect after restarting
 
-**Note:** ConfigLib is NOT required - OptiTime works perfectly without it using JSON config or commands.
+ConfigLib now treats OptiTime settings as client-side, so they no longer require server-control privileges in multiplayer.
+
+ConfigLib is optional. OptiTime also supports JSON config and commands.
 
 ### Manual Configuration (OptiTime.json)
 
@@ -94,14 +96,14 @@ OptiTime supports [ConfigLib](https://mods.vintagestory.at/configlib) for in-gam
 .optitime repulseagents off - Disable repulse agents distance cull
 ```
 
-**Note:** Changes require game restart to take effect.
+**Note:** Some changes require a game restart to take effect.
 
 ## Technical Details
 
 - **Method:** Shader replacement (toggle via `ShaderOptimizations`) + Harmony patches
 - **Side:** Clientside only (no server changes needed)
 - **Compatibility:** Tested with 100 most popular ModDB mods (71 decompiled, 38 with Harmony patches analyzed). Works with all tested mods. Auto-disables conflicting optimizations when detected.
-- **Known mod interactions:** **Ancestral Bliss Shaders** — OptiTime disables its shader assets; **Combat Overhaul / Overhaullib** — entity animation optimization auto-disabled; **A Culinary Artillery / Extra Info / Tabletop Games** — handbook optimization auto-disabled; **Electrical Progressive** — handbook optimization auto-disabled
+- **Known mod interactions:** OptiTime disables its own shader assets when **Ancestral Bliss Shaders** is installed. It disables entity animation optimization for **Combat Overhaul / Overhaullib** and handbook optimization for **A Culinary Artillery / Extra Info / Tabletop Games** and **Electrical Progressive**
 - **Compatibility Behavior:** All Harmony patches check for foreign patches before applying and auto-disable on conflict
 - **Visual Impact:** Minimal - optimizations preserve visual quality
 - **Default State:** Most optimizations enabled; GUI input patches are off by default

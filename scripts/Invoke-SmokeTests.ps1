@@ -115,9 +115,7 @@ function Scan-IlPattern {
 
 function Get-LatestLog {
     $logDirs = @(
-        (Join-Path $env:APPDATA "VintagestoryData\\Logs"),
-        ":APPDATA\VintagestoryData\Logs",
-        ":APPDATA\VintagestoryData\Logs"
+        (Join-Path $env:APPDATA "VintagestoryData\\Logs")
     ) | Select-Object -Unique
 
     $logs = foreach ($dir in $logDirs) {
@@ -159,7 +157,7 @@ try {
     $zipName = "OptiTime-$version.zip"
     $zipPath = Join-Path $repoRoot "bin\$zipName"
     $installedZipPath = Join-Path $env:APPDATA "VintagestoryData\Mods\$zipName"
-    $dllPath = Join-Path $repoRoot "bin\Release\net8.0\OptiTime.dll"
+    $dllPath = Join-Path $repoRoot "bin\Release\net10.0\OptiTime.dll"
 
     Add-Result "Packaged zip exists" ($(if (Test-Path $zipPath) { "PASS" } else { "FAIL" })) $zipPath
     Add-Result "Installed zip exists" ($(if (Test-Path $installedZipPath) { "PASS" } else { "FAIL" })) $installedZipPath
