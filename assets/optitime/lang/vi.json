@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: BẬT",
   "optitime:cmd-disabled": "{0}: TẮT",
   "optitime:cmd-restart-required": "Cần khởi động lại",
-  "optitime:cmd-usage-toggle": "Cách dùng: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Cách dùng: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Không rõ: {0}",
   "optitime:cmd-available": "Có sẵn: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Chế độ tương thích với Ancestral Bliss",

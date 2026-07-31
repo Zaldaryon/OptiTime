@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: ZAP",
   "optitime:cmd-disabled": "{0}: VYP",
   "optitime:cmd-restart-required": "Vyžadovaný reštart",
-  "optitime:cmd-usage-toggle": "Použitie: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Použitie: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Neznáme: {0}",
   "optitime:cmd-available": "Dostupné: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Režim kompatibility s Ancestral Bliss",

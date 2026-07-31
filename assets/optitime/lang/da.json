@@ -9,7 +9,7 @@
   "optitime:cmd-enabled": "{0}: TIL",
   "optitime:cmd-disabled": "{0}: FRA",
   "optitime:cmd-restart-required": "Genstart påkrævet",
-  "optitime:cmd-usage-toggle": "Brug: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Brug: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Ukendt: {0}",
   "optitime:cmd-available": "Tilgængelig: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Kompatibilitetstilstand med Ancestral Bliss",

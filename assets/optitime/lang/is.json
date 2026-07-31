@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: Á",
   "optitime:cmd-disabled": "{0}: AF",
   "optitime:cmd-restart-required": "Endurræsing nauðsynleg",
-  "optitime:cmd-usage-toggle": "Notkun: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Notkun: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Óþekkt: {0}",
   "optitime:cmd-available": "Tiltækt: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Samhæfnistilstand með Ancestral Bliss",

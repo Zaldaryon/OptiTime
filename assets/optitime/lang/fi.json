@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: PÄÄLLÄ",
   "optitime:cmd-disabled": "{0}: POIS",
   "optitime:cmd-restart-required": "Uudelleenkäynnistys vaaditaan",
-  "optitime:cmd-usage-toggle": "Käyttö: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Käyttö: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Tuntematon: {0}",
   "optitime:cmd-available": "Saatavilla: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Yhteensopivuustila Ancestral Blissin kanssa",

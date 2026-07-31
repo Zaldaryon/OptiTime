@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: УВМ",
   "optitime:cmd-disabled": "{0}: ВИМК",
   "optitime:cmd-restart-required": "Потрібен перезапуск",
-  "optitime:cmd-usage-toggle": "Використання: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Використання: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Невідомо: {0}",
   "optitime:cmd-available": "Доступно: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Режим сумісності з Ancestral Bliss",

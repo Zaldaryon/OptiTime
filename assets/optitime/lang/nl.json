@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: AAN",
   "optitime:cmd-disabled": "{0}: UIT",
   "optitime:cmd-restart-required": "Herstart vereist",
-  "optitime:cmd-usage-toggle": "Gebruik: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Gebruik: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Onbekend: {0}",
   "optitime:cmd-available": "Beschikbaar: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Compatibiliteitsmodus met Ancestral Bliss",

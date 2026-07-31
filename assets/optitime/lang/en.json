@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: ON",
   "optitime:cmd-disabled": "{0}: OFF",
   "optitime:cmd-restart-required": "Restart required",
-  "optitime:cmd-usage-toggle": "Usage: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Usage: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Unknown: {0}",
   "optitime:cmd-available": "Available: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Compatibility mode with Ancestral Bliss",

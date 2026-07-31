@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: UKLJUČENO",
   "optitime:cmd-disabled": "{0}: ISKLJUČENO",
   "optitime:cmd-restart-required": "Potreban restart",
-  "optitime:cmd-usage-toggle": "Upotreba: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Upotreba: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Nepoznato: {0}",
   "optitime:cmd-available": "Dostupno: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Režim kompatibilnosti sa Ancestral Bliss",

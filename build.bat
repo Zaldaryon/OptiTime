@@ -2,6 +2,25 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >NUL 2>&1
 
+REM Resolve Vintage Story installation (mirrors resolve_vintage_story in build.sh)
+if not defined VINTAGE_STORY (
+    for %%D in (
+        "C:\Games\VintageStory"
+        "C:\Program Files\Vintage Story"
+        "%USERPROFILE%\Games\vintagestory"
+    ) do (
+        if not defined VINTAGE_STORY (
+            if exist "%%~D\VintagestoryAPI.dll" set "VINTAGE_STORY=%%~D"
+        )
+    )
+)
+if not defined VINTAGE_STORY (
+    echo Error: Vintage Story installation not found (need VintagestoryAPI.dll^)
+    echo Set the VINTAGE_STORY environment variable to the game folder.
+    exit /b 1
+)
+echo Vintage Story: %VINTAGE_STORY%
+
 REM REM Check if Obfuscar is available
 echo Building OptiTime mod without obfuscation...
 set "BUILD_TYPE=DEOBFUSCATED"
@@ -13,7 +32,7 @@ REM ) else (
 REM     echo Building OptiTime mod without obfuscation (Obfuscar not found^)...
 REM     set "BUILD_TYPE=DEOBFUSCATED"
 REM )
-REM
+REM 
 REM Clean previous builds
 if exist bin rmdir /s /q bin
 
@@ -60,7 +79,7 @@ if %BUILD_EXIT% EQU 0 (
     if defined ZIP_NAME (
         REM Remove old OptiTime versions from Mods folder
         del "%APPDATA%\VintagestoryData\Mods\OptiTime*.zip" 2>NUL || echo.
-
+        
         REM Copy new version to VintagestoryData Mods folder
         copy "bin\!ZIP_NAME!" "%APPDATA%\VintagestoryData\Mods\" >NUL 2>&1 || echo.
         echo Mod packaged successfully: !ZIP_NAME! [!BUILD_TYPE!]

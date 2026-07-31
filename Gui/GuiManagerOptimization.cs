@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.Client;
 using Vintagestory.Client.NoObf;
 using OptiTime.Diagnostics;
@@ -24,6 +25,14 @@ namespace OptiTime
             AccessTools.FieldRefAccess<ClientMain, List<GuiDialog>>("OpenedGuis");
         private static readonly AccessTools.FieldRef<ClientMain, List<GuiDialog>> loadedGuisRef =
             AccessTools.FieldRefAccess<ClientMain, List<GuiDialog>>("LoadedGuis");
+        private static readonly System.Func<ClientMain, int> dialogsOpenedRef =
+            (System.Func<ClientMain, int>)AccessTools.PropertyGetter(typeof(ClientMain), "DialogsOpened")?.CreateDelegate(typeof(System.Func<ClientMain, int>));
+        private static readonly AccessTools.FieldRef<GuiManager, bool> didHoverSlotEventTriggerRef =
+            AccessTools.FieldRefAccess<GuiManager, bool>("didHoverSlotEventTrigger");
+        private static readonly AccessTools.FieldRef<GuiElementItemSlotGridBase, IInventory> inventoryRef =
+            AccessTools.FieldRefAccess<GuiElementItemSlotGridBase, IInventory>("inventory");
+        private static readonly AccessTools.FieldRef<GuiElementItemSlotGridBase, Vintagestory.API.Datastructures.OrderedDictionary<int, ItemSlot>> availableSlotsRef =
+            AccessTools.FieldRefAccess<GuiElementItemSlotGridBase, Vintagestory.API.Datastructures.OrderedDictionary<int, ItemSlot>>("availableSlots");
         private static System.Reflection.MethodInfo onEscapePressedMethod = null;
         private static System.Reflection.MethodInfo requestFocusMethod = null;
         private static System.Reflection.MethodInfo onMouseMoveOverMethod = null;
@@ -115,14 +124,13 @@ namespace OptiTime
                 if (args == null)
                     return false;
 
-                var instance = __instance as dynamic;
                 var game = gameRef(__instance as ClientSystem);
                 var loadedGuis = loadedGuisRef(game);
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
 
-                instance.didHoverSlotEventTrigger = false;
+                didHoverSlotEventTriggerRef(__instance as GuiManager) = false;
 
                 UpdateCachedLoadedGuis(loadedGuis);
 
@@ -133,13 +141,13 @@ namespace OptiTime
                         nowMouseOverDialog.OnMouseMove(args);
                         if (args.Handled)
                         {
-                            onMouseMoveOverMethod?.Invoke(instance, new object[] { nowMouseOverDialog });
+                            onMouseMoveOverMethod?.Invoke(__instance, new object[] { nowMouseOverDialog });
                             return false;
                         }
                     }
                 }
 
-                onMouseMoveOverMethod?.Invoke(instance, new object[] { null });
+                onMouseMoveOverMethod?.Invoke(__instance, new object[] { null });
                 return false;
             }
             catch
@@ -341,8 +349,7 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var game = instance.game;
+                var game = gameRef(__instance as ClientSystem);
                 var openedGuis = openedGuisRef(game);
                 int keyCode = args.KeyCode;
 
@@ -361,9 +368,9 @@ namespace OptiTime
                     }
                 }
 
-                if (keyCode == 50 && game.DialogsOpened > 0)
+                if (keyCode == 50 && (dialogsOpenedRef?.Invoke(game) ?? 0) > 0)
                 {
-                    onEscapePressedMethod?.Invoke(instance, null);
+                    onEscapePressedMethod?.Invoke(__instance, null);
                     args.Handled = true;
                 }
                 else
@@ -392,8 +399,7 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var loadedGuis = instance.game.LoadedGuis as List<GuiDialog>;
+                var loadedGuis = loadedGuisRef(gameRef(__instance as ClientSystem));
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
@@ -423,8 +429,7 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var loadedGuis = instance.game.LoadedGuis as List<GuiDialog>;
+                var loadedGuis = loadedGuisRef(gameRef(__instance as ClientSystem));
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
@@ -454,8 +459,7 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var game = instance.game;
+                var game = gameRef(__instance as ClientSystem);
                 var loadedGuis = loadedGuisRef(game);
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
@@ -474,7 +478,7 @@ namespace OptiTime
                             if (debugPrint)
                                 game.Logger.Debug("[GuiManager] OnMouseDown handled by {0}", dialog.GetType().Name);
 
-                            requestFocusMethod?.Invoke(instance, new object[] { dialog });
+                            requestFocusMethod?.Invoke(__instance, new object[] { dialog });
                             break;
                         }
                     }
@@ -493,8 +497,7 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                var game = instance.game;
+                var game = gameRef(__instance as ClientSystem);
                 var loadedGuis = loadedGuisRef(game);
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
@@ -564,27 +567,33 @@ namespace OptiTime
         {
             try
             {
-                var instance = __instance as dynamic;
-                if (instance.inventory == null || instance.inventory.DirtySlots == null)
+                var slotGrid = __instance as GuiElementItemSlotGridBase;
+                if (slotGrid == null)
                     return;
 
-                var dirtySlots = instance.inventory.DirtySlots;
+                var inventory = inventoryRef(slotGrid);
+                if (inventory == null || inventory.DirtySlots == null)
+                    return;
+
+                var dirtySlots = inventory.DirtySlots;
                 if (dirtySlots.Count == 0)
                     return;
+
+                var availableSlots = availableSlotsRef(slotGrid);
 
                 // Remove invalid dirty slots to prevent crashes in other mods' patches
                 var slotsToRemove = new List<int>();
                 foreach (int dirtySlot in dirtySlots)
                 {
                     // Check if slot exists in inventory
-                    if (instance.inventory[dirtySlot] == null)
+                    if (inventory[dirtySlot] == null)
                     {
                         slotsToRemove.Add(dirtySlot);
                         continue;
                     }
 
                     // Check if slot is in available slots
-                    if (instance.availableSlots != null && instance.availableSlots.IndexOfKey(dirtySlot) < 0)
+                    if (availableSlots != null && availableSlots.IndexOfKey(dirtySlot) < 0)
                     {
                         slotsToRemove.Add(dirtySlot);
                     }

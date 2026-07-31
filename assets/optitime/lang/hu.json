@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: BE",
   "optitime:cmd-disabled": "{0}: KI",
   "optitime:cmd-restart-required": "Újraindítás szükséges",
-  "optitime:cmd-usage-toggle": "Használat: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Használat: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Ismeretlen: {0}",
   "optitime:cmd-available": "Elérhető: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Kompatibilitási mód az Ancestral Bliss-szel",

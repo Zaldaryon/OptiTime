@@ -9,7 +9,7 @@
   "optitime:cmd-enabled": "{0}: PORNIT",
   "optitime:cmd-disabled": "{0}: OPRIT",
   "optitime:cmd-restart-required": "Repornire necesară",
-  "optitime:cmd-usage-toggle": "Utilizare: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Utilizare: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Necunoscut: {0}",
   "optitime:cmd-available": "Disponibil: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Mod compatibilitate cu Ancestral Bliss",

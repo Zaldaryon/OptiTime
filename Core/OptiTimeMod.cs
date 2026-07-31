@@ -1029,7 +1029,7 @@ namespace OptiTime
         public void RegisterCommands(ICoreClientAPI api)
         {
 #pragma warning disable CS0618
-            api.RegisterCommand("optitime", "OptiTime optimization controls", ".optitime [status|<opt> on/off]", OnOptiTimeCommand);
+            api.RegisterCommand("optitime", "OptiTime optimization controls", ".optitime [status|&lt;opt&gt; on/off]", OnOptiTimeCommand);
 #pragma warning restore CS0618
         }
 
@@ -1446,9 +1446,16 @@ namespace OptiTime
             {
                 case "on": module.Enable(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: ON"); break;
                 case "off": module.Disable(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: OFF"); break;
-                case "dump": module.Dump(capi); break;
+                case "dump":
+                    if (!module.Enabled)
+                    {
+                        capi.ShowChatMessage($"[OptiTime] diag {module.ShortName} is not enabled, run `.optitime diag {module.ShortName} on` first, then play ~30s before dumping");
+                        break;
+                    }
+                    module.Dump(capi);
+                    break;
                 case "reset": module.Reset(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: reset"); break;
-                default: capi.ShowChatMessage("[OptiTime] usage: .optitime diag <module> on|off|dump|reset"); break;
+                default: capi.ShowChatMessage("[OptiTime] usage: .optitime diag &lt;module&gt; on|off|dump|reset"); break;
             }
         }
 

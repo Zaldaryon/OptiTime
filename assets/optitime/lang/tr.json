@@ -11,7 +11,7 @@
   "optitime:cmd-enabled": "{0}: AÇIK",
   "optitime:cmd-disabled": "{0}: KAPALI",
   "optitime:cmd-restart-required": "Yeniden başlatma gerekli",
-  "optitime:cmd-usage-toggle": "Kullanım: .optitime <opt> on/off",
+  "optitime:cmd-usage-toggle": "Kullanım: .optitime &lt;opt&gt; on/off",
   "optitime:cmd-unknown": "Bilinmeyen: {0}",
   "optitime:cmd-available": "Mevcut: {0}",
   "optitime:compat-ancestral-title": "[OptiTime] Ancestral Bliss ile uyumluluk modu",
