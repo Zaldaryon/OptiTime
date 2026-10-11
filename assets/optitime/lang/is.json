@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Rammatímasetning snúningsítranir",
   "optitime:setting-pacing-spin-iterations-tooltip": "Ítranir á hvert Thread.SpinWait kall þegar síðasti tímasneiður er brenndur. Sjálfgefið 32.",
   "optitime:setting-suppress-compat": "Fela samhæfniskilaboð",
-  "optitime:setting-suppress-compat-tooltip": "Fela tilkynningar um mod-árekstra í spjalli við heimshleðslu (upplýsingar eru enn skráðar)"
+  "optitime:setting-suppress-compat-tooltip": "Fela tilkynningar um mod-árekstra í spjalli við heimshleðslu (upplýsingar eru enn skráðar)",
+  "optitime:status-shadow-quality": "Skuggagæði {0}; krefst stigs yfir 1"
 }

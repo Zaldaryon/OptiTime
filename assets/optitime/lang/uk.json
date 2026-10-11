@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Ітерації Spin розподілення",
   "optitime:setting-pacing-spin-iterations-tooltip": "Кількість ітерацій на виклик Thread.SpinWait при спалюванні останнього часового відрізку. За замовчуванням 32.",
   "optitime:setting-suppress-compat": "Приховати повідомлення сумісності",
-  "optitime:setting-suppress-compat-tooltip": "Приховати сповіщення про конфлікти модів у чаті при завантаженні світу (інформація залишається в логах)"
+  "optitime:setting-suppress-compat-tooltip": "Приховати сповіщення про конфлікти модів у чаті при завантаженні світу (інформація залишається в логах)",
+  "optitime:status-shadow-quality": "Якість тіней {0}; потрібен рівень вище 1"
 }

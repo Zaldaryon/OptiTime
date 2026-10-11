@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Jakson spin-iteraatiot",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iteraatiot per Thread.SpinWait-kutsu poltettaessa viimeistä aikaviipalaetta. Oletus 32.",
   "optitime:setting-suppress-compat": "Piilota yhteensopivuusviestit",
-  "optitime:setting-suppress-compat-tooltip": "Piilota modiristiriitailmoitukset chatista maailman latautuessa (tiedot kirjataan silti lokiin)"
+  "optitime:setting-suppress-compat-tooltip": "Piilota modiristiriitailmoitukset chatista maailman latautuessa (tiedot kirjataan silti lokiin)",
+  "optitime:status-shadow-quality": "Varjojen laatu {0}; vaatii tason yli 1"
 }

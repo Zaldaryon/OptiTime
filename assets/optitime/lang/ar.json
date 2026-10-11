@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "تكرارات Spin للتوقيت",
   "optitime:setting-pacing-spin-iterations-tooltip": "التكرارات لكل استدعاء Thread.SpinWait عند استهلاك شريحة الوقت الأخيرة. الافتراضي 32.",
   "optitime:setting-suppress-compat": "إخفاء رسائل التوافق",
-  "optitime:setting-suppress-compat-tooltip": "إخفاء إشعارات تعارض المودات في الدردشة عند تحميل العالم (تبقى في السجل)"
+  "optitime:setting-suppress-compat-tooltip": "إخفاء إشعارات تعارض المودات في الدردشة عند تحميل العالم (تبقى في السجل)",
+  "optitime:status-shadow-quality": "جودة الظلال {0}؛ يلزم مستوى أعلى من 1"
 }

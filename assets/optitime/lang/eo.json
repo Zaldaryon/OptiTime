@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Spin-iteracioj por tempoplano",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iteracioj per Thread.SpinWait-voko kiam brulanta la lastan tempopecon. Defaŭlte 32.",
   "optitime:setting-suppress-compat": "Kaŝi kongruecajn mesaĝojn",
-  "optitime:setting-suppress-compat-tooltip": "Kaŝi modkonfliktajn sciigojn en babilejo dum mondŝarĝo (info restas en protokolo)"
+  "optitime:setting-suppress-compat-tooltip": "Kaŝi modkonfliktajn sciigojn en babilejo dum mondŝarĝo (info restas en protokolo)",
+  "optitime:status-shadow-quality": "Ombrokvalito {0}; bezonas nivelon super 1"
 }

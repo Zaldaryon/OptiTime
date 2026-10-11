@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Iterações de Spin da Cadência",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iterações por chamada Thread.SpinWait ao consumir a fatia final de tempo. Padrão 32.",
   "optitime:setting-suppress-compat": "Ocultar mensagens de compatibilidade",
-  "optitime:setting-suppress-compat-tooltip": "Ocultar notificações de conflitos de mods no chat ao carregar o mundo (info permanece no log)"
+  "optitime:setting-suppress-compat-tooltip": "Ocultar notificações de conflitos de mods no chat ao carregar o mundo (info permanece no log)",
+  "optitime:status-shadow-quality": "Qualidade de sombras {0}; requer nível acima de 1"
 }

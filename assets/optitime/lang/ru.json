@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Итерации spin синхронизации",
   "optitime:setting-pacing-spin-iterations-tooltip": "Итераций за вызов Thread.SpinWait при дожигании последнего отрезка времени. По умолчанию 32.",
   "optitime:setting-suppress-compat": "Скрыть сообщения совместимости",
-  "optitime:setting-suppress-compat-tooltip": "Скрыть уведомления о конфликтах модов в чате при загрузке мира (информация сохраняется в логах)"
+  "optitime:setting-suppress-compat-tooltip": "Скрыть уведомления о конфликтах модов в чате при загрузке мира (информация сохраняется в логах)",
+  "optitime:status-shadow-quality": "Качество теней {0}; требуется уровень выше 1"
 }

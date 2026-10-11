@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "步調Spin迭代次數",
   "optitime:setting-pacing-spin-iterations-tooltip": "燃燒最後時間片時每次Thread.SpinWait呼叫的迭代次數。預設32。",
   "optitime:setting-suppress-compat": "隱藏相容性訊息",
-  "optitime:setting-suppress-compat-tooltip": "在載入世界時隱藏聊天中的模組衝突通知（資訊仍記錄在日誌中）"
+  "optitime:setting-suppress-compat-tooltip": "在載入世界時隱藏聊天中的模組衝突通知（資訊仍記錄在日誌中）",
+  "optitime:status-shadow-quality": "陰影品質 {0}；需要高於 1 的等級"
 }

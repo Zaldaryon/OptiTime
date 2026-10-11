@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Spin-iterationer för taktning",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iterationer per Thread.SpinWait-anrop vid förbränning av sista tidsskivan. Standard 32.",
   "optitime:setting-suppress-compat": "Dölj kompatibilitetsmeddelanden",
-  "optitime:setting-suppress-compat-tooltip": "Dölj mod-konfliktnotiser i chatten vid världsladdning (info loggas fortfarande)"
+  "optitime:setting-suppress-compat-tooltip": "Dölj mod-konfliktnotiser i chatten vid världsladdning (info loggas fortfarande)",
+  "optitime:status-shadow-quality": "Skuggkvalitet {0}; kräver en nivå över 1"
 }

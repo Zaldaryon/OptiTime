@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Итерације spin распоређивања",
   "optitime:setting-pacing-spin-iterations-tooltip": "Итерација по позиву Thread.SpinWait при сагоревању последњег временског одсечка. Подразумевано 32.",
   "optitime:setting-suppress-compat": "Сакриј поруке о компатибилности",
-  "optitime:setting-suppress-compat-tooltip": "Сакриј обавештења о сукобу модова у ћаскању при учитавању света (информације се и даље бележе)"
+  "optitime:setting-suppress-compat-tooltip": "Сакриј обавештења о сукобу модова у ћаскању при учитавању света (информације се и даље бележе)",
+  "optitime:status-shadow-quality": "Квалитет сенки {0}; потребан је ниво изнад 1"
 }

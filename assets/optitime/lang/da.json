@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Spin-iterationer for timing",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iterationer per Thread.SpinWait-kald når den sidste tidsskive forbruges. Standard 32.",
   "optitime:setting-suppress-compat": "Skjul kompatibilitetsmeddelelser",
-  "optitime:setting-suppress-compat-tooltip": "Skjul mod-konfliktnotifikationer i chatten ved verdensindlæsning (info logges stadig)"
+  "optitime:setting-suppress-compat-tooltip": "Skjul mod-konfliktnotifikationer i chatten ved verdensindlæsning (info logges stadig)",
+  "optitime:status-shadow-quality": "Skyggekvalitet {0}; kræver et niveau over 1"
 }

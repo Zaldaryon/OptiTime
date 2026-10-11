@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Pacing Spin Iterations",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iterations per Thread.SpinWait call when burning the final time slice. Default 32.",
   "optitime:setting-suppress-compat": "Suppress Compatibility Messages",
-  "optitime:setting-suppress-compat-tooltip": "Hide mod conflict notifications in chat on world load (info still logged)"
+  "optitime:setting-suppress-compat-tooltip": "Hide mod conflict notifications in chat on world load (info still logged)",
+  "optitime:status-shadow-quality": "Shadow quality {0}; requires a level above 1"
 }

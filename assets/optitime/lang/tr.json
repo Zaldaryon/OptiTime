@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Zamanlama Spin Yinelemeleri",
   "optitime:setting-pacing-spin-iterations-tooltip": "Son zaman dilimini tüketirken Thread.SpinWait çağrısı başına yineleme sayısı. Varsayılan 32.",
   "optitime:setting-suppress-compat": "Uyumluluk mesajlarını gizle",
-  "optitime:setting-suppress-compat-tooltip": "Dünya yüklenirken sohbetteki mod çakışma bildirimlerini gizle (bilgi hâlâ günlüğe kaydedilir)"
+  "optitime:setting-suppress-compat-tooltip": "Dünya yüklenirken sohbetteki mod çakışma bildirimlerini gizle (bilgi hâlâ günlüğe kaydedilir)",
+  "optitime:status-shadow-quality": "Gölge kalitesi {0}; 1 üzerinde bir seviye gerektirir"
 }

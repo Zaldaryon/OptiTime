@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Ütemezés Spin Iterációk",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iterációk Thread.SpinWait hívásonként az utolsó időszelet elégetésekor. Alapértelmezett 32.",
   "optitime:setting-suppress-compat": "Kompatibilitási üzenetek elrejtése",
-  "optitime:setting-suppress-compat-tooltip": "Mod-ütközési értesítések elrejtése a chatben világbetöltéskor (az info továbbra is naplózva)"
+  "optitime:setting-suppress-compat-tooltip": "Mod-ütközési értesítések elrejtése a chatben világbetöltéskor (az info továbbra is naplózva)",
+  "optitime:status-shadow-quality": "Árnyékminőség {0}; 1-nél magasabb szint szükséges"
 }
