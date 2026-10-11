@@ -49,8 +49,12 @@ Use `.optitime` command in-game:
 .optitime <opt>            - Show info about optimization
 ```
 
-**Available optimizations:**
-`ambientsound`, `bgfps`, `dynlights`, `entityanim`, `entityinterp`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `repulseagents`, `shaders`, `shadowveg`, `tickingblocks`, `weatherwind`
+**Available command options (20):**
+`ambientsound`, `bgfps`, `blur`, `dynlights`, `entityanim`, `entityinterp`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `repulseagents`, `shaders`, `shadowentity`, `shadowveg`, `suppress`, `tickingblocks`, `weatherwind`
+
+Options are not a count of Harmony patches or diagnostic modules. `shaders` and `blur` control shader assets; `suppress` controls compatibility chat messages, not performance. Other options can cover multiple patches, and conditions or mod conflicts can leave an enabled configuration inactive. For example, entity shadow culling requires shadow quality above 1; status reports why it is inactive at lower quality.
+
+The repository covers all 33 languages registered by Vintage Story 1.22.7, with 34 translation files including the retained Romanian translation. Historical release counts describe those releases, not the current command inventory.
 
 ### ConfigLib GUI (Optional)
 
