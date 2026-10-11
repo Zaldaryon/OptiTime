@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "페이싱 스핀 반복 횟수",
   "optitime:setting-pacing-spin-iterations-tooltip": "마지막 시간 슬라이스를 소진할 때 Thread.SpinWait 호출당 반복 횟수. 기본값 32.",
   "optitime:setting-suppress-compat": "호환성 메시지 숨기기",
-  "optitime:setting-suppress-compat-tooltip": "월드 로드 시 모드 충돌 알림을 채팅에서 숨기기 (로그에는 기록됨)"
+  "optitime:setting-suppress-compat-tooltip": "월드 로드 시 모드 충돌 알림을 채팅에서 숨기기 (로그에는 기록됨)",
+  "optitime:status-shadow-quality": "그림자 품질 {0}; 1보다 높은 수준이 필요합니다"
 }

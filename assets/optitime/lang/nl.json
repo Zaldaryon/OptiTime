@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Pacing spin-iteraties",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iteraties per Thread.SpinWait-aanroep bij het opbranden van het laatste tijdsegment. Standaard 32.",
   "optitime:setting-suppress-compat": "Compatibiliteitsberichten verbergen",
-  "optitime:setting-suppress-compat-tooltip": "Verberg mod-conflictmeldingen in de chat bij het laden van de wereld (info wordt nog steeds gelogd)"
+  "optitime:setting-suppress-compat-tooltip": "Verberg mod-conflictmeldingen in de chat bij het laden van de wereld (info wordt nog steeds gelogd)",
+  "optitime:status-shadow-quality": "Schaduwkwaliteit {0}; vereist een niveau boven 1"
 }

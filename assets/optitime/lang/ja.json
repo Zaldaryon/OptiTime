@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "ペーシングスピン反復回数",
   "optitime:setting-pacing-spin-iterations-tooltip": "最後の時間スライスを消費する際のThread.SpinWait呼び出しごとの反復回数。デフォルト32。",
   "optitime:setting-suppress-compat": "互換性メッセージを非表示",
-  "optitime:setting-suppress-compat-tooltip": "ワールド読み込み時のMOD競合通知をチャットで非表示にする（ログには記録されます）"
+  "optitime:setting-suppress-compat-tooltip": "ワールド読み込み時のMOD競合通知をチャットで非表示にする（ログには記録されます）",
+  "optitime:status-shadow-quality": "影の品質 {0}；1 より高いレベルが必要です"
 }

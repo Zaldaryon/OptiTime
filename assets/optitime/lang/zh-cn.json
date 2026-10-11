@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "步调Spin迭代次数",
   "optitime:setting-pacing-spin-iterations-tooltip": "燃烧最后时间片时每次Thread.SpinWait调用的迭代次数。默认32。",
   "optitime:setting-suppress-compat": "隐藏兼容性消息",
-  "optitime:setting-suppress-compat-tooltip": "在加载世界时隐藏聊天中的模组冲突通知（信息仍记录在日志中）"
+  "optitime:setting-suppress-compat-tooltip": "在加载世界时隐藏聊天中的模组冲突通知（信息仍记录在日志中）",
+  "optitime:status-shadow-quality": "阴影质量 {0}；需要高于 1 的等级"
 }

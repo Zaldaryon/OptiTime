@@ -623,7 +623,8 @@ namespace OptiTime
 
                 if (shadowQ <= 1)
                 {
-                    api.Logger.Notification("[OptiTime] Entity shadow distance cull skipped (shadowQuality=1, cascade range 60 < cull distance 80)");
+                    config.MarkEntityShadowCullSkipped(shadowQ);
+                    api.Logger.Notification($"[OptiTime] Entity shadow distance cull skipped (shadowQuality={shadowQ}, cascade range below cull distance 80)");
                 }
                 else try
                 {

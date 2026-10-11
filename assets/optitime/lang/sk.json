@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Iterácie spin rozloženia",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iterácií na volanie Thread.SpinWait pri dopaľovaní posledného časového úseku. Predvolené 32.",
   "optitime:setting-suppress-compat": "Potlačiť správy o kompatibilite",
-  "optitime:setting-suppress-compat-tooltip": "Skryť upozornenia na konflikty modov v chate pri načítaní sveta (info zostáva v logu)"
+  "optitime:setting-suppress-compat-tooltip": "Skryť upozornenia na konflikty modov v chate pri načítaní sveta (info zostáva v logu)",
+  "optitime:status-shadow-quality": "Kvalita tieňov {0}; vyžaduje úroveň vyššiu ako 1"
 }

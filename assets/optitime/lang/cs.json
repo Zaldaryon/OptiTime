@@ -84,5 +84,6 @@
   "optitime:setting-pacing-spin-iterations": "Iterace Spin časování",
   "optitime:setting-pacing-spin-iterations-tooltip": "Iterací na volání Thread.SpinWait při spalování posledního časového úseku. Výchozí 32.",
   "optitime:setting-suppress-compat": "Potlačit zprávy o kompatibilitě",
-  "optitime:setting-suppress-compat-tooltip": "Skrýt upozornění na konflikty modů v chatu při načtení světa (info zůstane v logu)"
+  "optitime:setting-suppress-compat-tooltip": "Skrýt upozornění na konflikty modů v chatu při načtení světa (info zůstane v logu)",
+  "optitime:status-shadow-quality": "Kvalita stínů {0}; vyžaduje úroveň vyšší než 1"
 }

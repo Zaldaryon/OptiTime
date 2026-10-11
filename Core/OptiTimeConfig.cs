@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
+using Vintagestory.API.Config;
 
 namespace OptiTime
 {
@@ -43,6 +44,12 @@ namespace OptiTime
         private Dictionary<string, Func<bool>> optimizationGetters;
         private HashSet<string> conflictDisabledOptimizations = new HashSet<string>();
         private Dictionary<string, string> conflictDisableReasons = new Dictionary<string, string>();
+        private int? entityShadowSkippedQuality;
+
+        internal void MarkEntityShadowCullSkipped(int shadowQuality)
+        {
+            entityShadowSkippedQuality = shadowQuality;
+        }
 
         public OptiTimeConfig()
         {
@@ -278,6 +285,11 @@ namespace OptiTime
             {
                 string reason = GetConflictReason(optimizationName);
                 status = string.IsNullOrWhiteSpace(reason) ? "OFF (Conflict)" : $"OFF ({reason})";
+            }
+            else if (optimizationName == nameof(EntityShadowDistanceCullEnabled) && entityShadowSkippedQuality.HasValue)
+            {
+                status = Lang.Get("optitime:status-off") + " (" +
+                    Lang.Get("optitime:status-shadow-quality", entityShadowSkippedQuality.Value) + ")";
             }
 
             return status;
