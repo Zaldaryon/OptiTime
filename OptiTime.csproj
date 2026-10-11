@@ -43,9 +43,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Documentation\**" />
-    <EmbeddedResource Remove="Documentation\**" />
-    <None Remove="Documentation\**" />
+    <Compile Remove="docs\**" />
+    <EmbeddedResource Remove="docs\**" />
+    <None Remove="docs\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="research\**" />
+    <EmbeddedResource Remove="research\**" />
+    <None Remove="research\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="public\**" />
+    <EmbeddedResource Remove="public\**" />
+    <None Remove="public\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -55,6 +67,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="tests\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <None Remove="tests\**" />
     <Compile Remove="OptiTime.Tests\**" />
     <EmbeddedResource Remove="OptiTime.Tests\**" />
     <None Remove="OptiTime.Tests\**" />
