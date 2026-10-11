@@ -174,7 +174,7 @@ namespace OptiTime
                 nameof(ParticleOptimizations) => "Particle pool scaling at high view distances (optional)",
                 nameof(OcclusionCullingOptimizations) => "Dynamic occlusion-culling gate (view-distance scaled, 70-200)",
                 nameof(AmbientSoundOptimizations) => "Movement-based ambient sound position updates (200ms fallback)",
-                nameof(FlySoundOptimizations) => "Fly sound volume updates only on >1% change when playing",
+                nameof(FlySoundOptimizations) => "Fly sound volume updates only on &gt;1% change when playing",
                 nameof(BackgroundFpsLimiterEnabled) => $"Lower FPS when unfocused (BackgroundMaxFps={BackgroundMaxFps})",
                 nameof(PreciseFramePacingEnabled) => "Hybrid sleep/yield/spin frame pacing when VSync is off",
                 nameof(GuiManagerOptimizations) => "GUI render/input LINQ removal (input patches optional)",
@@ -187,7 +187,7 @@ namespace OptiTime
                 nameof(ShadowFarVegetationCullEnabled) => "Skip vegetation in far shadow cascade (removes leaf/grass shadows at distance)",
                 nameof(EntityShadowDistanceCullEnabled) => "Skip entity shadows beyond 80 blocks (sub-pixel in shadow map at default quality)",
                 nameof(EntityInterpolationOptimizations) => "Smoother remote entity movement in multiplayer (flood protection)",
-                nameof(RepulseAgentsOptimizations) => "Skip entity separation checks for distant creatures (>64 blocks)",
+                nameof(RepulseAgentsOptimizations) => "Skip entity separation checks for distant creatures (&gt;64 blocks)",
                 nameof(SuppressCompatibilityMessages) => "Hide mod conflict notifications in chat on world load (info still logged)",
                 _ => "Unknown optimization"
             };
