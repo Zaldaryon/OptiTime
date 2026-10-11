@@ -176,27 +176,27 @@ namespace OptiTime
         {
             return optimizationName switch
             {
-                nameof(DynamicLightOptimizations) => "Adaptive light culling by view distance (shorter radius at low VD)",
-                nameof(EntityAnimationOptimizations) => "Distance-based animation LOD (skip frames for far entities)",
-                nameof(ParticleOptimizations) => "Particle pool scaling at high view distances (optional)",
-                nameof(OcclusionCullingOptimizations) => "Dynamic occlusion-culling gate (view-distance scaled, 70-200)",
-                nameof(AmbientSoundOptimizations) => "Movement-based ambient sound position updates (200ms fallback)",
-                nameof(FlySoundOptimizations) => "Fly sound volume updates only on &gt;1% change when playing",
-                nameof(BackgroundFpsLimiterEnabled) => $"Lower FPS when unfocused (BackgroundMaxFps={BackgroundMaxFps})",
-                nameof(PreciseFramePacingEnabled) => "Hybrid sleep/yield/spin frame pacing when VSync is off",
-                nameof(GuiManagerOptimizations) => "GUI render/input LINQ removal (input patches optional)",
-                nameof(HandbookOptimizations) => "Cached handbook relationships after async indexing",
-                nameof(RecipeLookupOptimizations) => "Early dimension rejection for impossible crafting matches",
-                nameof(ShaderOptimizations) => "OptiTime shader rewrites: chunkshadowmap alpha discard, chunkliquid droplet hash",
-                nameof(BlurOptimizationEnabled) => "Replace vanilla 17-tap blur with optimized 9-tap linear-sampling blur (may appear slightly different)",
-                nameof(WeatherWindOptimizations) => "Throttle wind speed lookups from every frame to every 4th frame",
-                nameof(TickingBlocksOptimizations) => "Reuse BlockPos in particle tick loop to reduce GC pressure",
-                nameof(ShadowFarVegetationCullEnabled) => "Skip vegetation in far shadow cascade (removes leaf/grass shadows at distance)",
-                nameof(EntityShadowDistanceCullEnabled) => "Skip entity shadows beyond 80 blocks (sub-pixel in shadow map at default quality)",
-                nameof(EntityInterpolationOptimizations) => "Smoother remote entity movement in multiplayer (flood protection)",
-                nameof(RepulseAgentsOptimizations) => "Skip entity separation checks for distant creatures (&gt;64 blocks)",
-                nameof(SuppressCompatibilityMessages) => "Hide mod conflict notifications in chat on world load (info still logged)",
-                _ => "Unknown optimization"
+                nameof(DynamicLightOptimizations) => Lang.Get("optitime:description-dynlights"),
+                nameof(EntityAnimationOptimizations) => Lang.Get("optitime:description-entityanim"),
+                nameof(ParticleOptimizations) => Lang.Get("optitime:description-particles"),
+                nameof(OcclusionCullingOptimizations) => Lang.Get("optitime:description-occlusion"),
+                nameof(AmbientSoundOptimizations) => Lang.Get("optitime:description-ambientsound"),
+                nameof(FlySoundOptimizations) => Lang.Get("optitime:description-flysound"),
+                nameof(BackgroundFpsLimiterEnabled) => Lang.Get("optitime:description-bgfps", BackgroundMaxFps),
+                nameof(PreciseFramePacingEnabled) => Lang.Get("optitime:description-framepace"),
+                nameof(GuiManagerOptimizations) => Lang.Get("optitime:description-guimgr"),
+                nameof(HandbookOptimizations) => Lang.Get("optitime:description-handbook"),
+                nameof(RecipeLookupOptimizations) => Lang.Get("optitime:description-recipe"),
+                nameof(ShaderOptimizations) => Lang.Get("optitime:description-shaders"),
+                nameof(BlurOptimizationEnabled) => Lang.Get("optitime:description-blur"),
+                nameof(WeatherWindOptimizations) => Lang.Get("optitime:description-weatherwind"),
+                nameof(TickingBlocksOptimizations) => Lang.Get("optitime:description-tickingblocks"),
+                nameof(ShadowFarVegetationCullEnabled) => Lang.Get("optitime:description-shadowveg"),
+                nameof(EntityShadowDistanceCullEnabled) => Lang.Get("optitime:description-shadowentity"),
+                nameof(EntityInterpolationOptimizations) => Lang.Get("optitime:description-entityinterp"),
+                nameof(RepulseAgentsOptimizations) => Lang.Get("optitime:description-repulseagents"),
+                nameof(SuppressCompatibilityMessages) => Lang.Get("optitime:description-suppress"),
+                _ => Lang.Get("optitime:description-unknown")
             };
         }
 
