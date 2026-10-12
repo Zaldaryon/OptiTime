@@ -118,7 +118,7 @@ namespace OptiTime
         [HarmonyPatch(typeof(InventoryCraftingGrid), "FindMatchingRecipe")]
         public static bool FindMatchingRecipe_Prefix(InventoryCraftingGrid __instance)
         {
-            if (__instance?.Api?.World == null)
+            if (__instance?.Api?.Side != EnumAppSide.Client || __instance.Api.World == null)
             {
                 return true;
             }
@@ -223,6 +223,11 @@ namespace OptiTime
 
         private static bool MatchesPrefixCore(GridRecipe recipe, IPlayer player, IWorldAccessor world, ItemSlot[] ingredients, int gridWidth, ref bool result)
         {
+            if (world?.Side != EnumAppSide.Client && player?.Entity?.Api?.Side != EnumAppSide.Client)
+            {
+                return true;
+            }
+
             if (recipe == null || player?.Entity?.Api == null)
             {
                 return true;
@@ -330,7 +335,7 @@ namespace OptiTime
 
         private static Snapshot GetSnapshot(IWorldAccessor world)
         {
-            if (world?.GridRecipes == null)
+            if (world?.Side != EnumAppSide.Client || world.GridRecipes == null)
             {
                 return null;
             }
