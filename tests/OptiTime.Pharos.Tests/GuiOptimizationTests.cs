@@ -140,19 +140,22 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
     public async Task OpenDialogsRenderInsideTheWindow()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
+        var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
         await SetOptimizationAsync("guimgr", enabled: true);
 
         await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
-        await Session!.StepFramesAsync(15);
+        await session.StepFramesAsync(15);
 
-        Assert.True(Client.Ui!.IsOpen("GuiDialogInventory"),
+        Assert.True(ui.IsOpen("GuiDialogInventory"),
             "The inventory dialog would not open at all.");
 
         try
         {
-            DialogLayout layout = Client.Ui.Layout("GuiDialogInventory");
+            DialogLayout layout = ui.Layout("GuiDialogInventory");
 
-            PharosAssert.DialogOnScreen(Client, "GuiDialogInventory");
+            PharosAssert.DialogOnScreen(client, "GuiDialogInventory");
             PharosAssert.NoOverlappingElements(layout);
 
             Console.WriteLine(
@@ -162,8 +165,8 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
         }
         finally
         {
-            Client.Ui.Close("GuiDialogInventory");
-            await Session!.StepFramesAsync(5);
+            ui.Close("GuiDialogInventory");
+            await session.StepFramesAsync(5);
         }
     }
 
@@ -177,15 +180,18 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
     public async Task VirtualMouseInputReachesAnOpenDialog()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
+        var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
         await SetOptimizationAsync("guimgr", enabled: true);
 
         await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
-        await Session!.StepFramesAsync(15);
+        await session.StepFramesAsync(15);
 
-        Assert.True(Client.Ui!.IsOpen("GuiDialogInventory"));
+        Assert.True(ui.IsOpen("GuiDialogInventory"));
         try
         {
-            InputSnapshot before = Client!.Input.Snapshot();
+            InputSnapshot before = client.Input.Snapshot();
             Assert.True(before.IsIdle,
                 $"The virtual input controller started with {before.PressedKeys.Count} keys " +
                 "and scroll already set. A leftover input from a previous test would be " +
@@ -195,24 +201,24 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
             // coalescing prefix must not swallow the position.
             for (int i = 0; i < 10; i++)
             {
-                Client.Input.InjectMouseMove(400 + i * 8, 300 + i * 4);
-                await Session!.StepFramesAsync(1);
+                client.Input.InjectMouseMove(400 + i * 8, 300 + i * 4);
+                await session.StepFramesAsync(1);
             }
 
-            (int x, int y) = Client.Input.GetMousePosition();
+            (int x, int y) = client.Input.GetMousePosition();
             Assert.True(x > 0 && y > 0,
                 $"After moving the mouse the virtual position is ({x}, {y}). " +
                 "The input never reached the client, so nothing below would test the patch.");
 
-            Client.Input.InjectScroll(-120);
-            await Session.StepFramesAsync(3);
-            Assert.NotEqual(0, Client.Input.GetScrollDelta());
-            Client.Input.ResetScrollDelta();
+            client.Input.InjectScroll(-120);
+            await session.StepFramesAsync(3);
+            Assert.NotEqual(0, client.Input.GetScrollDelta());
+            client.Input.ResetScrollDelta();
         }
         finally
         {
-            Client.Ui.Close("GuiDialogInventory");
-            await Session!.StepFramesAsync(5);
+            ui.Close("GuiDialogInventory");
+            await session.StepFramesAsync(5);
         }
     }
 
@@ -230,18 +236,22 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
     public async Task GuiComposerSurvivesRepeatedOpenAndClose()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
+        var player = Player ?? throw new InvalidOperationException("Pharos did not provide a player after warm-up.");
+        var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
         await SetOptimizationAsync("guimgr", enabled: true);
 
         for (int i = 0; i < 12; i++)
         {
-            if (!await OpenDialogAsync("GuiDialogEscapeMenu", "escapemenudialog")) { await Session!.StepFramesAsync(5); }
-            await Session!.StepFramesAsync(3);
-            Client.Ui!.Close("GuiDialogEscapeMenu");
-            await Session!.StepFramesAsync(3);
+            if (!await OpenDialogAsync("GuiDialogEscapeMenu", "escapemenudialog")) { await session.StepFramesAsync(5); }
+            await session.StepFramesAsync(3);
+            ui.Close("GuiDialogEscapeMenu");
+            await session.StepFramesAsync(3);
         }
 
-        Player!.Gui.CloseAllDialogs();
-        await Session!.StepFramesAsync(10);
+        player.Gui.CloseAllDialogs();
+        await session.StepFramesAsync(10);
 
         AssertNoUnexpectedClientErrors("gui");
     }
@@ -285,31 +295,34 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
     public async Task MouseMoveCoalescingDoesNotSwallowClicks()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
+        var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
         await SetOptimizationAsync("guimgr", enabled: true);
 
         await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
-        await Session!.StepFramesAsync(15);
+        await session.StepFramesAsync(15);
 
         try
         {
             for (int i = 0; i < 200; i++)
             {
-                Client!.Input.InjectMouseMove(200 + (i % 50), 200 + (i % 37));
+                client.Input.InjectMouseMove(200 + (i % 50), 200 + (i % 37));
             }
-            await Session!.StepFramesAsync(3);
+            await session.StepFramesAsync(3);
 
-            Client.Input.InjectMouseButton(VirtualMouseButton.Left, pressed: true);
-            await Session!.StepFramesAsync(2);
-            Client.Input.InjectMouseButton(VirtualMouseButton.Left, pressed: false);
-            await Session!.StepFramesAsync(5);
+            client.Input.InjectMouseButton(VirtualMouseButton.Left, pressed: true);
+            await session.StepFramesAsync(2);
+            client.Input.InjectMouseButton(VirtualMouseButton.Left, pressed: false);
+            await session.StepFramesAsync(5);
 
             AssertNoUnexpectedClientErrors("gui");
         }
         finally
         {
-            Client.Input.Reset();
-            Client.Ui!.Close("GuiDialogInventory");
-            await Session!.StepFramesAsync(5);
+            client.Input.Reset();
+            ui.Close("GuiDialogInventory");
+            await session.StepFramesAsync(5);
         }
     }
 }

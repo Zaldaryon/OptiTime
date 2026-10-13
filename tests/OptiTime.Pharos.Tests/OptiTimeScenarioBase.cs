@@ -350,10 +350,13 @@ public abstract class OptiTimeScenarioBase : ClientServerScenarioBase
     protected async Task<bool> PlaceInCraftingGridAsync(int x, int y, params string[] itemCodes)
     {
         ItemStack stack = ResolveStack(itemCodes);
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client for the crafting-grid scenario.");
+        var player = Player ?? throw new InvalidOperationException("Pharos did not provide a player for the crafting-grid scenario.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session for the crafting-grid scenario.");
 
-        bool placed = Client.RunOnClientThread(() =>
+        bool placed = client.RunOnClientThread(() =>
         {
-            IInventory? crafting = Player!.Inventory.Crafting;
+            IInventory? crafting = player.Inventory.Crafting;
             if (crafting is null) return false;
 
             int index = (y * 3) + x;
@@ -364,7 +367,7 @@ public abstract class OptiTimeScenarioBase : ClientServerScenarioBase
             return true;
         });
 
-        await Session!.StepFramesAsync(20);
+        await session.StepFramesAsync(20);
         return placed;
     }
 
