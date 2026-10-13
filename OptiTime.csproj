@@ -78,8 +78,6 @@
   <Target Name="Package" AfterTargets="Build">
     <PropertyGroup>
       <ModName>OptiTime</ModName>
-      <ModsPath Condition="'$(OS)' == 'Windows_NT'">$(APPDATA)\VintagestoryData\Mods</ModsPath>
-      <ModsPath Condition="'$(OS)' != 'Windows_NT'">$(HOME)/.config/VintagestoryData/Mods</ModsPath>
       <DllPath>$(OutputPath)OptiTime.dll</DllPath>
     </PropertyGroup>
     
@@ -99,11 +97,8 @@
     
     <ZipDirectory SourceDirectory="bin\temp\" DestinationFile="bin\$(ModName).zip" Overwrite="true" />
     
-    <MakeDir Directories="$(ModsPath)" Condition="!Exists('$(ModsPath)')" />
-    <Copy SourceFiles="bin\$(ModName).zip" DestinationFolder="$(ModsPath)" />
-    
     <RemoveDir Directories="bin\temp" />
     
-    <Message Text="Mod packaged and installed: $(ModsPath)\$(ModName).zip" Importance="high" />
+    <Message Text="Mod packaged: bin\$(ModName).zip" Importance="high" />
   </Target>
 </Project>
