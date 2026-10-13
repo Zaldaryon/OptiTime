@@ -41,7 +41,6 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   VS_VERSION: "1.22.7"
-  VS_CACHE_PATH: /home/runner/.vintagestory-cache
 
 jobs:
   test-linux:
@@ -69,7 +68,7 @@ jobs:
         id: cache-vintagestory
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          path: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+          path: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
           key: vintagestory-linux-${{ env.VS_VERSION }}-v1
 
       - name: Install headless test dependencies
@@ -82,7 +81,7 @@ jobs:
       - name: Download Vintage Story
         if: steps.cache-vintagestory.outputs.cache-hit != 'true'
         run: |
-          install_dir="$VS_CACHE_PATH/$VS_VERSION"
+          install_dir="$RUNNER_TEMP/vintagestory/$VS_VERSION"
           mkdir -p "$install_dir"
           archive="$RUNNER_TEMP/vintagestory.tar.gz"
           wget --quiet --show-progress \
@@ -93,7 +92,7 @@ jobs:
 
       - name: Verify Vintage Story installation
         env:
-          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+          VINTAGE_STORY: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
         run: |
           test -f "$VINTAGE_STORY/VintagestoryAPI.dll"
           test -d "$VINTAGE_STORY/Lib"
@@ -140,17 +139,17 @@ jobs:
 
       - name: Build mod and run unit tests
         env:
-          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+          VINTAGE_STORY: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
         run: ./build.sh -nodeploy
 
       - name: Build NativeProbe
         env:
-          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+          VINTAGE_STORY: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
         run: ./tests/OptiTime.NativeProbe/build.sh
 
       - name: Run Pharos tests without game boot or benchmark
         env:
-          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+          VINTAGE_STORY: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
         run: ./tests/OptiTime.Pharos.Tests/build.sh --filter 'Category!=Live&Category!=Benchmark'
 
       - name: Run Pharos engine smoke tests
