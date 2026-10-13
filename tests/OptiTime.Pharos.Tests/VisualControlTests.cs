@@ -65,7 +65,6 @@ public abstract class VisualControlBase : RenderingFidelityBase
                 first.Height,
                 oldBaselinePixels,
                 oldBaselineMean,
-                oldBaselineMean = original.MeanDiff,
                 repeatPixels = churn.DiffPixelCount,
                 freshVanillaPixels = fresh?.DiffPixelCount,
                 settings = Client.RunOnClientThread(ReadRenderSettings),
