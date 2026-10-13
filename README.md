@@ -106,16 +106,14 @@ ConfigLib is optional. OptiTime also supports JSON config and commands.
 
 - **Method:** Shader replacement (toggle via `ShaderOptimizations`) + Harmony patches
 - **Side:** Clientside only (no server changes needed)
-- **Compatibility:** Tested with 100 most popular ModDB mods (71 decompiled, 38 with Harmony patches analyzed). Works with all tested mods. Auto-disables conflicting optimizations when detected.
-- **Known mod interactions:** OptiTime disables its own shader assets when **Ancestral Bliss Shaders** is installed. It disables entity animation optimization for **Combat Overhaul / Overhaullib** and handbook optimization for **A Culinary Artillery / Extra Info / Tabletop Games** and **Electrical Progressive**
-- **Compatibility Behavior:** All Harmony patches check for foreign patches before applying and auto-disable on conflict
-- **Visual Impact:** Minimal - optimizations preserve visual quality
+- **Compatibility:** OptiTime can disable an affected option when it detects a known interaction. See the [compatibility guide](https://github.com/Zaldaryon/OptiTime/wiki/Mod-Compatibility) for current details.
+- **Known mod interactions:** Ancestral Bliss Shaders, Volumetric Shading Refreshed, CoriaenderShaders, Combat Overhaul, Overhaullib, Electrical Progressive, Brutal Story, XBlood, Real Smoke, and Firearms affect specific OptiTime options. Check `.optitime status` and the game log for details.
 - **Default State:** Most optimizations enabled; GUI input patches are off by default
-- **Commands:** Work in multiplayer without admin privileges; profiling helpers via `.optitime profile on|off|dump|reset` (off by default, now includes frame pacing and frametime summary data)
+- **Commands:** Available in singleplayer and multiplayer; profiling helpers are available through `.optitime profile on|off|dump|reset`.
 
 ## Documentation
 
-See `Documentation/Description/` for detailed information about each optimization.
+See the [usage guide](https://github.com/Zaldaryon/OptiTime/wiki/Usage-Guide) for installation, configuration, and command instructions.
 
 ## Automated Smoke Tests
 

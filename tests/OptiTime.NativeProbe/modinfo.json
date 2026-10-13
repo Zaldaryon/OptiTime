@@ -1,0 +1,10 @@
+{
+  "type": "code",
+  "modid": "optitimenativeprobe",
+  "name": "OptiTime Native Profiling Probe",
+  "version": "1.0.0",
+  "side": "client",
+  "authors": ["Zaldaryon"],
+  "description": "Private measurement of native platform frame cadence and allocations.",
+  "dependencies": { "game": "1.22.0" }
+}

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>OptiTime.NativeProbe</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="VintagestoryAPI"><HintPath>$(VINTAGE_STORY)/VintagestoryAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(VINTAGE_STORY)/Lib/0Harmony.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+  <Target Name="Package" AfterTargets="Build">
+    <MakeDir Directories="bin/ProbeMod" />
+    <Copy SourceFiles="$(TargetPath);modinfo.json" DestinationFolder="bin/ProbeMod" />
+  </Target>
+</Project>

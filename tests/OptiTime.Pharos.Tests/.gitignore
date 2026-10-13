@@ -1,0 +1,6 @@
+# Build output, test results, and artifacts generated during a run.
+bin/
+obj/
+*.log
+artifacts/
+TestResults/

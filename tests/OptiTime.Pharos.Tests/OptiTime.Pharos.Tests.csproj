@@ -1,0 +1,130 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>OptiTime.Pharos.Tests</RootNamespace>
+    <AssemblyName>OptiTime.Pharos.Tests</AssemblyName>
+    <!-- Pharos boots the real client and reads its GL state; managed-only. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!--
+      Where the game lives. Pharos resolves the same thing at run time from
+      $VINTAGE_STORY, so these must agree: a test compiled against one install
+      and booted against another compares types that are not the same types.
+
+      The configured path is checked against a file that only a real game
+      install has, rather than against the directory alone. An environment
+      variable holding a trailing space or a stale path would otherwise pass an
+      Exists() check on the directory and then resolve every HintPath to
+      nothing, which MSBuild reports only as MSB3245 warnings while the build
+      fails with a confusing "namespace Vintagestory could not be found".
+    -->
+    <VintageStoryPath Condition="'$(VintageStoryPath)' == '' And '$(VINTAGE_STORY)' != '' And Exists('$(VINTAGE_STORY)/VintagestoryAPI.dll')">$(VINTAGE_STORY)</VintageStoryPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(VintageStoryPath)' == ''">
+    <VintageStoryPathMissing>true</VintageStoryPathMissing>
+  </PropertyGroup>
+
+  <!--
+    xUnit v2, not v3. Zaldaryon.Pharos.XUnit declares xunit.core 2.9.3, so the
+    test project has to match. Referencing xunit v3 here makes the two packages
+    disagree and every attribute resolve to the wrong type.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Zaldaryon.Pharos.XUnit" Version="0.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="VintagestoryAPI">
+      <HintPath>$(VintageStoryPath)/VintagestoryAPI.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="VintagestoryLib">
+      <HintPath>$(VintageStoryPath)/VintagestoryLib.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <!--
+      The suite patches one harness gap of its own (see HarnessPatches.cs), so
+      it needs Harmony - the same copy the game loads, loaded from the same
+      place, because two Harmony instances in one process patch different
+      assemblies.
+    -->
+    <Reference Include="0Harmony">
+      <HintPath>$(VintageStoryPath)/Lib/0Harmony.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="protobuf-net">
+      <HintPath>$(VintageStoryPath)/Lib/protobuf-net.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OpenTK.Windowing.Desktop">
+      <HintPath>$(VintageStoryPath)/Lib/OpenTK.Windowing.Desktop.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OpenTK.Windowing.GraphicsLibraryFramework">
+      <HintPath>$(VintageStoryPath)/Lib/OpenTK.Windowing.GraphicsLibraryFramework.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OpenTK.Windowing.Common">
+      <HintPath>$(VintageStoryPath)/Lib/OpenTK.Windowing.Common.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OpenTK.Graphics">
+      <HintPath>$(VintageStoryPath)/Lib/OpenTK.Graphics.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OpenTK.Core">
+      <HintPath>$(VintageStoryPath)/Lib/OpenTK.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="OpenTK.Mathematics">
+      <HintPath>$(VintageStoryPath)/Lib/OpenTK.Mathematics.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="$(VintageStoryPath)/Lib/glfw3.dll" Condition="Exists('$(VintageStoryPath)/Lib/glfw3.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(VintageStoryPath)/Lib/0Harmony.dll" Condition="Exists('$(VintageStoryPath)/Lib/0Harmony.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+    <Content Include="$(VintageStoryPath)/Lib/OpenAL32.dll" Condition="Exists('$(VintageStoryPath)/Lib/OpenAL32.dll')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
+  <!--
+    xUnit runner settings. Parallelisation is off on purpose: every scenario
+    class boots its own Vintage Story client and its own server, and running a
+    dozen of those at once on one GPU and six CPU cores makes the frame times
+    the benchmarks collect meaningless. Correctness of the frame-rate and
+    tail-latency numbers depends on the machine being otherwise idle.
+  -->
+  <ItemGroup>
+    <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Fixtures/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="FailWithoutGame" BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(VintageStoryPathMissing)' == 'true'">
+    <Error Text="No Vintage Story install found. Set VINTAGE_STORY or pass -p:VintageStoryPath=&lt;path&gt;." />
+  </Target>
+
+</Project>
