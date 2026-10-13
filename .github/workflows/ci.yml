@@ -155,7 +155,7 @@ jobs:
       - name: Run Pharos engine smoke tests
         if: github.event_name == 'push' || inputs.release_validation
         env:
-          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+          VINTAGE_STORY: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
         run: ./tests/OptiTime.Pharos.Tests/build.sh --filter 'FullyQualifiedName~HarnessProbeTests'
 
       - name: Verify release package
