@@ -15,7 +15,7 @@ namespace OptiTime.Pharos.Tests;
 [PharosMods(OptiTimeConfig.ModAssembly)]
 public class HarnessProbeTests : OptiTimeScenarioBase
 {
-    [ClientServerScenario]
+    [ClientServerScenario(TimeoutMs = 600_000)]
     public async Task ClientBootsWithAGpuContextAndTheModLoaded()
     {
         await WarmUpAsync();
@@ -47,7 +47,7 @@ public class HarnessProbeTests : OptiTimeScenarioBase
             $"or '{OptiTimeConfig.ModAssembly}' did not resolve to the built zip.");
     }
 
-    [ClientServerScenario]
+    [ClientServerScenario(TimeoutMs = 600_000)]
     public async Task ModLoadsAndRegistersItsCommand()
     {
         await WarmUpAsync();
@@ -64,7 +64,7 @@ public class HarnessProbeTests : OptiTimeScenarioBase
     /// against a missing dump and passes for the wrong reason, so it is checked
     /// on its own rather than being taken on trust.
     /// </summary>
-    [ClientServerScenario]
+    [ClientServerScenario(TimeoutMs = 600_000)]
     public async Task DiagCountersReachTheClientLog()
     {
         DiagCounters counters = await CaptureDiagAsync("occlusion", frames: 120);

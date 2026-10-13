@@ -1,0 +1,122 @@
+name: Release
+
+# Dispatch from main after updating the version in the mod and Pharos harness.
+# The versioned package is attached only after the release validation workflow passes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version already set in modinfo.json and OptiTime.csproj, such as 1.5.17.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: optitime-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Check release request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      tag: ${{ steps.check.outputs.tag }}
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Validate branch, version and tag
+        id: check
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Releases must be dispatched from main, not $GITHUB_REF."
+            exit 1
+          fi
+          if ! [[ "$RELEASE_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::'$RELEASE_VERSION' is not a stable version such as 1.5.17."
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          requested = os.environ["RELEASE_VERSION"]
+          mod_version = json.loads(Path("modinfo.json").read_text())["version"]
+          project_version = ET.parse("OptiTime.csproj").getroot().findtext("./PropertyGroup/Version")
+          config = Path("tests/OptiTime.Pharos.Tests/OptiTimeConfig.cs").read_text()
+          match = re.search(r'ModVersion = "([^"]+)"', config)
+          if not project_version or not match:
+              raise SystemExit("Could not read all release version fields.")
+          versions = (mod_version, project_version, match.group(1))
+          if any(version != requested for version in versions):
+              raise SystemExit(
+                  f"Version mismatch: requested={requested}, modinfo={mod_version}, "
+                  f"project={project_version}, Pharos={match.group(1)}"
+              )
+          if f"OptiTime-{requested}.zip" not in config:
+              raise SystemExit("The Pharos package path does not match the requested version.")
+          PY
+
+          tag="v$RELEASE_VERSION"
+          if ! tag_refs="$(git ls-remote --refs origin "refs/tags/$tag")"; then
+            echo "::error::Could not verify whether tag $tag already exists."
+            exit 1
+          fi
+          if [[ -n "$tag_refs" ]]; then
+            echo "::error::Tag $tag already exists."
+            exit 1
+          fi
+
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "Release candidate $tag at $GITHUB_SHA."
+
+  ci:
+    name: Release validation
+    needs: prepare
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_validation: true
+      version: ${{ needs.prepare.outputs.version }}
+
+  publish:
+    name: Create GitHub release
+    needs: [prepare, ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download tested package
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: optitime-release
+          path: release-assets
+
+      - name: Create tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          gh release create "$RELEASE_TAG" "release-assets/OptiTime-${RELEASE_VERSION}.zip" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_SHA" \
+            --title "$RELEASE_TAG" \
+            --generate-notes

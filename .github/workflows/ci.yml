@@ -1,0 +1,174 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      release_validation:
+        description: Run the Vintage Story engine smoke tests and upload the release package.
+        required: false
+        type: boolean
+        default: false
+      version:
+        description: Expected mod version. Used by the release workflow.
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      release_validation:
+        description: Run the Vintage Story engine smoke tests and upload the release package.
+        required: false
+        type: boolean
+        default: false
+      version:
+        description: Expected mod version. Used by the release workflow.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  VS_VERSION: "1.22.7"
+  VS_CACHE_PATH: /home/runner/.vintagestory-cache
+
+jobs:
+  test-linux:
+    name: Build and test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/NuGet.Config') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Cache Vintage Story
+        id: cache-vintagestory
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+          key: vintagestory-linux-${{ env.VS_VERSION }}-v1
+
+      - name: Install headless test dependencies
+        run: |
+          timeout 600 sudo apt-get -o DPkg::Lock::Timeout=300 -o Acquire::Retries=3 update
+          timeout 600 sudo apt-get -o DPkg::Lock::Timeout=300 -o Acquire::Retries=3 install -y \
+            libcairo2 libcairo2-dev libgl1-mesa-dri libglfw3 libglfw3-dev \
+            libopenal1 mesa-utils unzip xvfb zip
+
+      - name: Download Vintage Story
+        if: steps.cache-vintagestory.outputs.cache-hit != 'true'
+        run: |
+          install_dir="$VS_CACHE_PATH/$VS_VERSION"
+          mkdir -p "$install_dir"
+          archive="$RUNNER_TEMP/vintagestory.tar.gz"
+          wget --quiet --show-progress \
+            "https://cdn.vintagestory.at/gamefiles/stable/vs_client_linux-x64_${VS_VERSION}.tar.gz" \
+            --output-document "$archive"
+          tar -xzf "$archive" -C "$install_dir" --strip-components=1
+          rm "$archive"
+
+      - name: Verify Vintage Story installation
+        env:
+          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+        run: |
+          test -f "$VINTAGE_STORY/VintagestoryAPI.dll"
+          test -d "$VINTAGE_STORY/Lib"
+          test -d "$VINTAGE_STORY/Mods"
+          test -d "$VINTAGE_STORY/assets"
+
+      - name: Validate product version
+        id: product-version
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          version = json.loads(Path("modinfo.json").read_text())["version"]
+          if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
+              raise SystemExit(f"Invalid stable mod version: {version!r}")
+          project = ET.parse("OptiTime.csproj").getroot()
+          project_version = project.findtext("./PropertyGroup/Version")
+          config = Path("tests/OptiTime.Pharos.Tests/OptiTimeConfig.cs").read_text()
+          harness_version = re.search(r'ModVersion = "([^"]+)"', config)
+          if not project_version or not harness_version:
+              raise SystemExit("Could not read the project and Pharos versions.")
+          values = {
+              "modinfo.json": version,
+              "OptiTime.csproj": project_version,
+              "Pharos ModVersion": harness_version.group(1),
+          }
+          if len(set(values.values())) != 1:
+              raise SystemExit(f"Version mismatch: {values}")
+          if f"OptiTime-{version}.zip" not in config:
+              raise SystemExit("The Pharos package path does not match the mod version.")
+          expected = os.environ.get("EXPECTED_VERSION", "")
+          if expected and expected != version:
+              raise SystemExit(f"Requested release {expected}, but the source version is {version}.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+          print(f"Validated OptiTime version {version}.")
+          PY
+
+      - name: Build mod and run unit tests
+        env:
+          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+        run: ./build.sh -nodeploy
+
+      - name: Build NativeProbe
+        env:
+          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+        run: ./tests/OptiTime.NativeProbe/build.sh
+
+      - name: Run Pharos tests without game boot or benchmark
+        env:
+          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+        run: ./tests/OptiTime.Pharos.Tests/build.sh --filter 'Category!=Live&Category!=Benchmark'
+
+      - name: Run Pharos engine smoke tests
+        if: github.event_name == 'push' || inputs.release_validation
+        env:
+          VINTAGE_STORY: ${{ env.VS_CACHE_PATH }}/${{ env.VS_VERSION }}
+        run: ./tests/OptiTime.Pharos.Tests/build.sh --filter 'FullyQualifiedName~HarnessProbeTests'
+
+      - name: Verify release package
+        env:
+          VERSION: ${{ steps.product-version.outputs.version }}
+        run: unzip -t "bin/OptiTime-${VERSION}.zip"
+
+      - name: Upload release package
+        if: inputs.release_validation && inputs.version != ''
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: optitime-release
+          path: bin/OptiTime-${{ steps.product-version.outputs.version }}.zip
+          if-no-files-found: error
+          retention-days: 7
