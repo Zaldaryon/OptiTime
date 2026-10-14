@@ -171,20 +171,21 @@ public class VanillaBaselineCapture : RenderingFidelityBase
     public async Task CaptureVanillaBaselines()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
         Directory.CreateDirectory(Path.Combine(AppContext.BaseDirectory, OptiTimeConfig.BaselineDirectory));
 
         foreach (CameraPose pose in OptiTimeConfig.Poses)
         {
             await CaptureAtAsync(pose);
             string path = BaselinePath(pose, "vanilla");
-            Client!.CaptureFrame().SaveToPng(path);
+            client.CaptureFrame().SaveToPng(path);
             Console.WriteLine($"baseline {pose.Name}: {path}");
         }
 
         // The framebuffer must contain more than one colour. A baseline that is
         // a flat sky or a flat black frame would make every later comparison
         // pass while proving nothing.
-        FramebufferSnapshot sample = Client.CaptureFrame();
+        FramebufferSnapshot sample = client.CaptureFrame();
         HashSet<uint> distinct = [];
         for (int y = 0; y < sample.Height; y += 8)
         {

@@ -76,8 +76,7 @@ echo "Building OptiTime..."
 cd "$SCRIPT_DIR"
 rm -rf bin
 
-dotnet build OptiTime.csproj -c Release -v quiet /p:RestoreSources= /p:RestoreIgnoreFailedSources=true 2>&1 \
-    | grep -iE 'warning|error' || true
+dotnet build OptiTime.csproj -c Release -v quiet /p:RestoreSources= /p:RestoreIgnoreFailedSources=true
 
 echo "Running tests..."
 dotnet test OptiTime.Tests/OptiTime.Tests.csproj -c Release -v minimal \

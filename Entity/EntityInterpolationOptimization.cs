@@ -49,6 +49,7 @@ public static class EntityInterpolationOptimization
     // tickDiff bins: 1, 2, 3, 4, 5, >=6
     private static readonly long[] diagTickDiffBins = new long[6];
     private static readonly ConcurrentDictionary<long, long> diagLastPacketMs = new();
+    private static readonly ConcurrentDictionary<long, long> diagSamplesByEntityId = new();
 
     public static void Initialize(ICoreClientAPI api, Harmony harmony, bool enableHermite)
     {
@@ -78,6 +79,7 @@ public static class EntityInterpolationOptimization
         capi = null;
         diagEnabled = false;
         diagLastPacketMs.Clear();
+        diagSamplesByEntityId.Clear();
     }
 
     #region Diagnostic instrumentation
@@ -99,6 +101,7 @@ public static class EntityInterpolationOptimization
         Interlocked.Exchange(ref diagTotalDtMs, 0);
         Interlocked.Exchange(ref diagTotalTickDiff, 0);
         diagLastPacketMs.Clear();
+        diagSamplesByEntityId.Clear();
         Interlocked.Exchange(ref diagStartMs, Environment.TickCount64);
     }
 
@@ -124,6 +127,7 @@ public static class EntityInterpolationOptimization
             Interlocked.Increment(ref diagSampleCount);
             Interlocked.Add(ref diagTotalDtMs, dt);
             Interlocked.Add(ref diagTotalTickDiff, tickDiff);
+            diagSamplesByEntityId.AddOrUpdate(entityId, 1, static (_, samples) => samples + 1);
         }
         diagLastPacketMs[entityId] = now;
     }

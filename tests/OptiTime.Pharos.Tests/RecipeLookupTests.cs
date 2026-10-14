@@ -184,10 +184,13 @@ public class RecipeLookupTests : OptiTimeScenarioBase
     public async Task RecipeCacheSurvivesInventoryChurn()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
+        var player = Player ?? throw new InvalidOperationException("Pharos did not provide a player after warm-up.");
         await SetOptimizationAsync("recipe", enabled: true);
 
         await OpenInventoryAsync();
-        await Session!.StepFramesAsync(20);
+        await session.StepFramesAsync(20);
 
         try
         {
@@ -196,13 +199,13 @@ public class RecipeLookupTests : OptiTimeScenarioBase
 
             for (int i = 0; i < 8; i++)
             {
-                Client.Inventory.DragSlot(i % 8, 20 + i);
-                await Session!.StepFramesAsync(4);
-                Client.Inventory.DragSlot(20 + i, i % 8);
-                await Session!.StepFramesAsync(4);
+                client.Inventory.DragSlot(i % 8, 20 + i);
+                await session.StepFramesAsync(4);
+                client.Inventory.DragSlot(20 + i, i % 8);
+                await session.StepFramesAsync(4);
             }
 
-            string[] recipeFailures = [.. Client!.Logs.UnexpectedErrors(AllowedLoggedErrors)
+            string[] recipeFailures = [.. client.Logs.UnexpectedErrors(AllowedLoggedErrors)
                 .Select(e => e.Message)
                 .Where(line => line.Contains("recipe", StringComparison.OrdinalIgnoreCase)
                             || line.Contains("craft", StringComparison.OrdinalIgnoreCase))];
@@ -214,9 +217,9 @@ public class RecipeLookupTests : OptiTimeScenarioBase
         finally
         {
             await ClearCraftingGridAsync();
-            Player.Inventory.ClearAll();
+            player.Inventory.ClearAll();
             await CloseDialogAsync("GuiDialogInventory");
-            await Session!.StepFramesAsync(5);
+            await session.StepFramesAsync(5);
         }
     }
 

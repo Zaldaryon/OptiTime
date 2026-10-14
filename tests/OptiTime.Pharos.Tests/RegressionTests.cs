@@ -346,16 +346,18 @@ public class RegressionTests : OptiTimeScenarioBase
     public async Task RecipeLookupSurvivesInventoryChurn()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
 
         for (int i = 0; i < 4; i++)
         {
-            Client!.Inventory.DragSlot(i % 8, 20 + i);
-            await Session!.StepFramesAsync(5);
-            Client.Inventory.DragSlot(20 + i, i % 8);
-            await Session.StepFramesAsync(5);
+            client.Inventory.DragSlot(i % 8, 20 + i);
+            await session.StepFramesAsync(5);
+            client.Inventory.DragSlot(20 + i, i % 8);
+            await session.StepFramesAsync(5);
         }
 
-        string[] recipeFailures = [.. Client.Logs.Errors
+        string[] recipeFailures = [.. client.Logs.Errors
             .Select(e => e.Message)
             .Where(line => line.Contains("recipe", StringComparison.OrdinalIgnoreCase)
                         || line.Contains("craft", StringComparison.OrdinalIgnoreCase))];
@@ -541,24 +543,26 @@ public class RegressionTests : OptiTimeScenarioBase
     public async Task ChangingViewDistanceDoesNotBreakTheClient()
     {
         await WarmUpAsync();
+        var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
+        var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
 
         int[] distances = [64, 128, 256, 128, 64];
 
         foreach (int distance in distances)
         {
-            Client!.Settings.Set("viewDistance", distance);
-            await Session!.StepFramesAsync(60);
+            client.Settings.Set("viewDistance", distance);
+            await session.StepFramesAsync(60);
 
             Assert.True(LoadedChunks() > 0,
                 $"At view distance {distance} the client has no chunks at all. The " +
                 "mod's view-distance watcher feeds particle, occlusion, dynamic-light " +
                 "and entity-animation thresholds, so a bad value here disables them all.");
 
-            Assert.Empty(Client.Logs.Errors);
+            Assert.Empty(client.Logs.Errors);
         }
 
         // Leave the suite's declared distance in place for whatever runs next.
-        Client.Settings.Set("viewDistance", OptiTimeConfig.ViewDistance);
-        await Session.StepFramesAsync(60);
+        client.Settings.Set("viewDistance", OptiTimeConfig.ViewDistance);
+        await session.StepFramesAsync(60);
     }
 }

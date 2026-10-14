@@ -14,7 +14,7 @@ on:
         type: boolean
         default: false
       version:
-        description: Expected mod version. Used by the release workflow.
+        description: Expected mod version. Required when release_validation is true.
         required: false
         type: string
   workflow_call:
@@ -25,7 +25,7 @@ on:
         type: boolean
         default: false
       version:
-        description: Expected mod version. Used by the release workflow.
+        description: Expected mod version. Required when release_validation is true.
         required: false
         type: string
         default: ""
@@ -41,15 +41,27 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   VS_VERSION: "1.22.7"
+  # SHA-256 observed from the official Vintage Story archive on 2026-10-13.
+  VS_SHA256: "483cc6827a50c08c5c41ccd0262c6f1223c104e54ca7135c46605278d89f5de1"
 
 jobs:
   test-linux:
     name: Build and test (Linux)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Require version for release validation
+        if: inputs.release_validation
+        env:
+          EXPECTED_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ -z "$EXPECTED_VERSION" ]]; then
+            echo "::error::The version input is required when release_validation is true."
+            exit 1
+          fi
 
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -60,7 +72,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/NuGet.Config') }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/NuGet.Config', '**/packages.lock.json') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
 
@@ -69,7 +81,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
-          key: vintagestory-linux-${{ env.VS_VERSION }}-v1
+          key: vintagestory-linux-${{ env.VS_VERSION }}-${{ env.VS_SHA256 }}
 
       - name: Install headless test dependencies
         run: |
@@ -87,6 +99,10 @@ jobs:
           wget --quiet --show-progress \
             "https://cdn.vintagestory.at/gamefiles/stable/vs_client_linux-x64_${VS_VERSION}.tar.gz" \
             --output-document "$archive"
+          printf '%s  %s\n' "$VS_SHA256" "$archive" | sha256sum --check --status || {
+            echo "::error::Vintage Story $VS_VERSION archive SHA-256 does not match the pinned digest."
+            exit 1
+          }
           tar -xzf "$archive" -C "$install_dir" --strip-components=1
           rm "$archive"
 
@@ -156,7 +172,7 @@ jobs:
         if: github.event_name == 'push' || inputs.release_validation
         env:
           VINTAGE_STORY: ${{ runner.temp }}/vintagestory/${{ env.VS_VERSION }}
-        run: ./tests/OptiTime.Pharos.Tests/build.sh --filter 'FullyQualifiedName~HarnessProbeTests'
+        run: ./tests/OptiTime.Pharos.Tests/build.sh --filter 'FullyQualifiedName~HarnessProbeTests|FullyQualifiedName~PharosLoopbackTests.TrackedEntityPositionPacketsReachInterpolationOverLoopback'
 
       - name: Verify release package
         env:
