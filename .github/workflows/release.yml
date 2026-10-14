@@ -21,7 +21,7 @@ concurrency:
 jobs:
   prepare:
     name: Check release request
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
       version: ${{ steps.check.outputs.version }}
@@ -97,7 +97,7 @@ jobs:
   publish:
     name: Create GitHub release
     needs: [prepare, ci]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       contents: write
