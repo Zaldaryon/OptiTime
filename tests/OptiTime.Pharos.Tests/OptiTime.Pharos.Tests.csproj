@@ -9,6 +9,8 @@
     <IsTestProject>true</IsTestProject>
     <RootNamespace>OptiTime.Pharos.Tests</RootNamespace>
     <AssemblyName>OptiTime.Pharos.Tests</AssemblyName>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode>true</RestoreLockedMode>
     <!-- Pharos boots the real client and reads its GL state; managed-only. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 

@@ -22,12 +22,28 @@ public abstract class OptiTimeScenarioBase : ClientServerScenarioBase
     /// deterministic, so every sample is taken well past chunk streaming and
     /// shader compilation.
     /// </summary>
-    protected override HeadlessClientOptions ClientOptions => new()
+    protected override HeadlessClientOptions ClientOptions
     {
-        BootMode = ClientBootMode.Engine,
-        Width = 1280,
-        Height = 720,
-    };
+        get
+        {
+            // Pharos evaluates this after booting the embedded server and before
+            // booting the client, so the UDP bridge is ready before any packet
+            // can reach the patched client socket. During pool-key calculation
+            // ServerHost is still null; a reused host already has its network
+            // attached from the original boot.
+            if (ServerHost is { } serverHost)
+            {
+                HarnessPatches.Attach(serverHost.UdpNetwork);
+            }
+
+            return new()
+            {
+                BootMode = ClientBootMode.Engine,
+                Width = 1280,
+                Height = 720,
+            };
+        }
+    }
 
     /// <summary>
     /// Lets the harness fail a test on any error the client or server logged
@@ -38,25 +54,6 @@ public abstract class OptiTimeScenarioBase : ClientServerScenarioBase
     /// log assertions in those classes are the point of the test.
     /// </summary>
     protected override bool FailOnLoggedErrors => true;
-
-    /// <summary>
-    /// Hands the harness the embedded server's UDP dummy network before the
-    /// client joins, so the client socket can be pointed at the same buffers.
-    /// See <c>HarnessPatches</c> for why that is necessary.
-    /// </summary>
-    public override async Task InitializeAsync()
-    {
-        await base.InitializeAsync();
-
-        try
-        {
-            HarnessPatches.Attach(ServerHost!.UdpNetwork);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[OptiTime.Pharos] could not attach the UDP dummy network: {ex.Message}");
-        }
-    }
 
     /// <summary>
     /// Known defects in the mod under test, allowed through the harness' error
