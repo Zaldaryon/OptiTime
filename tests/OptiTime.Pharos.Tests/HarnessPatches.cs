@@ -37,12 +37,16 @@ internal static class HarnessPatches
 {
     private static readonly object Gate = new();
     private static readonly object PositionGate = new();
+    private static readonly object PositionReceivePatchGate = new();
     private static bool _installed;
     private static bool s_udpEnqueuePatchInstalled;
+    private static bool s_entityPositionReceivePatchInstalled;
+    private static int s_positionReceiveObserverErrorLogged;
     private static long s_delivered;
     private static long s_dropped;
     private static long s_trackedEntityId = -1;
     private static readonly ConcurrentQueue<EntityPositionObservation> s_positionObservations = new();
+    private static readonly ConcurrentQueue<ReceivedEntityPositionObservation> s_receivedPositions = new();
 
     private static FieldInfo? s_networkField;
     private static FieldInfo? s_clientReceiveBufferField;
@@ -56,10 +60,11 @@ internal static class HarnessPatches
     /// </summary>
     private static DummyNetwork? s_sharedUdp;
 
-    /// <summary>How many datagrams the patch delivered, and how many it dropped.</summary>
-    public static long Delivered => Interlocked.Read(ref s_delivered);
+    /// <summary>How many datagrams the test enqueue shim delivered.</summary>
+    public static long EnqueueShimDelivered => Interlocked.Read(ref s_delivered);
 
-    public static long Dropped => Interlocked.Read(ref s_dropped);
+    /// <summary>How many datagrams the test enqueue shim dropped.</summary>
+    public static long EnqueueShimDropped => Interlocked.Read(ref s_dropped);
 
     public static bool IsUdpEnqueuePatchInstalled => Volatile.Read(ref s_udpEnqueuePatchInstalled);
 
@@ -72,13 +77,19 @@ internal static class HarnessPatches
     }
 
     internal readonly record struct EntityPositionObservation(long X, long Y, long Z, int Tick);
+    internal readonly record struct ReceivedEntityPositionObservation(long X, long Y, long Z, int Tick);
 
-    /// <summary>Tracks position snapshots reaching the client's UDP receive queue.</summary>
+    public static bool IsEntityPositionReceivePatchInstalled =>
+        Volatile.Read(ref s_entityPositionReceivePatchInstalled);
+
+    /// <summary>Tracks snapshots at the client's interpolation receive handler.</summary>
     public static void TrackEntityPositions(long entityId)
     {
+        EnsureEntityPositionReceivePatch();
         lock (PositionGate)
         {
             while (s_positionObservations.TryDequeue(out _)) { }
+            while (s_receivedPositions.TryDequeue(out _)) { }
             Volatile.Write(ref s_trackedEntityId, entityId);
         }
     }
@@ -91,6 +102,7 @@ internal static class HarnessPatches
             if (Volatile.Read(ref s_trackedEntityId) != entityId) return;
             Volatile.Write(ref s_trackedEntityId, -1);
             while (s_positionObservations.TryDequeue(out _)) { }
+            while (s_receivedPositions.TryDequeue(out _)) { }
         }
     }
 
@@ -101,6 +113,106 @@ internal static class HarnessPatches
             return Volatile.Read(ref s_trackedEntityId) == entityId
                 ? s_positionObservations.ToArray()
                 : Array.Empty<EntityPositionObservation>();
+        }
+    }
+
+    public static IReadOnlyList<ReceivedEntityPositionObservation> ReceivedPositionsFor(long entityId)
+    {
+        lock (PositionGate)
+        {
+            return Volatile.Read(ref s_trackedEntityId) == entityId
+                ? s_receivedPositions.ToArray()
+                : Array.Empty<ReceivedEntityPositionObservation>();
+        }
+    }
+
+    private static void EnsureEntityPositionReceivePatch()
+    {
+        if (IsEntityPositionReceivePatchInstalled) return;
+
+        lock (PositionReceivePatchGate)
+        {
+            if (s_entityPositionReceivePatchInstalled) return;
+
+            try
+            {
+                MethodInfo? target = AccessTools.Method(
+                    "EntityBehaviorInterpolatePosition:OnReceivedServerPos",
+                    [typeof(bool), typeof(EnumHandling).MakeByRefType()]);
+                if (target is null)
+                {
+                    Console.WriteLine(
+                        "[OptiTime.Pharos] Interpolation receive observer not installed: " +
+                        "the game target EntityBehaviorInterpolatePosition.OnReceivedServerPos was not found.");
+                    return;
+                }
+
+                new Harmony("optitime.pharos.harness").Patch(
+                    target,
+                    postfix: new HarmonyMethod(
+                        typeof(EntityPositionReceivePatch),
+                        nameof(EntityPositionReceivePatch.Postfix)));
+                Volatile.Write(ref s_entityPositionReceivePatchInstalled, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"[OptiTime.Pharos] Interpolation receive observer not installed ({ex.Message}).");
+            }
+        }
+    }
+
+    internal static class EntityPositionReceivePatch
+    {
+        public static void Postfix(object __instance)
+        {
+            long trackedEntityId = Volatile.Read(ref s_trackedEntityId);
+            if (trackedEntityId < 0) return;
+
+            try
+            {
+                object? entity = AccessTools.Field(__instance.GetType(), "entity")?.GetValue(__instance);
+                if (entity is null) return;
+
+                long entityId = Convert.ToInt64(ReadMember(entity, "EntityId"));
+                if (entityId != trackedEntityId) return;
+
+                object? position = ReadMember(entity, "Pos");
+                object? attributes = ReadMember(entity, "Attributes");
+                if (position is null || attributes is null) return;
+
+                Type positionType = position.GetType();
+                double x = Convert.ToDouble(ReadMember(position, "X"));
+                double y = Convert.ToDouble(ReadMember(position, "Y"));
+                double z = Convert.ToDouble(ReadMember(position, "Z"));
+                int tick = Convert.ToInt32(AccessTools.Method(attributes.GetType(), "GetInt", [typeof(string)])
+                    ?.Invoke(attributes, ["tick"]));
+
+                lock (PositionGate)
+                {
+                    if (Volatile.Read(ref s_trackedEntityId) != entityId) return;
+                    s_receivedPositions.Enqueue(new(
+                        CollectibleNet.SerializeDoublePrecise(x),
+                        CollectibleNet.SerializeDoublePrecise(y),
+                        CollectibleNet.SerializeDoublePrecise(z),
+                        tick));
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Interlocked.Exchange(ref s_positionReceiveObserverErrorLogged, 1) == 0)
+                {
+                    Console.WriteLine(
+                        $"[OptiTime.Pharos] Interpolation receive observer could not record a position ({ex.Message}).");
+                }
+            }
+        }
+
+        private static object? ReadMember(object instance, string name)
+        {
+            PropertyInfo? property = AccessTools.Property(instance.GetType(), name);
+            if (property is not null) return property.GetValue(instance);
+            return AccessTools.Field(instance.GetType(), name)?.GetValue(instance);
         }
     }
 
@@ -200,6 +312,7 @@ internal static class HarnessPatches
         {
             Volatile.Write(ref s_trackedEntityId, -1);
             while (s_positionObservations.TryDequeue(out _)) { }
+            while (s_receivedPositions.TryDequeue(out _)) { }
         }
     }
 
@@ -260,7 +373,7 @@ internal static class HarnessPatches
             {
                 // The buffer is shared with the reader. Without its lock, even
                 // Enqueue would race ReadMessage, so fail closed and expose the
-                // loss through Dropped for the engine probe to catch.
+                // loss through EnqueueShimDropped for the engine probe to catch.
                 Interlocked.Increment(ref s_dropped);
                 return;
             }

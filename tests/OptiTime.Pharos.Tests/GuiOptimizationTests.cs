@@ -1,17 +1,22 @@
+using System.Text.Json;
+using Vintagestory.API.Common;
+using Vintagestory.API.Server;
 using Zaldaryon.Pharos.Assertions;
 using Zaldaryon.Pharos.Input;
+using Zaldaryon.Pharos.UI;
 
 namespace OptiTime.Pharos.Tests;
 
 /// <summary>
-/// Drives the GUI the way a player does, through the same input paths the mod
-/// patches.
+/// Drives the GUI through Vintage Story's hotkeys and mouse clicks while the
+/// GUI render optimization is active. The optional input patch has its own
+/// startup-configured scenario below.
 ///
 /// <c>guimgr</c> is the riskiest option in the mod and the one that has already
 /// broken once: v1.5.16 shipped because the GUI Manager optimization had been
 /// silently dead since 1.22.5, where a dynamic dispatch was replaced with typed
 /// field references that did not resolve. It patches eight input and render
-/// entry points on <c>GuiManager</c>, plus a finalizer on
+/// render entry points on <c>GuiManager</c>, plus a finalizer on
 /// <c>GuiComposer.PostRender</c>.
 ///
 /// A test that only asserts "the dialog opened" cannot tell a working patch from
@@ -29,9 +34,9 @@ namespace OptiTime.Pharos.Tests;
 public class GuiOptimizationTests : OptiTimeScenarioBase
 {
     /// <summary>
-    /// Every dialog the GUI Manager renders has to survive the patch, and the
-    /// game's own hotkey is what opens it, so the patched
-    /// <c>GuiManager.OnKeyDown</c> prefix is on the path.
+    /// Every tested dialog has to survive the GUI render optimization. The
+    /// game's own hotkey opens and closes each dialog through the normal input
+    /// path; this class does not enable the optional input patch.
     ///
     /// A dialog that is unavailable in this play style is a skip, not a
     /// failure; one that opens and then will not close is a failure, because
@@ -41,56 +46,61 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
     public async Task DialogsOpenAndCloseThroughTheirOwnHotkeys()
     {
         await WarmUpAsync();
-        await SetOptimizationAsync("guimgr", enabled: true);
-
-        (string Dialog, string Fallback)[] dialogs =
-        [
-            ("GuiDialogEscapeMenu", "escapemenudialog"),
-            ("GuiDialogInventory", "inventorydialog"),
-            ("GuiDialogCharacter", "characterdialog"),
-            ("GuiDialogWorldMap", "worldmap"),
-            ("GuiDialogHandbook", "handbook"),
-        ];
-
-        var opened = new List<string>();
-        var skipped = new List<string>();
-
-        foreach ((string dialog, string fallback) in dialogs)
+        await WithOptimizationStateRestoredAsync("guimgr", async () =>
         {
-            if (!await OpenDialogAsync(dialog, fallback))
+            await SetOptimizationAsync("guimgr", enabled: true);
+
+            (string Dialog, string Fallback)[] dialogs =
+            [
+                ("GuiDialogEscapeMenu", "escapemenudialog"),
+                ("GuiDialogInventory", "inventorydialog"),
+                ("GuiDialogCharacter", "characterdialog"),
+                ("GuiDialogWorldMap", "worldmap"),
+            ];
+
+            var opened = new List<string>();
+            var skipped = new List<string>();
+
+            foreach ((string dialog, string fallback) in dialogs)
             {
-                skipped.Add(dialog);
-                continue;
+                if (!await OpenDialogAsync(dialog, fallback))
+                {
+                    skipped.Add(dialog);
+                    continue;
+                }
+
+                opened.Add(dialog);
+
+                string hotkey = DialogHotkey(dialog) ?? fallback;
+                Assert.NotNull(Client!.Hotkeys.Get(hotkey));
+                await Client.Hotkeys.TriggerAsync(hotkey);
+                await Session!.StepFramesAsync(10);
+                bool closed = !Client.Ui!.IsOpen(dialog);
+
+                Assert.True(closed,
+                    $"'{dialog}' did not close when its own hotkey '{hotkey}' was pressed " +
+                    "through the patched GuiManager input path.");
+                Assert.False(Client.Ui.IsOpen(dialog), $"'{dialog}' is still open after closing it.");
             }
 
-            opened.Add(dialog);
+            Console.WriteLine($"opened: {string.Join(", ", opened)}");
+            Console.WriteLine($"unavailable in this play style: {string.Join(", ", skipped)}");
 
-            bool closed = Client!.Ui!.Close(dialog);
-            await Session!.StepFramesAsync(10);
+            Assert.True(opened.Count >= 2,
+                $"Only {opened.Count} dialog(s) opened at all ({string.Join(", ", opened)}). " +
+                "Too few of the GUI paths were exercised for this test to mean anything.");
 
-            Assert.True(closed,
-                $"'{dialog}' would not close. GuiManager's OnFinalizeFrame prefix or its " +
-                "OnKeyDown prefix is changing how dialogs are dismissed.");
-            Assert.False(Client.Ui.IsOpen(dialog), $"'{dialog}' is still open after closing it.");
-        }
-
-        Console.WriteLine($"opened: {string.Join(", ", opened)}");
-        Console.WriteLine($"unavailable in this play style: {string.Join(", ", skipped)}");
-
-        Assert.True(opened.Count >= 2,
-            $"Only {opened.Count} dialog(s) opened at all ({string.Join(", ", opened)}). " +
-            "Too few of the GUI paths were exercised for this test to mean anything.");
-
-        AssertNoUnexpectedClientErrors("gui");
+            AssertNoUnexpectedClientErrors("gui");
+        });
     }
 
     /// <summary>
-    /// With the patch off, the same dialogs must open and close. Comparing the
-    /// two states is what turns "the dialog worked" into "the patch did not
-    /// change the dialog".
+    /// Dialogs stay usable after writing the GUI setting off and on. Harmony
+    /// patches remain installed until restart, so this does not compare patched
+    /// behavior with vanilla behavior.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 600_000)]
-    public async Task DialogsBehaveTheSameWithThePatchOff()
+    public async Task DialogsRemainFunctionalAcrossGuiSettingChanges()
     {
         await WarmUpAsync();
 
@@ -99,7 +109,7 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
         {
             await SetOptimizationAsync("guimgr", enabled: false);
 
-            string[] unpatched = [];
+            string[] settingOff = [];
             foreach ((string dialog, string fallback) in new[]
                      {
                          ("GuiDialogEscapeMenu", "escapemenudialog"),
@@ -108,22 +118,24 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
             {
                 if (!await OpenDialogAsync(dialog, fallback)) continue;
 
-                unpatched = [.. unpatched, dialog];
+                settingOff = [.. settingOff, dialog];
 
                 await CloseDialogAsync(dialog);
             }
+
+            Assert.NotEmpty(settingOff);
 
             await SetOptimizationAsync("guimgr", enabled: true);
 
-            string[] patched = [];
-            foreach (string dialog in unpatched)
+            string[] settingOn = [];
+            foreach (string dialog in settingOff)
             {
-                if (await OpenDialogAsync(dialog)) patched = [.. patched, dialog];
+                if (await OpenDialogAsync(dialog)) settingOn = [.. settingOn, dialog];
 
                 await CloseDialogAsync(dialog);
             }
 
-            Assert.Equal(unpatched.Order(), patched.Order());
+            Assert.Equal(settingOff.Order(), settingOn.Order());
         }
         finally
         {
@@ -143,83 +155,88 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
         var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
         var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
         var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
-        await SetOptimizationAsync("guimgr", enabled: true);
-
-        await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
-        await session.StepFramesAsync(15);
-
-        Assert.True(ui.IsOpen("GuiDialogInventory"),
-            "The inventory dialog would not open at all.");
-
-        try
+        await WithOptimizationStateRestoredAsync("guimgr", async () =>
         {
-            DialogLayout layout = ui.Layout("GuiDialogInventory");
+            await SetOptimizationAsync("guimgr", enabled: true);
 
-            PharosAssert.DialogOnScreen(client, "GuiDialogInventory");
-            PharosAssert.NoOverlappingElements(layout);
+            await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
+            await session.StepFramesAsync(15);
 
-            Console.WriteLine(
-                $"inventory layout: {layout.Elements.Count} elements in " +
-                $"{layout.Composers.Count} composers, window {layout.ScreenWidth}x{layout.ScreenHeight}, " +
-                $"gui scale {layout.GuiScale}");
-        }
-        finally
-        {
-            ui.Close("GuiDialogInventory");
-            await session.StepFramesAsync(5);
-        }
+            Assert.True(ui.IsOpen("GuiDialogInventory"),
+                "The inventory dialog would not open at all.");
+
+            try
+            {
+                DialogLayout layout = ui.Layout("GuiDialogInventory");
+
+                PharosAssert.DialogOnScreen(client, "GuiDialogInventory");
+                PharosAssert.NoOverlappingElements(layout);
+
+                Console.WriteLine(
+                    $"inventory layout: {layout.Elements.Count} elements in " +
+                    $"{layout.Composers.Count} composers, window {layout.ScreenWidth}x{layout.ScreenHeight}, " +
+                    $"gui scale {layout.GuiScale}");
+            }
+            finally
+            {
+                ui.Close("GuiDialogInventory");
+                await session.StepFramesAsync(5);
+            }
+        });
     }
 
     /// <summary>
-    /// Mouse input goes through <c>OnMouseMove</c>, <c>OnMouseDown</c>,
-    /// <c>OnMouseUp</c> and <c>OnMouseMove</c>'s coalescing. Driving real mouse
-    /// movement over an open dialog exercises all of them; a coalescing bug
-    /// shows up as a click landing on the wrong element or not at all.
+    /// A virtual mouse click on the handbook category strip changes the active
+    /// category, and a click on its close button dismisses the dialog while the
+    /// GUI render optimization is active. The handbook focuses its search field
+    /// on open, so its single-letter hotkey is not a reliable close action here.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 600_000)]
-    public async Task VirtualMouseInputReachesAnOpenDialog()
+    public async Task VirtualMouseClickChangesTheHandbookCategory()
     {
         await WarmUpAsync();
         var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
         var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
         var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
-        await SetOptimizationAsync("guimgr", enabled: true);
-
-        await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
-        await session.StepFramesAsync(15);
-
-        Assert.True(ui.IsOpen("GuiDialogInventory"));
-        try
+        await WithOptimizationStateRestoredAsync("guimgr", async () =>
         {
-            InputSnapshot before = client.Input.Snapshot();
-            Assert.True(before.IsIdle,
-                $"The virtual input controller started with {before.PressedKeys.Count} keys " +
-                "and scroll already set. A leftover input from a previous test would be " +
-                "delivered to this dialog.");
+            await SetOptimizationAsync("guimgr", enabled: true);
 
-            // Move the mouse in a small sweep, then read the state back: the
-            // coalescing prefix must not swallow the position.
-            for (int i = 0; i < 10; i++)
+            await ui.Handbook.OpenAsync();
+            await ui.Handbook.WaitUntilLoadedAsync();
+            Assert.True(ui.IsOpen("GuiDialogSurvivalHandbook"), "The handbook dialog did not open.");
+
+            try
             {
-                client.Input.InjectMouseMove(400 + i * 8, 300 + i * 4);
-                await session.StepFramesAsync(1);
+                IReadOnlyList<GuiTabInfo> tabs = ui.Tabs("GuiDialogSurvivalHandbook", "verticalTabs");
+                Assert.True(tabs.Count > 1,
+                    $"The handbook exposes only {tabs.Count} category tab(s), so a tab change cannot be tested.");
+                GuiTabInfo active = Assert.Single(tabs, tab => tab.Active);
+                GuiTabInfo target = tabs.First(tab => tab.Index != active.Index);
+
+                ui.ClickTab("GuiDialogSurvivalHandbook", "verticalTabs", target.Index);
+                Assert.True(await StepUntilAsync(
+                        () => ui.Tabs("GuiDialogSurvivalHandbook", "verticalTabs")
+                            .Any(tab => tab.Index == target.Index && tab.Active),
+                        maxFrames: 30),
+                    $"A real virtual mouse click did not activate handbook category '{target.Name}'.");
+
+                var closeButton = Assert.Single(ui.Elements("GuiDialogSurvivalHandbook"),
+                    element => element.IsInteractive &&
+                        string.Equals(element.Text, "Close Handbook", StringComparison.Ordinal));
+                (int closeX, int closeY) = closeButton.Center;
+                client.Input.Click(closeX, closeY);
+                Assert.True(await StepUntilAsync(
+                        () => !ui.IsOpen("GuiDialogSurvivalHandbook"),
+                        maxFrames: 30),
+                    "A real virtual mouse click on Close Handbook did not dismiss the dialog.");
             }
-
-            (int x, int y) = client.Input.GetMousePosition();
-            Assert.True(x > 0 && y > 0,
-                $"After moving the mouse the virtual position is ({x}, {y}). " +
-                "The input never reached the client, so nothing below would test the patch.");
-
-            client.Input.InjectScroll(-120);
-            await session.StepFramesAsync(3);
-            Assert.NotEqual(0, client.Input.GetScrollDelta());
-            client.Input.ResetScrollDelta();
-        }
-        finally
-        {
-            ui.Close("GuiDialogInventory");
-            await session.StepFramesAsync(5);
-        }
+            finally
+            {
+                ui.Close("GuiDialogSurvivalHandbook");
+                await session.StepFramesAsync(5);
+            }
+        });
     }
 
     /// <summary>
@@ -240,20 +257,28 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
         var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
         var player = Player ?? throw new InvalidOperationException("Pharos did not provide a player after warm-up.");
         var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
-        await SetOptimizationAsync("guimgr", enabled: true);
-
-        for (int i = 0; i < 12; i++)
+        await WithOptimizationStateRestoredAsync("guimgr", async () =>
         {
-            if (!await OpenDialogAsync("GuiDialogEscapeMenu", "escapemenudialog")) { await session.StepFramesAsync(5); }
-            await session.StepFramesAsync(3);
-            ui.Close("GuiDialogEscapeMenu");
-            await session.StepFramesAsync(3);
-        }
+            await SetOptimizationAsync("guimgr", enabled: true);
 
-        player.Gui.CloseAllDialogs();
-        await session.StepFramesAsync(10);
+            int openedCycles = 0;
+            for (int i = 0; i < 30; i++)
+            {
+                await OpenDialogRequiredAsync("GuiDialogEscapeMenu", "escapemenudialog");
+                Assert.True(ui.IsOpen("GuiDialogEscapeMenu"), $"Escape menu cycle {i + 1} did not open a dialog.");
+                openedCycles++;
+                await session.StepFramesAsync(3);
+                ui.Close("GuiDialogEscapeMenu");
+                await session.StepFramesAsync(3);
+            }
 
-        AssertNoUnexpectedClientErrors("gui");
+            Assert.Equal(30, openedCycles);
+
+            player.Gui.CloseAllDialogs();
+            await session.StepFramesAsync(10);
+
+            AssertNoUnexpectedClientErrors("gui");
+        });
     }
 
     /// <summary>
@@ -266,30 +291,57 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
     public async Task GuiManagerReportsItsFastPathShare()
     {
         await WarmUpAsync();
-        await SetOptimizationAsync("guimgr", enabled: true);
+        await WithOptimizationStateRestoredAsync("guimgr", async () =>
+        {
+            await SetOptimizationAsync("guimgr", enabled: true);
+            await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
 
-        DiagCounters counters = await CaptureDiagAsync("guimgr");
-        Assert.True(counters.Present, "The 'guimgr' diag module produced no dump.");
+            try
+            {
+                DiagCounters counters = await CaptureDiagAsync("guimgr");
+                Assert.True(counters.Present, "The 'guimgr' diag module produced no dump.");
 
-        double calls = counters.Require(DiagCounter.RenderCalls, "guimgr");
-        double fastPath = counters.Require(DiagCounter.NoLinqPath, "guimgr");
+                double calls = counters.Require(DiagCounter.RenderCalls, "guimgr");
+                double fastPath = counters.Require(DiagCounter.NoLinqPath, "guimgr");
 
-        await WriteArtifactAsync(nameof(GuiOptimizationTests), "guimgr.txt", counters.Raw);
+                await WriteArtifactAsync(nameof(GuiOptimizationTests), "guimgr.txt", counters.Raw);
 
-        Console.WriteLine(counters.Raw);
+                Console.WriteLine(counters.Raw);
 
-        Assert.True(calls > 0, "The GUI Manager render prefix never ran.");
-        Assert.True(fastPath <= calls,
-            $"guimgr reports {fastPath} fast-path renders out of {calls} calls. " +
-            "More fast-path renders than total calls means the two counters are " +
-            "incremented on different code paths and at least one is wrong.");
+                Assert.True(calls > 0, "The GUI Manager render prefix never ran.");
+                Assert.True(fastPath > 0,
+                    "The GUI Manager render fast path did not execute while an inventory dialog was open.");
+                Assert.True(fastPath <= calls,
+                    $"guimgr reports {fastPath} fast-path renders out of {calls} calls. " +
+                    "More fast-path renders than total calls means the two counters are " +
+                    "incremented on different code paths and at least one is wrong.");
+            }
+            finally
+            {
+                Client!.Ui!.Close("GuiDialogInventory");
+                await Session!.StepFramesAsync(5);
+            }
+        });
     }
 
+    private string? DialogHotkey(string dialogName) => Client!.RunOnClientThread(() =>
+        Player!.Gui.LoadedDialogs
+            .FirstOrDefault(dialog => dialog.GetType().Name == dialogName)
+            ?.ToggleKeyCombinationCode);
+}
+
+[ServerWorld(
+    seed: OptiTimeConfig.WorldSeed,
+    playStyle: OptiTimeConfig.PlayStyle,
+    worldType: OptiTimeConfig.WorldType)]
+[ClientSetting("viewDistance", OptiTimeConfig.ViewDistance)]
+[PharosMods(OptiTimeConfig.ModAssembly)]
+[DataFiles("Fixtures/gui-input-coalescing-enabled.json", To = "ModConfig/OptiTime.json", Side = EnumAppSide.Client)]
+public class GuiInputCoalescingTests : OptiTimeScenarioBase
+{
     /// <summary>
-    /// The GUI Manager has a coalescing interval for mouse-move handling. Hammer
-    /// the input path harder than the interval and the coalescing must not drop
-    /// the click that follows: a click swallowed by coalescing is a button that
-    /// sometimes does nothing, which is the exact bug the option exists to fix.
+    /// Boots with the opt-in input patch and mouse-move coalescing enabled,
+    /// then verifies that a click remains actionable after a burst of moves.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 600_000)]
     public async Task MouseMoveCoalescingDoesNotSwallowClicks()
@@ -298,30 +350,45 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
         var client = Client ?? throw new InvalidOperationException("Pharos did not provide a client after warm-up.");
         var session = Session ?? throw new InvalidOperationException("Pharos did not provide a session after warm-up.");
         var ui = client.Ui ?? throw new InvalidOperationException("Pharos did not initialize the client UI.");
-        await SetOptimizationAsync("guimgr", enabled: true);
 
-        await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
-        await session.StepFramesAsync(15);
+        using (JsonDocument config = JsonDocument.Parse(await File.ReadAllTextAsync(ModConfigPath)))
+        {
+            Assert.True(config.RootElement.GetProperty("GuiManagerInputNoLinqEnabled").GetBoolean(),
+                "The scenario profile did not activate the startup-only GUI input patch.");
+            Assert.True(config.RootElement.GetProperty("GuiManagerMouseMoveCoalescingEnabled").GetBoolean(),
+                "The scenario profile did not enable mouse-move coalescing.");
+        }
+
+        Assert.Contains("GUI Manager input optimization loaded", ClientLogText(), StringComparison.OrdinalIgnoreCase);
+        await SetOptimizationAsync("guimgr", enabled: true);
+        await ui.Handbook.OpenAsync();
+        await ui.Handbook.WaitUntilLoadedAsync();
+        Assert.True(ui.IsOpen("GuiDialogSurvivalHandbook"), "The handbook dialog did not open.");
 
         try
         {
+            IReadOnlyList<GuiTabInfo> tabs = ui.Tabs("GuiDialogSurvivalHandbook", "verticalTabs");
+            Assert.True(tabs.Count > 1,
+                $"The handbook exposes only {tabs.Count} category tab(s), so a tab change cannot be tested.");
+            GuiTabInfo active = Assert.Single(tabs, tab => tab.Active);
+            GuiTabInfo target = tabs.First(tab => tab.Index != active.Index);
+
             for (int i = 0; i < 200; i++)
             {
                 client.Input.InjectMouseMove(200 + (i % 50), 200 + (i % 37));
             }
-            await session.StepFramesAsync(3);
-
-            client.Input.InjectMouseButton(VirtualMouseButton.Left, pressed: true);
-            await session.StepFramesAsync(2);
-            client.Input.InjectMouseButton(VirtualMouseButton.Left, pressed: false);
-            await session.StepFramesAsync(5);
-
-            AssertNoUnexpectedClientErrors("gui");
+            ui.ClickTab("GuiDialogSurvivalHandbook", "verticalTabs", target.Index);
+            Assert.True(await StepUntilAsync(
+                    () => ui.Tabs("GuiDialogSurvivalHandbook", "verticalTabs")
+                        .Any(tab => tab.Index == target.Index && tab.Active),
+                    maxFrames: 30),
+                $"The click after the mouse-move burst did not activate handbook category '{target.Name}'.");
+            AssertNoUnexpectedClientErrors("gui input coalescing");
         }
         finally
         {
             client.Input.Reset();
-            ui.Close("GuiDialogInventory");
+            ui.Close("GuiDialogSurvivalHandbook");
             await session.StepFramesAsync(5);
         }
     }

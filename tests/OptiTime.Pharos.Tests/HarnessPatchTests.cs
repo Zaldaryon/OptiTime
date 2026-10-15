@@ -27,8 +27,8 @@ public class HarnessPatchTests
 
         Assert.False(HarnessPatches.UdpEnqueuePatch.Prefix(client, packet));
 
-        Assert.Equal(1, HarnessPatches.Delivered);
-        Assert.Equal(0, HarnessPatches.Dropped);
+        Assert.Equal(1, HarnessPatches.EnqueueShimDelivered);
+        Assert.Equal(0, HarnessPatches.EnqueueShimDropped);
         Assert.Same(packet, Assert.Single(client.ReadMessage()));
     }
 
@@ -97,8 +97,8 @@ public class HarnessPatchTests
 
         Assert.False(HarnessPatches.UdpEnqueuePatch.Prefix(client, packet));
 
-        Assert.Equal(0, HarnessPatches.Delivered);
-        Assert.Equal(1, HarnessPatches.Dropped);
+        Assert.Equal(0, HarnessPatches.EnqueueShimDelivered);
+        Assert.Equal(1, HarnessPatches.EnqueueShimDropped);
 
         FieldInfo receiveBuffer = typeof(DummyNetwork).GetField(
             "ClientReceiveBuffer",
@@ -121,8 +121,8 @@ public class HarnessPatchTests
         Parallel.For(0, packetCount, _ =>
             HarnessPatches.UdpEnqueuePatch.Prefix(client, new Packet_UdpPacket()));
 
-        Assert.Equal(packetCount, HarnessPatches.Delivered);
-        Assert.Equal(0, HarnessPatches.Dropped);
+        Assert.Equal(packetCount, HarnessPatches.EnqueueShimDelivered);
+        Assert.Equal(0, HarnessPatches.EnqueueShimDropped);
         Assert.Equal(packetCount, client.ReadMessage().Count());
     }
 }
