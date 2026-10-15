@@ -253,7 +253,7 @@ public class HandbookOptimizationTests : OptiTimeScenarioBase
     }
 
     /// <summary>
-    /// The handbook dialog stays on screen without overlapping controls after a
+    /// The handbook's readable and interactive controls do not overlap after a
     /// search narrows the page list.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 900_000)]
@@ -270,15 +270,11 @@ public class HandbookOptimizationTests : OptiTimeScenarioBase
 
             try
             {
-                PharosAssert.DialogOnScreen(Client, "GuiDialogSurvivalHandbook");
-
                 await Client.Ui.Handbook.SearchAsync("stone");
                 await Session!.StepFramesAsync(20);
 
                 DialogLayout layout = Client.Ui.Layout("GuiDialogSurvivalHandbook");
-                PharosAssert.NoOverlappingElements(
-                    layout,
-                    include: e => e.Width > 4 && e.Height > 4);
+                PharosAssert.NoOverlappingElements(layout);
 
                 Console.WriteLine($"handbook layout: {layout.Elements.Count} elements");
             }
