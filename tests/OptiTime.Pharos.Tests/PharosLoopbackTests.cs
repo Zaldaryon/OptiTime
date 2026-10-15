@@ -50,83 +50,87 @@ public class PharosLoopbackTests : OptiTimeScenarioBase
             $"The client did not receive the spawned chicken (entity {mover.EntityId}) before movement.");
 
         await Session.StepFramesAsync(60);
-        await SetOptimizationAsync("entityinterp", enabled: true);
-
-        HarnessPatches.TrackEntityPositions(mover.EntityId);
-        Client!.PacketRecorder.Clear();
-        Client.PacketRecorder.Start();
-
-        try
+        await WithOptimizationStateRestoredAsync("entityinterp", async () =>
         {
-            await RunCommandOkAsync($"{OptiTimeConfig.Command} interpdiag on");
-            await RunCommandOkAsync($"{OptiTimeConfig.Command} interpdiag reset");
+            await SetOptimizationAsync("entityinterp", enabled: true);
 
-            for (int i = 0; i < 40; i++)
+            HarnessPatches.TrackEntityPositions(mover.EntityId);
+            Client!.PacketRecorder.Clear();
+            Client.PacketRecorder.Start();
+
+            try
             {
-                double x = origin.X + 4 + (i + 1) * 0.5;
-                ServerHost!.RunOnGameThread(
-                    () => mover.TeleportToDouble(x, origin.Y, origin.Z + 4));
-                await Session.StepFramesAsync(15);
+                await RunCommandOkAsync($"{OptiTimeConfig.Command} interpdiag on");
+                await RunCommandOkAsync($"{OptiTimeConfig.Command} interpdiag reset");
+
+                for (int i = 0; i < 40; i++)
+                {
+                    double x = origin.X + 4 + (i + 1) * 0.5;
+                    ServerHost!.RunOnGameThread(
+                        () => mover.TeleportToDouble(x, origin.Y, origin.Z + 4));
+                    await Session.StepFramesAsync(15);
+                }
+
+                Client.PacketRecorder.Stop();
+
+                IReadOnlyList<RecordedPacket> recorded = Client.PacketRecorder.GetRecordedPackets();
+                List<HarnessPatches.EntityPositionObservation> tcpPositions =
+                    ReadTcpPositionsFor(recorded, mover.EntityId);
+                IReadOnlyList<HarnessPatches.EntityPositionObservation> shimPositions =
+                    HarnessPatches.PositionObservationsFor(mover.EntityId);
+                List<HarnessPatches.EntityPositionObservation> positions =
+                    tcpPositions.Concat(shimPositions).Distinct().ToList();
+
+                Console.WriteLine(
+                    $"Entity {mover.EntityId}: {positions.Count} unique position snapshot(s), " +
+                    $"{tcpPositions.Count} in recorded TCP envelopes, " +
+                    $"{shimPositions.Count} delivered through the UDP receive shim; " +
+                    $"shim delivered={HarnessPatches.EnqueueShimDelivered}, " +
+                    $"dropped={HarnessPatches.EnqueueShimDropped}.");
+
+                Assert.Equal(0, HarnessPatches.EnqueueShimDropped);
+                Assert.True(positions.Count > 0,
+                    $"No UDP or TCP position snapshot for moving entity {mover.EntityId} reached the client.");
+
+                int distinctPositions = positions
+                    .Select(position => (position.X, position.Y, position.Z))
+                    .Distinct()
+                    .Count();
+                Assert.True(distinctPositions > 1,
+                    $"The client received positions for entity {mover.EntityId}, but they never changed.");
+
+                CommandOutput dump = await RunCommandAsync($"{OptiTimeConfig.Command} interpdiag dump");
+                string text = Unescape(dump.Text);
+                await WriteArtifactAsync(nameof(PharosLoopbackTests), "interpdiag.txt", text);
+                Console.WriteLine(text);
+
+                Assert.False(string.IsNullOrWhiteSpace(text),
+                    "The interpolation diagnostic command printed nothing.");
+
+                IReadOnlyList<string> diagnosticLines = DiagReader.Lines(
+                    ClientLogText(), "entityinterp");
+                DiagCounters interpolation = DiagReader.Parse(string.Join(' ', diagnosticLines));
+                Assert.True(interpolation.Require("samples", "entityinterp") > 0,
+                    $"The interpolation handler recorded no repeated position samples. " +
+                    $"Diagnostic output: {interpolation.Raw}");
+
+                long entitySamples = EntityInterpolationSamples(mover.EntityId);
+                Console.WriteLine(
+                    $"Entity {mover.EntityId}: interpolation handler recorded {entitySamples} repeated samples.");
+                Assert.True(entitySamples > 0,
+                    $"The interpolation handler recorded no repeated position samples for moving " +
+                    $"entity {mover.EntityId}; diagnostic output: {interpolation.Raw}");
             }
-
-            Client.PacketRecorder.Stop();
-
-            IReadOnlyList<RecordedPacket> recorded = Client.PacketRecorder.GetRecordedPackets();
-            List<HarnessPatches.EntityPositionObservation> tcpPositions =
-                ReadTcpPositionsFor(recorded, mover.EntityId);
-            IReadOnlyList<HarnessPatches.EntityPositionObservation> shimPositions =
-                HarnessPatches.PositionObservationsFor(mover.EntityId);
-            List<HarnessPatches.EntityPositionObservation> positions =
-                tcpPositions.Concat(shimPositions).Distinct().ToList();
-
-            Console.WriteLine(
-                $"Entity {mover.EntityId}: {positions.Count} unique position snapshot(s), " +
-                $"{tcpPositions.Count} in recorded TCP envelopes, " +
-                $"{shimPositions.Count} delivered through the UDP receive shim; " +
-                $"shim delivered={HarnessPatches.Delivered}, dropped={HarnessPatches.Dropped}.");
-
-            Assert.Equal(0, HarnessPatches.Dropped);
-            Assert.True(positions.Count > 0,
-                $"No UDP or TCP position snapshot for moving entity {mover.EntityId} reached the client.");
-
-            int distinctPositions = positions
-                .Select(position => (position.X, position.Y, position.Z))
-                .Distinct()
-                .Count();
-            Assert.True(distinctPositions > 1,
-                $"The client received positions for entity {mover.EntityId}, but they never changed.");
-
-            CommandOutput dump = await RunCommandAsync($"{OptiTimeConfig.Command} interpdiag dump");
-            string text = Unescape(dump.Text);
-            await WriteArtifactAsync(nameof(PharosLoopbackTests), "interpdiag.txt", text);
-            Console.WriteLine(text);
-
-            Assert.False(string.IsNullOrWhiteSpace(text),
-                "The interpolation diagnostic command printed nothing.");
-
-            IReadOnlyList<string> diagnosticLines = DiagReader.Lines(
-                ClientLogText(), "entityinterp");
-            DiagCounters interpolation = DiagReader.Parse(string.Join(' ', diagnosticLines));
-            Assert.True(interpolation.Require("samples", "entityinterp") > 0,
-                $"The interpolation handler recorded no repeated position samples. " +
-                $"Diagnostic output: {interpolation.Raw}");
-
-            long entitySamples = EntityInterpolationSamples(mover.EntityId);
-            Console.WriteLine(
-                $"Entity {mover.EntityId}: interpolation handler recorded {entitySamples} repeated samples.");
-            Assert.True(entitySamples > 0,
-                $"The interpolation handler recorded no repeated position samples for moving " +
-                $"entity {mover.EntityId}; diagnostic output: {interpolation.Raw}");
-        }
-        finally
-        {
-            Client?.PacketRecorder.Stop();
-            HarnessPatches.StopTrackingEntityPositions(mover.EntityId);
-            DisableEntityInterpolationDiagnostics();
-        }
+            finally
+            {
+                Client?.PacketRecorder.Stop();
+                HarnessPatches.StopTrackingEntityPositions(mover.EntityId);
+                DisableEntityInterpolationDiagnostics();
+            }
+        });
     }
 
-    private static long EntityInterpolationSamples(long entityId)
+    internal static long EntityInterpolationSamples(long entityId)
     {
         Type? interpolationType = EntityInterpolationType();
         FieldInfo? countsField = interpolationType?.GetField(
@@ -138,7 +142,7 @@ public class PharosLoopbackTests : OptiTimeScenarioBase
         return counts!.TryGetValue(entityId, out long samples) ? samples : 0;
     }
 
-    private static void DisableEntityInterpolationDiagnostics()
+    internal static void DisableEntityInterpolationDiagnostics()
     {
         MethodInfo? disable = EntityInterpolationType()?.GetMethod(
             "SetDiagnosticEnabled", BindingFlags.Public | BindingFlags.Static);
@@ -152,7 +156,7 @@ public class PharosLoopbackTests : OptiTimeScenarioBase
         return modAssembly?.GetType("OptiTime.EntityInterpolationOptimization");
     }
 
-    private static List<HarnessPatches.EntityPositionObservation> ReadTcpPositionsFor(
+    internal static List<HarnessPatches.EntityPositionObservation> ReadTcpPositionsFor(
         IReadOnlyList<RecordedPacket> recorded,
         long entityId)
     {

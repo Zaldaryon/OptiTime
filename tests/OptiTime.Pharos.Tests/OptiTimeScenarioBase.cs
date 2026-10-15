@@ -746,6 +746,28 @@ public abstract class OptiTimeScenarioBase : ClientServerScenarioBase
     }
 
     /// <summary>
+    /// Runs a scenario after remembering one optimization's saved setting, then
+    /// restores that setting even if an assertion or interaction fails.
+    /// </summary>
+    protected async Task WithOptimizationStateRestoredAsync(string optimization, Func<Task> body)
+    {
+        OptionState before = await ReadOptionStateAsync(optimization)
+            ?? throw new InvalidOperationException($"'{optimization}' is absent from status output.");
+
+        try
+        {
+            await body();
+        }
+        finally
+        {
+            if (before.Conflict is null || before.Enabled)
+            {
+                await SetOptimizationAsync(optimization, before.Enabled);
+            }
+        }
+    }
+
+    /// <summary>
     /// Runs <paramref name="body"/> with one optimization in a given state and
     /// puts it back afterwards, whatever happens.
     ///
