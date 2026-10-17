@@ -92,12 +92,12 @@ public abstract class RenderingFidelityBase : OptiTimeScenarioBase
     {
         try
         {
-            if (visualAmbientInstalled && Client is { IsDisposed: false })
-                Client.RunOnClientThread(() =>
-                {
-                    var entity = ((Zaldaryon.Pharos.Player.ClientTestPlayer)Player!).RawEntity!;
-                    ((Vintagestory.API.Client.ICoreClientAPI)entity.Api).Ambient.CurrentModifiers.Remove(VisualAmbientKey);
-                });
+                if (visualAmbientInstalled && Client is { IsDisposed: false })
+                    Client.RunOnClientThread(() =>
+                    {
+                        var entity = ((Zaldaryon.Pharos.Player.ClientTestPlayer)Player!).RawEntity!;
+                        ((Vintagestory.API.Client.ICoreClientAPI)entity.Api).Ambient.CurrentModifiers.Remove(VisualAmbientKey);
+                    });
         }
         finally
         {
@@ -137,7 +137,7 @@ public abstract class RenderingFidelityBase : OptiTimeScenarioBase
         string variant,
         int budget = OptiTimeConfig.VisualDiffPixelBudget)
     {
-        FramebufferComparisonResult result = actual.Compare(reference, tolerance: 0.02f);
+        FramebufferComparisonResult result = VisualSceneComparison.Compare(actual, reference);
 
         if (result.DiffPixelCount <= budget)
         {
@@ -255,33 +255,45 @@ public class OptiTimeRenderingFidelity : RenderingFidelityBase
     /// vanilla capture: that way any difference is attributable to this one
     /// module and nothing else.
     ///
-    /// All combinations in one scenario, because <c>[ClientServerScenario]</c> is
-    /// a <c>FactAttribute</c> and cannot take an <c>[InlineData]</c> - and
-    /// because six combinations in one session is both faster and fairer than
-    /// six sessions that each paid a boot.
+    /// Each module combination has its own scenario so a slow or interrupted
+    /// measurement does not discard the evidence collected for earlier ones.
+    /// Pharos scenarios are facts rather than data-driven theories, so the
+    /// small wrappers below select the module combinations explicitly.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 900_000)]
-    public async Task IndividualOptimizationDoesNotRemoveVisibleGeometry()
+    public Task ShadowVegetationVisualDelta() => MeasureOptimizationVisualDeltaAsync(["shadowveg"], "shadowveg");
+
+    [ClientServerScenario(TimeoutMs = 900_000)]
+    public Task EntityShadowVisualDelta() => MeasureOptimizationVisualDeltaAsync(["shadowentity"], "shadowentity");
+
+    [ClientServerScenario(TimeoutMs = 900_000)]
+    public Task OcclusionVisualDelta() => MeasureOptimizationVisualDeltaAsync(["occlusion"], "occlusion");
+
+    [ClientServerScenario(TimeoutMs = 900_000)]
+    public Task ParticleVisualDelta() => MeasureOptimizationVisualDeltaAsync(["particles"], "particles");
+
+    [ClientServerScenario(TimeoutMs = 900_000)]
+    public Task ShadowVegetationAndEntityShadowVisualDelta() =>
+        MeasureOptimizationVisualDeltaAsync(["shadowveg", "shadowentity"], "shadowveg+shadowentity");
+
+    [ClientServerScenario(TimeoutMs = 900_000)]
+    public Task OcclusionAndParticlesVisualDelta() =>
+        MeasureOptimizationVisualDeltaAsync(["occlusion", "particles"], "occlusion+particles");
+
+    private async Task MeasureOptimizationVisualDeltaAsync(string[] modules, string label)
     {
         await WarmUpAsync();
 
-        // shadowveg is not in the "must be invisible" set, and is not treated
-        // like one. The mod's own description of it is "removes leaf/grass
-        // shadows at distance", so a visible difference is the feature, not a
-        // bug. It is compared at the same budget as the rest and its number is
-        // reported either way; what changed is that a difference no longer
-        // fails the run on the strength of a claim the mod never made.
-        (string[] Modules, string Label)[] cases =
-        [
-            (["shadowveg"], "shadowveg"),
-            (["shadowentity"], "shadowentity"),
-            (["occlusion"], "occlusion"),
-            (["particles"], "particles"),
-            (["shadowveg", "shadowentity"], "shadowveg+shadowentity"),
-            (["occlusion", "particles"], "occlusion+particles"),
-        ];
+        var previousStates = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        foreach (string module in modules)
+        {
+            OptionState state = await ReadOptionStateAsync(module)
+                ?? throw new InvalidOperationException($"'{module}' is absent from status output.");
+            previousStates.Add(module, state.Enabled);
+        }
 
-        List<string> failures = [];
+        try
+        {
 
         // The control this test needs, and the reason it needs it: the world is
         // alive. Smoke, drifting motes, water and animals all move between two
@@ -301,57 +313,53 @@ public class OptiTimeRenderingFidelity : RenderingFidelityBase
             $"scene churn with nothing changed: {churn} pixels " +
             $"({churn / (double)controlA.Width / controlA.Height:P2} of the frame)");
 
-        await WriteArtifactAsync(nameof(OptiTimeRenderingFidelity), "scene-churn.txt",
+        await WriteArtifactAsync(nameof(OptiTimeRenderingFidelity), $"scene-churn-{label}.txt",
             $"The same pose captured twice, nothing toggled, is how much of this " +
             $"world moves on its own: {churn} pixels. Every per-module number below is " +
             "compared against that, not against zero.");
 
-        var measurements = new List<string>();
+        var references = new Dictionary<string, FramebufferSnapshot>();
 
-        foreach ((string[] modules, string label) in cases)
+        foreach (string module in modules)
         {
-            var references = new Dictionary<string, FramebufferSnapshot>();
+            await SetOptimizationAsync(module, enabled: false);
+        }
 
-            foreach (string module in modules)
+        foreach (CameraPose pose in OptiTimeConfig.Poses)
+        {
+            await CaptureAtAsync(pose);
+            references[pose.Name] = Client!.CaptureFrame();
+        }
+
+        foreach (string module in modules)
+        {
+            await SetOptimizationAsync(module, enabled: true);
+        }
+
+        var measurements = new List<string>();
+        foreach (CameraPose pose in OptiTimeConfig.Poses)
+        {
+            await CaptureAtAsync(pose);
+            FramebufferSnapshot actual = Client!.CaptureFrame();
+            FramebufferComparisonResult result =
+                actual.Compare(references[pose.Name], tolerance: 0.02f);
+
+            string line =
+                $"{label,-24} {pose.Name,-14} {result.DiffPixelCount,7} pixels " +
+                $"({result.DiffPixelFraction,7:P2} of frame) " +
+                $"[{result.DiffPixelCount / (double)Math.Max(1, churn),5:F2}x churn]";
+
+            Console.WriteLine(line);
+            measurements.Add(line);
+
+            if (result.DiffPixelCount > OptiTimeConfig.VisualDiffPixelBudget)
             {
-                await SetOptimizationAsync(module, enabled: false);
-            }
-
-            foreach (CameraPose pose in OptiTimeConfig.Poses)
-            {
-                await CaptureAtAsync(pose);
-                references[pose.Name] = Client!.CaptureFrame();
-            }
-
-            foreach (string module in modules)
-            {
-                await SetOptimizationAsync(module, enabled: true);
-            }
-
-            foreach (CameraPose pose in OptiTimeConfig.Poses)
-            {
-                await CaptureAtAsync(pose);
-                FramebufferSnapshot actual = Client!.CaptureFrame();
-                FramebufferComparisonResult result =
-                    actual.Compare(references[pose.Name], tolerance: 0.02f);
-
-                string line =
-                    $"{label,-24} {pose.Name,-14} {result.DiffPixelCount,7} pixels " +
-                    $"({result.DiffPixelFraction,7:P2} of frame) " +
-                    $"[{result.DiffPixelCount / (double)Math.Max(1, churn),5:F2}x churn]";
-
-                Console.WriteLine(line);
-                measurements.Add(line);
-
-                if (result.DiffPixelCount > OptiTimeConfig.VisualDiffPixelBudget)
-                {
-                    string path = ActualPath(pose, label, "differs");
-                    actual.SaveToPng(path);
-                }
+                string path = ActualPath(pose, label, "differs");
+                actual.SaveToPng(path);
             }
         }
 
-        await WriteArtifactAsync(nameof(OptiTimeRenderingFidelity), "module-visual-deltas.txt",
+        await WriteArtifactAsync(nameof(OptiTimeRenderingFidelity), $"module-visual-deltas-{label}.txt",
             $"Scene churn, same pose twice with nothing toggled: {churn} pixels " +
             $"({churn / (double)controlA.Width / controlA.Height:P2} of frame).\n" +
             "\nA module that moves no more than this has not been shown to change what " +
@@ -371,9 +379,21 @@ public class OptiTimeRenderingFidelity : RenderingFidelityBase
         // The visual gate is `DefaultConfigurationLooksLikeVanilla`, which
         // compares this run against a fresh vanilla reference captured by the
         // validation wrapper.
-        Assert.True(measurements.Count == OptiTimeConfig.Poses.Length * cases.Length,
-            $"Expected {cases.Length * OptiTimeConfig.Poses.Length} measurements, got " +
+        Assert.True(measurements.Count == OptiTimeConfig.Poses.Length,
+            $"Expected {OptiTimeConfig.Poses.Length} measurements, got " +
             $"{measurements.Count}.");
+        }
+        finally
+        {
+            foreach ((string module, bool enabled) in previousStates)
+            {
+                OptionState? state = await ReadOptionStateAsync(module);
+                if (state is not null && (state.Value.Conflict is null || enabled))
+                {
+                    await SetOptimizationAsync(module, enabled);
+                }
+            }
+        }
     }
 
     /// <summary>
