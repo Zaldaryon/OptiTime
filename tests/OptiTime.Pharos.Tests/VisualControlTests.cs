@@ -49,7 +49,7 @@ public abstract class VisualControlBase : RenderingFidelityBase
                 Assert.Equal(JsonSerializer.Serialize(ReadVisualAmbient()), JsonSerializer.Serialize(control.GetProperty("ambient")));
                 Assert.True(churn.DiffPixelCount <= OptiTimeConfig.VisualDiffPixelBudget, $"{pose.Name}: mod repeat scene is unstable ({churn.DiffPixelCount} pixels)");
                 Assert.True(control.GetProperty("repeatPixels").GetInt32() <= OptiTimeConfig.VisualDiffPixelBudget, $"{pose.Name}: vanilla repeat scene is unstable");
-                fresh = first.Compare(FramebufferSnapshot.FromFile(reference), tolerance: 0.02f);
+                fresh = VisualSceneComparison.Compare(first, FramebufferSnapshot.FromFile(reference));
                 if (fresh.Value.DiffPixelCount > OptiTimeConfig.VisualDiffPixelBudget)
                     mismatches.Add($"{pose.Name}: fresh vanilla/mod delta {fresh.Value.DiffPixelCount} pixels; repeat churn {churn.DiffPixelCount}");
             }
@@ -83,7 +83,10 @@ public abstract class VisualControlBase : RenderingFidelityBase
 
 }
 
-[ServerWorld(seed: OptiTimeConfig.WorldSeed, playStyle: OptiTimeConfig.PlayStyle, worldType: OptiTimeConfig.WorldType)]
+[ServerWorld(
+    seed: OptiTimeConfig.WorldSeed,
+    playStyle: OptiTimeConfig.PlayStyle,
+    worldType: OptiTimeConfig.WorldType)]
 [ClientSetting("viewDistance", OptiTimeConfig.ViewDistance)]
 [ClientSetting("wavingStuff", false)]
 public class FreshVanillaVisualControl : VisualControlBase
@@ -92,7 +95,10 @@ public class FreshVanillaVisualControl : VisualControlBase
     public Task CaptureUnmodifiedVanillaControl() => CaptureControlAsync("fresh-vanilla", compareFreshVanilla: false);
 }
 
-[ServerWorld(seed: OptiTimeConfig.WorldSeed, playStyle: OptiTimeConfig.PlayStyle, worldType: OptiTimeConfig.WorldType)]
+[ServerWorld(
+    seed: OptiTimeConfig.WorldSeed,
+    playStyle: OptiTimeConfig.PlayStyle,
+    worldType: OptiTimeConfig.WorldType)]
 [ClientSetting("viewDistance", OptiTimeConfig.ViewDistance)]
 [ClientSetting("wavingStuff", false)]
 [PharosMods(OptiTimeConfig.ModAssembly)]
