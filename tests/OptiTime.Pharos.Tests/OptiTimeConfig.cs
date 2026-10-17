@@ -36,10 +36,10 @@ public static partial class OptiTimeConfig
     /// <c>[PharosMods]</c> only accepts compile-time constants, so this cannot
     /// come from an environment variable.
     /// </summary>
-    public const string ModAssembly = "../../../../../bin/OptiTime-1.5.16.zip";
+    public const string ModAssembly = "../../../../../bin/OptiTime-1.5.17.zip";
 
     /// <summary>The version the suite stages and every artifact is expected to carry.</summary>
-    public const string ModVersion = "1.5.16";
+    public const string ModVersion = "1.5.17";
 
     // ------------------------------------------------------------------ items
 
