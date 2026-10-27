@@ -4,6 +4,10 @@ Clientside performance optimizations for Vintage Story through shader optimizati
 
 Current version: 1.5.17
 
+<p align="center">
+  <a href="https://suhosting.net/ref/ZALDARYON?to=products%2FVintage-Story%2Fvintage-story-6gb"><img src=".github/assets/suhosting-banner.png" alt="Something Unique Hosting" width="800"></a>
+</p>
+
 ## Performance Gains
 
 **Shader Optimizations (quality-preserving cuts):**
