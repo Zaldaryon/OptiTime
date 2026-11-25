@@ -1227,25 +1227,46 @@ namespace OptiTime
         private void ApplyOptimumPolicy(ICoreClientAPI api)
         {
             string gameVersion = GameVersion.ShortGameVersion;
-            string reason = Lang.Get("optitime:compat-optimum-reason");
+            string reason = null;
             int yielded = 0;
             var kept = new List<string>();
 
-            foreach (OptimumOwnership.Feature feature in OptimumOwnership.Features)
+            try
             {
-                if (!config.GetOptimizationValue(feature.OptimizationName))
-                    continue;
+                reason = Lang.Get("optitime:compat-optimum-reason");
 
-                string cause = OptimumOwnership.YieldReason(feature, gameVersion, OptimumOwnership.ClientSettingsHasMember);
-                if (cause == null)
+                foreach (OptimumOwnership.Feature feature in OptimumOwnership.Features)
                 {
-                    kept.Add(feature.OptimizationName);
-                    continue;
+                    if (!config.GetOptimizationValue(feature.OptimizationName))
+                        continue;
+
+                    string cause = OptimumOwnership.YieldReason(feature, gameVersion, OptimumOwnership.ClientSettingsHasMember);
+                    if (cause == null)
+                    {
+                        kept.Add(feature.OptimizationName);
+                        continue;
+                    }
+
+                    config.ForceOffForSession(feature.OptimizationName, reason);
+                    yielded++;
+                    api.Logger.Notification("[OptiTime] {0} yields to Optimum: {1}.", feature.OptimizationName, cause);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Fail closed: when the checks cannot finish, nothing that could patch next to Optimum stays on.
+                api.Logger.Warning("[OptiTime] The Optimum compatibility check failed ({0}). Every optimization is switched off for this session.", ex.Message);
+                reason ??= "Provided by Optimum";
+                foreach (OptimumOwnership.Feature feature in OptimumOwnership.Features)
+                {
+                    if (config.GetOptimizationValue(feature.OptimizationName))
+                    {
+                        config.ForceOffForSession(feature.OptimizationName, reason);
+                        yielded++;
+                    }
                 }
 
-                config.ForceOffForSession(feature.OptimizationName, reason);
-                yielded++;
-                api.Logger.Notification("[OptiTime] {0} yields to Optimum: {1}.", feature.OptimizationName, cause);
+                kept.Clear();
             }
 
             api.Logger.Notification("[OptiTime] Optimum detected (game {0}). {1} optimization(s) yield to Optimum for this session, {2} stay active. OptiTime.json is left unchanged.",
@@ -1253,8 +1274,15 @@ namespace OptiTime
 
             if (yielded > 0 && !config.SuppressCompatibilityMessages)
             {
-                api.ShowChatMessage(Lang.Get("optitime:compat-optimum-title"));
-                api.ShowChatMessage(Lang.Get("optitime:compat-optimum-desc"));
+                try
+                {
+                    api.ShowChatMessage(Lang.Get("optitime:compat-optimum-title"));
+                    api.ShowChatMessage(Lang.Get("optitime:compat-optimum-desc"));
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[OptiTime] Could not show the Optimum compatibility message: " + ex.Message);
+                }
             }
         }
 
@@ -1264,6 +1292,20 @@ namespace OptiTime
         /// contracts, so an override would also switch Optimum features off.
         /// </summary>
         private void ApplyOptimumShaderPolicy(ICoreClientAPI api)
+        {
+            try
+            {
+                ApplyOptimumShaderPolicyCore(api);
+            }
+            catch (Exception ex)
+            {
+                // Fail closed: keep none of the overrides when their files cannot be compared.
+                api.Logger.Warning("[OptiTime] The Optimum shader check failed ({0}). The OptiTime shader overrides are hidden.", ex.Message);
+                HideOptiTimeShaders(api, new List<string>(OptiTimeShaderPaths), "Optimum");
+            }
+        }
+
+        private void ApplyOptimumShaderPolicyCore(ICoreClientAPI api)
         {
             var revert = new List<string>();
             string gameVersion = GameVersion.ShortGameVersion;
@@ -1364,13 +1406,27 @@ namespace OptiTime
         private void AuditOptimumPatches(ICoreClientAPI api)
         {
             string gameVersion = GameVersion.ShortGameVersion;
-            foreach (System.Reflection.MethodBase method in harmony.GetPatchedMethods().ToList())
+            try
             {
-                if (OptimumOwnership.IsVanillaBody(method, gameVersion))
-                    continue;
+                foreach (System.Reflection.MethodBase method in harmony.GetPatchedMethods().ToList())
+                {
+                    try
+                    {
+                        if (OptimumOwnership.IsVanillaBody(method, gameVersion))
+                            continue;
 
-                harmony.Unpatch(method, HarmonyPatchType.All, harmony.Id);
-                api.Logger.Warning("[OptiTime] Removed the patch on {0}.{1}: the method is not a verified vanilla body next to Optimum.", method.DeclaringType?.FullName, method.Name);
+                        harmony.Unpatch(method, HarmonyPatchType.All, harmony.Id);
+                        api.Logger.Warning("[OptiTime] Removed the patch on {0}.{1}: the method is not a verified vanilla body next to Optimum.", method.DeclaringType?.FullName, method.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        api.Logger.Warning("[OptiTime] Could not audit the patch on {0}.{1}: {2}", method.DeclaringType?.FullName, method.Name, ex.Message);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Warning("[OptiTime] The Optimum patch audit failed: " + ex.Message);
             }
         }
 

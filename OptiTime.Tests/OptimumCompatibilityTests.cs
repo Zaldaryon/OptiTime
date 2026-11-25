@@ -162,6 +162,39 @@ public class OptimumCompatibilityTests
         }
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(":")]
+    [InlineData("NoColonHere")]
+    [InlineData("No.Such.Type:Method")]
+    [InlineData("System.String:Intern")]
+    [InlineData("System.Object:Finalize")]
+    public void OddTargetsNeverThrowAndMakeTheFeatureYield(string target)
+    {
+        var feature = new OptimumOwnership.Feature("Anything", new[] { target });
+
+        string reason = OptimumOwnership.YieldReason(feature, SupportedGameVersion, name => throw new InvalidOperationException(name));
+
+        Assert.NotNull(reason);
+    }
+
+    [Fact]
+    public void TheOptimumChecksCatchTheirOwnFailures()
+    {
+        string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Core", "OptiTimeMod.cs"));
+
+        string policy = Section(source, "private void ApplyOptimumPolicy", "private void ApplyOptimumShaderPolicy");
+        Assert.Contains("catch (Exception ex)", policy);
+        Assert.Contains("ForceOffForSession", policy);
+
+        string shaders = Section(source, "private void ApplyOptimumShaderPolicy(", "private void ApplyOptimumShaderPolicyCore");
+        Assert.Contains("catch (Exception ex)", shaders);
+        Assert.Contains("HideOptiTimeShaders", shaders);
+
+        string audit = Section(source, "private void AuditOptimumPatches", "private void DetectAndHandleConflicts");
+        Assert.True(audit.Split("catch (Exception ex)").Length - 1 >= 2, "Both the loop and each patch audit must handle failures.");
+    }
+
     [Fact]
     public void AMissingTargetMakesTheFeatureYield()
     {

@@ -107,17 +107,25 @@ namespace OptiTime
         /// </summary>
         internal static string YieldReason(Feature feature, string gameVersion, Func<string, bool> optimumHasSetting)
         {
-            if (feature.OptimumSetting != null && optimumHasSetting != null && optimumHasSetting(feature.OptimumSetting))
-                return "Optimum provides its own " + feature.OptimumSetting + " setting";
-
-            foreach (string target in feature.Targets)
+            try
             {
-                string reason = TargetYieldReason(target, gameVersion);
-                if (reason != null)
-                    return reason;
-            }
+                if (feature.OptimumSetting != null && optimumHasSetting != null && optimumHasSetting(feature.OptimumSetting))
+                    return "Optimum provides its own " + feature.OptimumSetting + " setting";
 
-            return null;
+                foreach (string target in feature.Targets)
+                {
+                    string reason = TargetYieldReason(target, gameVersion);
+                    if (reason != null)
+                        return reason;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                // Fail closed: a check that cannot be completed never lets the feature patch next to Optimum.
+                return "the check failed (" + ex.GetType().Name + ")";
+            }
         }
 
         /// <summary>
@@ -130,7 +138,16 @@ namespace OptiTime
             if (table == null)
                 return "no vanilla signatures are recorded for game version " + gameVersion;
 
-            List<MethodBase> overloads = ResolveOverloads(target);
+            List<MethodBase> overloads;
+            try
+            {
+                overloads = ResolveOverloads(target);
+            }
+            catch (Exception ex)
+            {
+                return target + " could not be inspected (" + ex.GetType().Name + ")";
+            }
+
             if (overloads.Count == 0)
                 return target + " was not found";
 
@@ -321,12 +338,20 @@ namespace OptiTime
         /// </summary>
         internal static bool ClientSettingsHasMember(string name)
         {
-            Type type = AccessTools.TypeByName(ClientSettingsTypeName);
-            if (type == null)
-                return false;
+            try
+            {
+                Type type = AccessTools.TypeByName(ClientSettingsTypeName);
+                if (type == null)
+                    return false;
 
-            const BindingFlags all = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-            return type.GetMember(name, all).Length > 0;
+                const BindingFlags all = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+                return type.GetMember(name, all).Length > 0;
+            }
+            catch
+            {
+                // The method signature check still decides when the settings cannot be read.
+                return false;
+            }
         }
 
         /// <summary>
