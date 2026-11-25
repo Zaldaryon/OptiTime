@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Chuyển động của thực thể từ xa mượt mà hơn trong chế độ nhiều người chơi (bảo vệ chống nghẽn)",
   "optitime:description-repulseagents": "Bỏ qua kiểm tra tách biệt cho sinh vật ở xa (&gt;64 khối)",
   "optitime:description-suppress": "Ẩn thông báo xung đột mod trong trò chuyện khi tải thế giới (thông tin vẫn được ghi log)",
-  "optitime:description-unknown": "Tối ưu hóa không xác định"
+  "optitime:description-unknown": "Tối ưu hóa không xác định",
+  "optitime:compat-optimum-title": "[OptiTime] Đã phát hiện Optimum, OptiTime chỉ giữ lại những gì Optimum không cung cấp",
+  "optitime:compat-optimum-desc": "OptiTime bỏ qua các tối ưu hóa mà Optimum đã cung cấp hoặc thay đổi. Phần còn lại vẫn hoạt động và cài đặt OptiTime của bạn không bị thay đổi.",
+  "optitime:compat-optimum-reason": "Do Optimum cung cấp"
 }

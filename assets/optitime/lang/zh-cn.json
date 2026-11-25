@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "多人游戏中更平滑的远程实体移动（防泛洪保护）",
   "optitime:description-repulseagents": "跳过远距离生物的实体分离检查（&gt;64格）",
   "optitime:description-suppress": "加载世界时隐藏聊天框中的模组冲突提示（信息仍会记录在日志中）",
-  "optitime:description-unknown": "未知优化"
+  "optitime:description-unknown": "未知优化",
+  "optitime:compat-optimum-title": "[OptiTime] 检测到 Optimum，OptiTime 只保留 Optimum 没有提供的优化",
+  "optitime:compat-optimum-desc": "OptiTime 会跳过 Optimum 已经提供或修改的优化，其余优化保持启用，你的 OptiTime 设置不会被更改。",
+  "optitime:compat-optimum-reason": "由 Optimum 提供"
 }

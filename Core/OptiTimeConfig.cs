@@ -46,6 +46,10 @@ namespace OptiTime
         private Dictionary<string, string> conflictDisableReasons = new Dictionary<string, string>();
         private int? entityShadowSkippedQuality;
 
+        // Values the player chose for optimizations that are switched off for this session only
+        // (for example because Optimum already provides them). They are written back by Save.
+        private readonly Dictionary<string, bool> sessionStoredValues = new Dictionary<string, bool>();
+
         internal void MarkEntityShadowCullSkipped(int shadowQuality)
         {
             entityShadowSkippedQuality = shadowQuality;
@@ -80,6 +84,8 @@ namespace OptiTime
                 [nameof(EntityInterpolationOptimizations)] = v => EntityInterpolationOptimizations = v,
                 [nameof(RepulseAgentsOptimizations)] = v => RepulseAgentsOptimizations = v,
                 [nameof(SuppressCompatibilityMessages)] = v => SuppressCompatibilityMessages = v,
+                [nameof(GuiManagerNoLinqEnabled)] = v => GuiManagerNoLinqEnabled = v,
+                [nameof(GuiManagerInputNoLinqEnabled)] = v => GuiManagerInputNoLinqEnabled = v,
                 [nameof(EnableProfiling)] = v => EnableProfiling = v
             };
 
@@ -105,6 +111,8 @@ namespace OptiTime
                 [nameof(EntityInterpolationOptimizations)] = () => EntityInterpolationOptimizations,
                 [nameof(RepulseAgentsOptimizations)] = () => RepulseAgentsOptimizations,
                 [nameof(SuppressCompatibilityMessages)] = () => SuppressCompatibilityMessages,
+                [nameof(GuiManagerNoLinqEnabled)] = () => GuiManagerNoLinqEnabled,
+                [nameof(GuiManagerInputNoLinqEnabled)] = () => GuiManagerInputNoLinqEnabled,
                 [nameof(EnableProfiling)] = () => EnableProfiling
             };
         }
@@ -164,7 +172,7 @@ namespace OptiTime
         {
             try
             {
-                api.StoreModConfig(this, "OptiTime.json");
+                api.StoreModConfig(PersistedView(), "OptiTime.json");
             }
             catch (Exception ex)
             {
@@ -200,8 +208,60 @@ namespace OptiTime
             };
         }
 
+        /// <summary>
+        /// Switches an optimization off for this session without touching the stored value. The player's
+        /// choice stays in OptiTime.json, so the optimization is back as soon as the reason goes away.
+        /// </summary>
+        public void ForceOffForSession(string optimizationName, string reason)
+        {
+            if (!sessionStoredValues.ContainsKey(optimizationName))
+                sessionStoredValues[optimizationName] = GetOptimizationValue(optimizationName);
+
+            SetOptimization(optimizationName, false, storeOnly: false);
+            MarkAsConflictDisabled(optimizationName, reason);
+        }
+
+        public bool IsForcedOffForSession(string optimizationName)
+        {
+            return sessionStoredValues.ContainsKey(optimizationName);
+        }
+
+        /// <summary>The value that Save writes for this optimization.</summary>
+        public bool GetStoredValue(string optimizationName)
+        {
+            return sessionStoredValues.TryGetValue(optimizationName, out bool stored) ? stored : GetOptimizationValue(optimizationName);
+        }
+
+        /// <summary>
+        /// A copy of this configuration with the stored values restored for every optimization that is
+        /// switched off for this session. This is what gets written to OptiTime.json.
+        /// </summary>
+        internal OptiTimeConfig PersistedView()
+        {
+            if (sessionStoredValues.Count == 0)
+                return this;
+
+            var persisted = (OptiTimeConfig)MemberwiseClone();
+            persisted.InitializeAccessors();
+            foreach (KeyValuePair<string, bool> stored in sessionStoredValues)
+                persisted.SetOptimization(stored.Key, stored.Value, storeOnly: false);
+
+            return persisted;
+        }
+
         public void SetOptimization(string optimizationName, bool value)
         {
+            SetOptimization(optimizationName, value, storeOnly: true);
+        }
+
+        private void SetOptimization(string optimizationName, bool value, bool storeOnly)
+        {
+            if (storeOnly && sessionStoredValues.ContainsKey(optimizationName))
+            {
+                sessionStoredValues[optimizationName] = value;
+                return;
+            }
+
             if (optimizationSetters == null)
                 InitializeAccessors();
             

@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "حركة أكثر سلاسة للكائنات البعيدة في اللعب الجماعي (حماية من التدفق الزائد)",
   "optitime:description-repulseagents": "تخطي فحوصات الفصل للكائنات البعيدة (&gt;64 كتلة)",
   "optitime:description-suppress": "إخفاء إشعارات تعارض التعديلات في الدردشة عند تحميل العالم (تظل مسجلة في السجلات)",
-  "optitime:description-unknown": "تحسين غير معروف"
+  "optitime:description-unknown": "تحسين غير معروف",
+  "optitime:compat-optimum-title": "[OptiTime] تم اكتشاف Optimum، يحتفظ OptiTime فقط بما لا يوفره Optimum",
+  "optitime:compat-optimum-desc": "يتخطى OptiTime التحسينات التي يوفرها Optimum أو يغيرها بالفعل. تبقى التحسينات الأخرى نشطة ولا تتغير إعدادات OptiTime.",
+  "optitime:compat-optimum-reason": "مُوفَّر من Optimum"
 }

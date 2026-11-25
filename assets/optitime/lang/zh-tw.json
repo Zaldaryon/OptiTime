@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "多人遊戲中更平滑的遠端實體移動（防泛洪保護）",
   "optitime:description-repulseagents": "跳過遠距離生物的實體分離檢查（&gt;64格）",
   "optitime:description-suppress": "載入世界時隱藏聊天室中的模組衝突提示（資訊仍會記錄於日誌）",
-  "optitime:description-unknown": "未知最佳化"
+  "optitime:description-unknown": "未知最佳化",
+  "optitime:compat-optimum-title": "[OptiTime] 偵測到 Optimum，OptiTime 只保留 Optimum 沒有提供的最佳化",
+  "optitime:compat-optimum-desc": "OptiTime 會略過 Optimum 已經提供或修改的最佳化，其餘最佳化保持啟用，你的 OptiTime 設定不會被更改。",
+  "optitime:compat-optimum-reason": "由 Optimum 提供"
 }

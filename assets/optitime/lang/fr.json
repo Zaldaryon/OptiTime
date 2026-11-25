@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Mouvement plus fluide des entités distantes en multijoueur (protection anti-flood)",
   "optitime:description-repulseagents": "Ignorer les tests de séparation pour les créatures éloignées (&gt;64 blocs)",
   "optitime:description-suppress": "Masquer les notifications de conflits dans le chat au chargement (conservé dans les journaux)",
-  "optitime:description-unknown": "Optimisation inconnue"
+  "optitime:description-unknown": "Optimisation inconnue",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum détecté, OptiTime ne garde que ce qu'Optimum ne fournit pas",
+  "optitime:compat-optimum-desc": "OptiTime ignore les optimisations qu'Optimum fournit ou modifie déjà. Les autres restent actives et vos réglages OptiTime ne changent pas.",
+  "optitime:compat-optimum-reason": "Fourni par Optimum"
 }

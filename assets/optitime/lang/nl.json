@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Vloeiendere beweging van externe entiteiten in multiplayer (bescherming tegen overbelasting)",
   "optitime:description-repulseagents": "Sla scheidingscontroles over voor verre wezens (&gt;64 blokken)",
   "optitime:description-suppress": "Verberg mod-conflictmeldingen in chat bij laden van wereld (info blijft gelogd)",
-  "optitime:description-unknown": "Onbekende optimalisatie"
+  "optitime:description-unknown": "Onbekende optimalisatie",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum gedetecteerd, OptiTime behoudt alleen wat Optimum niet biedt",
+  "optitime:compat-optimum-desc": "OptiTime slaat de optimalisaties over die Optimum al biedt of wijzigt. De andere blijven actief en je OptiTime-instellingen blijven ongewijzigd.",
+  "optitime:compat-optimum-reason": "Geleverd door Optimum"
 }

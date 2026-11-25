@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Mjukare rörelser för avlägsna entiteter i flerspelarläge (skydd mot överbelastning)",
   "optitime:description-repulseagents": "Hoppa över separationskontroller för avlägsna varelser (&gt;64 block)",
   "optitime:description-suppress": "Dölj mod-konfliktmeddelanden i chatten vid världsladdning (info loggas fortfarande)",
-  "optitime:description-unknown": "Okänd optimering"
+  "optitime:description-unknown": "Okänd optimering",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum hittades, OptiTime behåller bara det som Optimum inte erbjuder",
+  "optitime:compat-optimum-desc": "OptiTime hoppar över de optimeringar som Optimum redan erbjuder eller ändrar. De övriga förblir aktiva och dina OptiTime-inställningar ändras inte.",
+  "optitime:compat-optimum-reason": "Tillhandahålls av Optimum"
 }

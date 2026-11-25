@@ -69,6 +69,16 @@ namespace OptiTime
             var config = OptiTimeMod.Config;
             if (config == null) return;
 
+            if (config.IsForcedOffForSession(code))
+            {
+                // Switched off for this session (for example because Optimum provides it): keep the choice for next time.
+                bool chosen = tree.GetBool("value");
+                config.SetOptimization(code, chosen);
+                OptiTimeMod.SaveConfig();
+                api?.ShowChatMessage(Lang.Get("optitime:configlib-setting-changed", code, chosen ? Lang.Get("optitime:status-on") : Lang.Get("optitime:status-off")));
+                return;
+            }
+
             if (!TryApplySetting(config, code, tree, out string feedback))
             {
                 return;

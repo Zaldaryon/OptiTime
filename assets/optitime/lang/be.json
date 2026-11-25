@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Больш плыўны рух аддаленых сутнасцей у мультыплэеры (абарона ад перапаўнення)",
   "optitime:description-repulseagents": "Прапускаць праверкі раздзялення для далёкіх істот (&gt;64 блокаў)",
   "optitime:description-suppress": "Схаваць апавяшчэнні пра канфлікты модаў у чаце пры загрузцы свету (інфармацыя ўсё роўна запісваецца ў логі)",
-  "optitime:description-unknown": "Невядомая аптымізацыя"
+  "optitime:description-unknown": "Невядомая аптымізацыя",
+  "optitime:compat-optimum-title": "[OptiTime] Выяўлены Optimum, OptiTime пакідае толькі тое, чаго Optimum не забяспечвае",
+  "optitime:compat-optimum-desc": "OptiTime прапускае аптымізацыі, якія Optimum ужо забяспечвае або змяняе. Астатнія застаюцца актыўнымі, а налады OptiTime не змяняюцца.",
+  "optitime:compat-optimum-reason": "Забяспечана Optimum"
 }

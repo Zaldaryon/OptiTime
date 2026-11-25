@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Jævnere bevægelse for fjerne entiteter i multiplayer (beskyttelse mod oversvømmelse)",
   "optitime:description-repulseagents": "Spring adskillelsestjek over for fjerne væsner (&gt;64 blokke)",
   "optitime:description-suppress": "Skjul mod-konfliktmeddelelser i chat ved indlæsning af verden (info logges stadig)",
-  "optitime:description-unknown": "Ukendt optimering"
+  "optitime:description-unknown": "Ukendt optimering",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum fundet, OptiTime beholder kun det, Optimum ikke leverer",
+  "optitime:compat-optimum-desc": "OptiTime springer de optimeringer over, som Optimum allerede leverer eller ændrer. De øvrige forbliver aktive, og dine OptiTime-indstillinger ændres ikke.",
+  "optitime:compat-optimum-reason": "Leveres af Optimum"
 }

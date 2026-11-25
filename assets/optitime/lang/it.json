@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Movimento più fluido delle entità remote in multigiocatore (protezione da sovraccarico)",
   "optitime:description-repulseagents": "Salta i controlli di separazione per creature distanti (&gt;64 blocchi)",
   "optitime:description-suppress": "Nascondi le notifiche di conflitto delle mod in chat al caricamento (info comunque registrata nei log)",
-  "optitime:description-unknown": "Ottimizzazione sconosciuta"
+  "optitime:description-unknown": "Ottimizzazione sconosciuta",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum rilevato, OptiTime mantiene solo ciò che Optimum non offre",
+  "optitime:compat-optimum-desc": "OptiTime salta le ottimizzazioni che Optimum offre o modifica già. Le altre restano attive e le tue impostazioni di OptiTime non cambiano.",
+  "optitime:compat-optimum-reason": "Fornito da Optimum"
 }

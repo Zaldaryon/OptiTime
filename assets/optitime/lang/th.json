@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "การเคลื่อนไหวของเอนทิตีระยะไกลที่ราบรื่นขึ้นในโหมดผู้เล่นหลายคน (ป้องกันการส่งข้อมูลล้น)",
   "optitime:description-repulseagents": "ข้ามการตรวจสอบการแยกตัวสำหรับสิ่งมีชีวิตระยะไกล (&gt;64 บล็อก)",
   "optitime:description-suppress": "ซ่อนการแจ้งเตือนข้อขัดแย้งของม็อดในแชทเมื่อโหลดโลก (ข้อมูลยังคงบันทึกในบันทึก)",
-  "optitime:description-unknown": "การเพิ่มประสิทธิภาพที่ไม่รู้จัก"
+  "optitime:description-unknown": "การเพิ่มประสิทธิภาพที่ไม่รู้จัก",
+  "optitime:compat-optimum-title": "[OptiTime] ตรวจพบ Optimum, OptiTime เก็บไว้เฉพาะสิ่งที่ Optimum ไม่มีให้",
+  "optitime:compat-optimum-desc": "OptiTime จะข้ามการปรับแต่งที่ Optimum มีให้หรือเปลี่ยนแปลงอยู่แล้ว ส่วนที่เหลือยังทำงานต่อ และการตั้งค่า OptiTime ของคุณจะไม่ถูกเปลี่ยน",
+  "optitime:compat-optimum-reason": "มีให้โดย Optimum"
 }
