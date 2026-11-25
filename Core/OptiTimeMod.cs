@@ -957,34 +957,9 @@ namespace OptiTime
                 }
                 else
                 {
-                    // Selectively disable specific shaders by removing from AllAssets
-                    // then reloading so vanilla versions are restored from game origin
-                    var pathSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    for (int i = 0; i < pathsToDisable.Length; i++)
-                        pathSet.Add(pathsToDisable[i]);
-
-                    var allAssets = api.Assets.AllAssets;
-                    int removed = 0;
-                    var keysToRemove = new List<AssetLocation>();
-                    foreach (var kvp in allAssets)
-                    {
-                        if (!string.Equals(kvp.Key.Domain, "game", StringComparison.OrdinalIgnoreCase))
-                            continue;
-                        if (pathSet.Contains(kvp.Key.Path))
-                            keysToRemove.Add(kvp.Key);
-                    }
-                    for (int i = 0; i < keysToRemove.Count; i++)
-                    {
-                        allAssets.Remove(keysToRemove[i]);
-                        removed++;
-                    }
-
-                    if (removed > 0)
-                    {
-                        // Reload shaders so vanilla versions are picked up from game origin
-                        api.Assets.Reload(AssetCategory.shaders);
-                        api.Logger.Notification($"[OptiTime] {removed} shader(s) reverted to vanilla ({reason}).");
-                    }
+                    // Removing entries from AllAssets and reloading does not work: the reload reads the OptiTime
+                    // origin again and the override comes back. Hiding the files in the origin does.
+                    HideOptiTimeShaders(api, new List<string>(pathsToDisable), reason);
                 }
             }
             catch (Exception ex)

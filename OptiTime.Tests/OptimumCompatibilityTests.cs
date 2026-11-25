@@ -292,6 +292,17 @@ public class OptimumCompatibilityTests
     }
 
     [Fact]
+    public void RevertingSomeShadersHidesThemInTheOriginInsteadOfEditingTheAssetDictionary()
+    {
+        string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Core", "OptiTimeMod.cs"));
+        string revert = Section(source, "private void TryDisableOptiTimeShaders", "private bool IsOptiTimeOrigin");
+
+        Assert.Contains("HideOptiTimeShaders(api, new List<string>(pathsToDisable), reason);", revert);
+        Assert.DoesNotContain("allAssets.Remove", revert);
+        Assert.DoesNotContain("AllAssets.Remove", revert);
+    }
+
+    [Fact]
     public void AssetsLoadedAppliesTheOptimumShaderPolicyBeforeTheRegularShaderLogic()
     {
         string source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "Core", "OptiTimeMod.cs"));
