@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Movimiento más suave de entidades remotas en multijugador (protección contra saturación)",
   "optitime:description-repulseagents": "Omitir comprobaciones de separación para criaturas lejanas (&gt;64 bloques)",
   "optitime:description-suppress": "Ocultar avisos de conflictos en el chat al cargar el mundo (se registran en los registros)",
-  "optitime:description-unknown": "Optimización desconocida"
+  "optitime:description-unknown": "Optimización desconocida",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum detectado, OptiTime conserva solo lo que Optimum no ofrece",
+  "optitime:compat-optimum-desc": "OptiTime omite las optimizaciones que Optimum ya ofrece o modifica. Las demás siguen activas y no se modifican tus ajustes de OptiTime.",
+  "optitime:compat-optimum-reason": "Proporcionado por Optimum"
 }

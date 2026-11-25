@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Более плавное движение удалённых сущностей в мультиплеере (защита от флуда)",
   "optitime:description-repulseagents": "Пропуск проверок разделения для далёких существ (&gt;64 блоков)",
   "optitime:description-suppress": "Скрыть уведомления о конфликтах модов в чате при загрузке мира (информация остаётся в логах)",
-  "optitime:description-unknown": "Неизвестная оптимизация"
+  "optitime:description-unknown": "Неизвестная оптимизация",
+  "optitime:compat-optimum-title": "[OptiTime] Обнаружен Optimum, OptiTime сохраняет только то, чего нет в Optimum",
+  "optitime:compat-optimum-desc": "OptiTime пропускает оптимизации, которые Optimum уже предоставляет или изменяет. Остальные остаются активными, а ваши настройки OptiTime не меняются.",
+  "optitime:compat-optimum-reason": "Обеспечивается Optimum"
 }

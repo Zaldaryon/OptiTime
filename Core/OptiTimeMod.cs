@@ -4,6 +4,7 @@ using Vintagestory.API.Config;
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Common.Entities;
 using OptiTime.Diagnostics;
 
@@ -16,6 +17,7 @@ namespace OptiTime
         private Harmony harmony;
         private bool ancestralBlissDetected = false;
         private bool coriaenderDetected = false;
+        private bool optimumHostDetected = false;
         private bool runtimeUnsupported = false;
         private Action<int> viewDistanceChangedDelegate = null;
         
@@ -96,6 +98,8 @@ namespace OptiTime
                 return;
             }
 
+            optimumHostDetected = OptimumCompatibility.Detect();
+
             ancestralBlissDetected = api.ModLoader.IsModEnabled("ancestralblissshaders") || 
                                      api.ModLoader.IsModEnabled("volumetricshadingrefreshed");
             coriaenderDetected = api.ModLoader.IsModEnabled("coriaendershaders");
@@ -114,6 +118,12 @@ namespace OptiTime
 
             if (config == null)
                 config = OptiTimeConfig.Load(clientApi);
+
+            if (optimumHostDetected)
+            {
+                ApplyOptimumShaderPolicy(clientApi);
+                return;
+            }
 
             if (!config.ShaderOptimizations || ancestralBlissDetected)
             {
@@ -151,6 +161,10 @@ namespace OptiTime
             if (config == null)
                 config = OptiTimeConfig.Load(api);
             Config = config;
+
+            if (optimumHostDetected)
+                ApplyOptimumPolicy(api);
+
             config.Save(api);
             ProfilingHelper.Initialize(api, config.EnableProfiling);
 
@@ -684,6 +698,9 @@ namespace OptiTime
                 }
             }
 
+            if (optimumHostDetected)
+                AuditOptimumPatches(api);
+
             api.Event.LevelFinalize += OnLevelFinalize;
         }
 
@@ -978,19 +995,36 @@ namespace OptiTime
 
         private bool IsOptiTimeOrigin(IAssetOrigin origin)
         {
-            if (origin == null)
+            return origin != null && IsModOriginPath(origin.OriginPath, Mod?.FileName, Mod?.Info?.ModID);
+        }
+
+        /// <summary>
+        /// True when an asset origin path belongs to the mod. Only the folder the origin itself points at is
+        /// compared: the last path segment, or the one before a trailing "assets" for a mod that is unpacked or
+        /// installed as a folder. Looking at any other segment also matches a game or data folder that merely
+        /// has the mod id somewhere in its path, which would remove the base game assets when the mod
+        /// disables its shader overrides.
+        /// </summary>
+        internal static bool IsModOriginPath(string originPath, string modFileName, string modId)
+        {
+            if (string.IsNullOrEmpty(originPath))
                 return false;
 
-            string originPath = origin.OriginPath ?? string.Empty;
-            if (!string.IsNullOrEmpty(Mod?.FileName) &&
-                originPath.IndexOf(Mod.FileName, StringComparison.OrdinalIgnoreCase) >= 0)
+            string[] segments = originPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length == 0)
+                return false;
+
+            string folder = segments[segments.Length - 1];
+            if (string.Equals(folder, "assets", StringComparison.OrdinalIgnoreCase) && segments.Length > 1)
+                folder = segments[segments.Length - 2];
+
+            // "OptiTime-1.5.17.zip" for the archive and "OptiTime-1.5.17.zip_<hash>" for the folder it is unpacked to.
+            if (!string.IsNullOrEmpty(modFileName) &&
+                (string.Equals(folder, modFileName, StringComparison.OrdinalIgnoreCase) ||
+                 folder.StartsWith(modFileName + "_", StringComparison.OrdinalIgnoreCase)))
                 return true;
 
-            if (!string.IsNullOrEmpty(Mod?.Info?.ModID) &&
-                originPath.IndexOf(Mod.Info.ModID, StringComparison.OrdinalIgnoreCase) >= 0)
-                return true;
-
-            return false;
+            return !string.IsNullOrEmpty(modId) && string.Equals(folder, modId, StringComparison.OrdinalIgnoreCase);
         }
 
         private bool OriginContainsOptiTimeShaders(IAssetOrigin origin)
@@ -1206,6 +1240,162 @@ namespace OptiTime
                 Config = null;
                 staticCapi = null;
                 capi = null;
+            }
+        }
+
+        /// <summary>
+        /// Optimum rewrites the game assemblies, so OptiTime only keeps the optimizations whose target
+        /// methods are still the vanilla bodies and that Optimum does not ship as its own setting.
+        /// Everything else is switched off for this session only: the player's OptiTime.json keeps every
+        /// value, so the optimizations come back as soon as Optimum is removed.
+        /// </summary>
+        private void ApplyOptimumPolicy(ICoreClientAPI api)
+        {
+            string gameVersion = GameVersion.ShortGameVersion;
+            string reason = Lang.Get("optitime:compat-optimum-reason");
+            int yielded = 0;
+            var kept = new List<string>();
+
+            foreach (OptimumOwnership.Feature feature in OptimumOwnership.Features)
+            {
+                if (!config.GetOptimizationValue(feature.OptimizationName))
+                    continue;
+
+                string cause = OptimumOwnership.YieldReason(feature, gameVersion, OptimumOwnership.ClientSettingsHasMember);
+                if (cause == null)
+                {
+                    kept.Add(feature.OptimizationName);
+                    continue;
+                }
+
+                config.ForceOffForSession(feature.OptimizationName, reason);
+                yielded++;
+                api.Logger.Notification("[OptiTime] {0} yields to Optimum: {1}.", feature.OptimizationName, cause);
+            }
+
+            api.Logger.Notification("[OptiTime] Optimum detected (game {0}). {1} optimization(s) yield to Optimum for this session, {2} stay active. OptiTime.json is left unchanged.",
+                gameVersion, yielded, kept.Count);
+
+            if (yielded > 0 && !config.SuppressCompatibilityMessages)
+            {
+                api.ShowChatMessage(Lang.Get("optitime:compat-optimum-title"));
+                api.ShowChatMessage(Lang.Get("optitime:compat-optimum-desc"));
+            }
+        }
+
+        /// <summary>
+        /// Keeps an OptiTime shader override only when the shader file underneath it is still the vanilla one.
+        /// Optimum changes shaders such as chunkliquid and chunkshadowmap and checks them for its own
+        /// contracts, so an override would also switch Optimum features off.
+        /// </summary>
+        private void ApplyOptimumShaderPolicy(ICoreClientAPI api)
+        {
+            var revert = new List<string>();
+            string gameVersion = GameVersion.ShortGameVersion;
+            IReadOnlyDictionary<string, string> vanillaHashes = OptimumVanillaSignatures.ShadersForGameVersion(gameVersion);
+
+            foreach (string path in OptiTimeShaderPaths)
+            {
+                if (!api.Assets.AllAssets.TryGetValue(new AssetLocation("game", path), out IAsset current) || !IsOptiTimeOrigin(current.Origin))
+                    continue;
+
+                bool wanted = config.ShaderOptimizations && !ancestralBlissDetected;
+                if (coriaenderDetected && (path == "shaders/chunkliquid.fsh" || path == "shaders/chunkshadowmap.fsh"))
+                    wanted = false;
+                if (!config.BlurOptimizationEnabled && path.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase))
+                    wanted = false;
+
+                IAsset underneath = FindShaderUnderneath(api, path);
+                bool underneathIsVanilla = underneath?.Data != null && vanillaHashes != null &&
+                    vanillaHashes.TryGetValue(path, out string expected) &&
+                    string.Equals(expected, Sha256Hex(underneath.Data), StringComparison.OrdinalIgnoreCase);
+
+                if (!wanted || !underneathIsVanilla)
+                    revert.Add(path);
+            }
+
+            if (revert.Count > 0)
+                HideOptiTimeShaders(api, revert, "Optimum");
+        }
+
+        private static string Sha256Hex(byte[] data)
+        {
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+                return BitConverter.ToString(sha.ComputeHash(data)).Replace("-", "").ToLowerInvariant();
+        }
+
+        /// <summary>The shader the game would use without OptiTime: the last other origin that provides it.</summary>
+        private IAsset FindShaderUnderneath(ICoreClientAPI api, string path)
+        {
+            IAsset found = null;
+            foreach (IAssetOrigin origin in api.Assets.Origins)
+            {
+                if (IsOptiTimeOrigin(origin))
+                    continue;
+
+                foreach (IAsset asset in origin.GetAssets(AssetCategory.shaders, true))
+                {
+                    if (asset?.Location != null &&
+                        string.Equals(asset.Location.Domain, "game", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(asset.Location.Path, path, StringComparison.OrdinalIgnoreCase))
+                        found = asset;
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>
+        /// Hides the given OptiTime shader files and reloads the shader category, so the shaders underneath
+        /// (Optimum's own) are used again. Only the named files are hidden, the other overrides stay.
+        /// </summary>
+        private void HideOptiTimeShaders(ICoreClientAPI api, List<string> paths, string reason)
+        {
+            try
+            {
+                List<IAssetOrigin> origins = api.Assets.Origins;
+                for (int i = 0; i < origins.Count; i++)
+                {
+                    if (!IsOptiTimeOrigin(origins[i]))
+                        continue;
+
+                    var filtered = origins[i] as FilteredAssetOrigin ?? new FilteredAssetOrigin(origins[i]);
+                    int hidden = 0;
+                    foreach (string path in paths)
+                    {
+                        if (filtered.Hide(path))
+                            hidden++;
+                    }
+
+                    origins[i] = filtered;
+                    api.Assets.Reload(AssetCategory.shaders);
+                    api.Logger.Notification("[OptiTime] {0} shader override(s) hidden so the shaders underneath are used ({1}).", hidden, reason);
+                    return;
+                }
+
+                api.Logger.Warning("[OptiTime] The OptiTime asset origin was not found; the shader overrides stay.");
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Error("[OptiTime] Failed to hide shader overrides: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Safety net for the patches that were applied. Every method patched with the OptiTime Harmony id
+        /// has to be a vanilla body when Optimum is the host. Anything else is unpatched and logged, which
+        /// also catches a patch site the feature table does not know about.
+        /// </summary>
+        private void AuditOptimumPatches(ICoreClientAPI api)
+        {
+            string gameVersion = GameVersion.ShortGameVersion;
+            foreach (System.Reflection.MethodBase method in harmony.GetPatchedMethods().ToList())
+            {
+                if (OptimumOwnership.IsVanillaBody(method, gameVersion))
+                    continue;
+
+                harmony.Unpatch(method, HarmonyPatchType.All, harmony.Id);
+                api.Logger.Warning("[OptiTime] Removed the patch on {0}.{1}: the method is not a verified vanilla body next to Optimum.", method.DeclaringType?.FullName, method.Name);
             }
         }
 

@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Glattere Bewegung entfernter Entitäten im Mehrspielermodus (Flood-Schutz)",
   "optitime:description-repulseagents": "Entitätstrennungsprüfungen für entfernte Kreaturen überspringen (&gt;64 Blöcke)",
   "optitime:description-suppress": "Mod-Konfliktbenachrichtigungen im Chat beim Laden der Welt ausblenden (wird weiterhin geloggt)",
-  "optitime:description-unknown": "Unbekannte Optimierung"
+  "optitime:description-unknown": "Unbekannte Optimierung",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum erkannt, OptiTime behält nur, was Optimum nicht bietet",
+  "optitime:compat-optimum-desc": "OptiTime überspringt die Optimierungen, die Optimum bereits bietet oder verändert. Die übrigen bleiben aktiv, und deine OptiTime-Einstellungen bleiben unverändert.",
+  "optitime:compat-optimum-reason": "Von Optimum bereitgestellt"
 }

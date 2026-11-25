@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Jevnere bevegelse for fjerne entiteter i flerspiller (beskyttelse mot overbelastning)",
   "optitime:description-repulseagents": "Hopp over separasjonssjekker for fjerne skapninger (&gt;64 blokker)",
   "optitime:description-suppress": "Skjul mod-konfliktvarsler i chatten ved lasting av verden (info logges fortsatt)",
-  "optitime:description-unknown": "Ukjent optimalisering"
+  "optitime:description-unknown": "Ukjent optimalisering",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum oppdaget, OptiTime beholder bare det Optimum ikke leverer",
+  "optitime:compat-optimum-desc": "OptiTime hopper over optimaliseringene som Optimum allerede leverer eller endrer. De andre forblir aktive, og OptiTime-innstillingene dine endres ikke.",
+  "optitime:compat-optimum-reason": "Levert av Optimum"
 }

@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Plynulejší pohyb vzdialených entít v hre pre viacerých hráčov (ochrana proti zahlteniu)",
   "optitime:description-repulseagents": "Preskočiť kontroly rozostupov pre vzdialené tvory (&gt;64 blokov)",
   "optitime:description-suppress": "Skryť upozornenia o konfliktoch modov v chate pri načítaní sveta (stále sa zaznamenáva do logu)",
-  "optitime:description-unknown": "Neznáma optimalizácia"
+  "optitime:description-unknown": "Neznáma optimalizácia",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum nájdený, OptiTime ponecháva len to, čo Optimum neposkytuje",
+  "optitime:compat-optimum-desc": "OptiTime preskočí optimalizácie, ktoré Optimum už poskytuje alebo mení. Ostatné zostanú aktívne a vaše nastavenia OptiTime sa nezmenia.",
+  "optitime:compat-optimum-reason": "Zabezpečuje Optimum"
 }

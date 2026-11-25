@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "マルチプレイヤーでの遠隔エンティティの動きを滑らかにする（フラッド保護）",
   "optitime:description-repulseagents": "遠くの生物に対するエンティティ分離チェックをスキップ（&gt;64ブロック）",
   "optitime:description-suppress": "ワールド読み込み時のチャットでのMod競合通知を非表示（ログには記録）",
-  "optitime:description-unknown": "不明な最適化"
+  "optitime:description-unknown": "不明な最適化",
+  "optitime:compat-optimum-title": "[OptiTime] Optimumを検出、OptiTimeはOptimumが提供しないものだけを維持します",
+  "optitime:compat-optimum-desc": "OptiTimeは、Optimumがすでに提供または変更している最適化をスキップします。それ以外は有効のままで、OptiTimeの設定は変更されません。",
+  "optitime:compat-optimum-reason": "Optimumが提供"
 }

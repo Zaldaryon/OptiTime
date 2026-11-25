@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Sklandesnis nutolusių esybių judėjimas kelių žaidėjų režime (apsauga nuo perkrovos)",
   "optitime:description-repulseagents": "Praleisti esybių atskyrimo patikras nutolusioms būtybėms (&gt;64 blokų)",
   "optitime:description-suppress": "Slėpti modifikacijų konfliktų pranešimus pokalbyje įkeliant pasaulį (informacija vis tiek įrašoma žurnale)",
-  "optitime:description-unknown": "Nežinoma optimizacija"
+  "optitime:description-unknown": "Nežinoma optimizacija",
+  "optitime:compat-optimum-title": "[OptiTime] Aptiktas Optimum, OptiTime palieka tik tai, ko Optimum neteikia",
+  "optitime:compat-optimum-desc": "OptiTime praleidžia optimizavimus, kuriuos Optimum jau teikia arba keičia. Kiti lieka aktyvūs, o jūsų OptiTime nustatymai nekeičiami.",
+  "optitime:compat-optimum-reason": "Teikia Optimum"
 }

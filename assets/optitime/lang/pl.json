@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Płynniejszy ruch odległych bytów w trybie wieloosobowym (ochrona przed zalaniem pakietami)",
   "optitime:description-repulseagents": "Pomiń sprawdzanie separacji dla odległych stworzeń (&gt;64 bloków)",
   "optitime:description-suppress": "Ukryj powiadomienia o konfliktach modów na czacie przy ładowaniu świata (informacje nadal w logach)",
-  "optitime:description-unknown": "Nieznana optymalizacja"
+  "optitime:description-unknown": "Nieznana optymalizacja",
+  "optitime:compat-optimum-title": "[OptiTime] Wykryto Optimum, OptiTime zachowuje tylko to, czego Optimum nie zapewnia",
+  "optitime:compat-optimum-desc": "OptiTime pomija optymalizacje, które Optimum już zapewnia lub zmienia. Pozostałe pozostają aktywne, a Twoje ustawienia OptiTime nie są zmieniane.",
+  "optitime:compat-optimum-reason": "Zapewnia Optimum"
 }

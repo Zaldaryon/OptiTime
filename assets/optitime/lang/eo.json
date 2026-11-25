@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Pli glata moviĝo de foraj entoj en plurludanta reĝimo (inundoprotekto)",
   "optitime:description-repulseagents": "Preterpasi disigokontrolojn por foraj estaĵoj (&gt;64 blokoj)",
   "optitime:description-suppress": "Kaŝi mod-konfliktajn sciigojn en babilado dum mondŝargado (informo ankoraŭ registrita)",
-  "optitime:description-unknown": "Nekonata optimumigo"
+  "optitime:description-unknown": "Nekonata optimumigo",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum trovita, OptiTime konservas nur tion, kion Optimum ne provizas",
+  "optitime:compat-optimum-desc": "OptiTime preterlasas la optimumigojn, kiujn Optimum jam provizas aŭ ŝanĝas. La aliaj restas aktivaj kaj viaj OptiTime-agordoj ne ŝanĝiĝas.",
+  "optitime:compat-optimum-reason": "Provizita de Optimum"
 }

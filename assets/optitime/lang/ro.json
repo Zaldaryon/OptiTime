@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Mișcare mai lină a entităților la distanță în multiplayer (protecție împotriva supraîncărcării)",
   "optitime:description-repulseagents": "Omite verificările de separare pentru creaturile îndepărtate (&gt;64 blocuri)",
   "optitime:description-suppress": "Ascunde notificările de conflict ale modurilor în chat la încărcarea lumii (informațiile rămân în jurnal)",
-  "optitime:description-unknown": "Optimizare necunoscută"
+  "optitime:description-unknown": "Optimizare necunoscută",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum detectat, OptiTime păstrează doar ce nu oferă Optimum",
+  "optitime:compat-optimum-desc": "OptiTime omite optimizările pe care Optimum le oferă sau le modifică deja. Celelalte rămân active, iar setările tale OptiTime nu sunt modificate.",
+  "optitime:compat-optimum-reason": "Furnizat de Optimum"
 }

@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Çok oyunculu modda uzak varlıkların daha yumuşak hareketi (akın koruması)",
   "optitime:description-repulseagents": "Uzak yaratıklar için varlık ayırma kontrollerini atla (&gt;64 blok)",
   "optitime:description-suppress": "Dünya yüklenirken sohbetteki mod çakışma bildirimlerini gizle (bilgiler günlüğe kaydedilmeye devam eder)",
-  "optitime:description-unknown": "Bilinmeyen optimizasyon"
+  "optitime:description-unknown": "Bilinmeyen optimizasyon",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum algılandı, OptiTime yalnızca Optimum'un sağlamadıklarını korur",
+  "optitime:compat-optimum-desc": "OptiTime, Optimum'un zaten sağladığı veya değiştirdiği optimizasyonları atlar. Diğerleri etkin kalır ve OptiTime ayarlarınız değişmez.",
+  "optitime:compat-optimum-reason": "Optimum tarafından sağlanıyor"
 }

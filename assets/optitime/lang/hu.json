@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Távoli entitások simább mozgása többjátékos módban (túlterhelés elleni védelem)",
   "optitime:description-repulseagents": "Elválasztási ellenőrzések kihagyása távoli lényeknél (&gt;64 blokk)",
   "optitime:description-suppress": "Modütközési értesítések elrejtése a csevegésben világbetöltéskor (az infó a naplókba kerül)",
-  "optitime:description-unknown": "Ismeretlen optimalizáció"
+  "optitime:description-unknown": "Ismeretlen optimalizáció",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum észlelve, az OptiTime csak azt tartja meg, amit az Optimum nem nyújt",
+  "optitime:compat-optimum-desc": "Az OptiTime kihagyja azokat az optimalizálásokat, amelyeket az Optimum már biztosít vagy módosít. A többi aktív marad, és az OptiTime beállításaid nem változnak.",
+  "optitime:compat-optimum-reason": "Az Optimum biztosítja"
 }

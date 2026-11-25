@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Mýkri hreyfing fjarlægra eininga í fjölspilun (flæðisvörn)",
   "optitime:description-repulseagents": "Sleppa aðskilnaðarathugunum fyrir fjarlægar verur (&gt;64 kubbar)",
   "optitime:description-suppress": "Fela tilkynningar um ósamrýmanleika móta í spjalli við hleðslu heims (upplýsingar enn skráðar)",
-  "optitime:description-unknown": "Óþekkt fínstilling"
+  "optitime:description-unknown": "Óþekkt fínstilling",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum fannst, OptiTime heldur aðeins því sem Optimum býður ekki",
+  "optitime:compat-optimum-desc": "OptiTime sleppir fínstillingum sem Optimum býður nú þegar eða breytir. Hinar haldast virkar og OptiTime stillingarnar þínar breytast ekki.",
+  "optitime:compat-optimum-reason": "Veitt af Optimum"
 }

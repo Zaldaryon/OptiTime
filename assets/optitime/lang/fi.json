@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Kaukaisempien entiteettien sulavampi liike moninpelissä (tulvasuojaus)",
   "optitime:description-repulseagents": "Ohita erottelutarkistukset kaukaisille olennoille (&gt;64 lohkoa)",
   "optitime:description-suppress": "Piilota modiristiriitailmoitukset chatissa maailmaa ladattaessa (tiedot kirjataan yhä lokiin)",
-  "optitime:description-unknown": "Tuntematon optimointi"
+  "optitime:description-unknown": "Tuntematon optimointi",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum havaittu, OptiTime säilyttää vain sen, mitä Optimum ei tarjoa",
+  "optitime:compat-optimum-desc": "OptiTime ohittaa optimoinnit, jotka Optimum jo tarjoaa tai muuttaa. Muut pysyvät aktiivisina, eikä OptiTimen asetuksia muuteta.",
+  "optitime:compat-optimum-reason": "Optimumin tarjoama"
 }

@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Глаткије кретање удаљених ентитета у мрежној игри (заштита од загушења)",
   "optitime:description-repulseagents": "Прескакање провера одвајања за далека створења (&gt;64 блока)",
   "optitime:description-suppress": "Сакривање обавештења о конфликтима модова у ћаскању при учитавању света (подаци остају у дневнику)",
-  "optitime:description-unknown": "Непозната оптимизација"
+  "optitime:description-unknown": "Непозната оптимизација",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum je pronađen, OptiTime zadržava samo ono što Optimum ne obezbeđuje",
+  "optitime:compat-optimum-desc": "OptiTime preskače optimizacije koje Optimum već obezbeđuje ili menja. Ostale ostaju aktivne, a vaša OptiTime podešavanja se ne menjaju.",
+  "optitime:compat-optimum-reason": "Obezbeđuje Optimum"
 }

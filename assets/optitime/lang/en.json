@@ -106,5 +106,8 @@
   "optitime:description-entityinterp": "Smoother remote entity movement in multiplayer (flood protection)",
   "optitime:description-repulseagents": "Skip entity separation checks for distant creatures (&gt;64 blocks)",
   "optitime:description-suppress": "Hide mod conflict notifications in chat on world load (info still logged)",
-  "optitime:description-unknown": "Unknown optimization"
+  "optitime:description-unknown": "Unknown optimization",
+  "optitime:compat-optimum-title": "[OptiTime] Optimum detected, OptiTime keeps only what Optimum does not provide",
+  "optitime:compat-optimum-desc": "OptiTime skips the optimizations Optimum already provides or changes. The others stay active and your OptiTime settings are not changed.",
+  "optitime:compat-optimum-reason": "Provided by Optimum"
 }
