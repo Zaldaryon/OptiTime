@@ -43,9 +43,11 @@ namespace OptiTime
             ["Vintagestory.Client.NoObf.SystemRenderParticles:OnRenderFrame3D(System.Single)"] = "17:dafc549b42711282c2dbf4d4",
             ["Vintagestory.Client.NoObf.SystemRenderPlayerEffects:onBeforeRender(System.Single)"] = "101:65a64dc8acba526a7bc29269",
             ["Vintagestory.Client.ScreenManager:OnNewFrame(System.Single)"] = "99:eb760b72002b05a977a608a3",
+            ["Vintagestory.Common.CreativeTab:CreateSearchCache(Vintagestory.API.Common.IWorldAccessor)"] = "77:e461e42e1fd09764e897caf9",
             ["Vintagestory.Common.InventoryCraftingGrid:FindMatchingRecipe()"] = "165:b2ab2626b1844078d3a6dc84",
             ["Vintagestory.GameContent.CollectibleBehaviorHandbookTextAndExtraInfo:GetHandbookInfo(Vintagestory.API.Common.ItemSlot,Vintagestory.API.Client.ICoreClientAPI,Vintagestory.API.Common.ItemStack[],Vintagestory.API.Common.ActionConsumable<System.String>)"] = "331:abddee5fb85066d15c85700b",
             ["Vintagestory.GameContent.EntityBehaviorRepulseAgents:OnGameTick(System.Single)"] = "170:0569a0ac05cab57e48884fca",
+            ["Vintagestory.GameContent.ModSystemSurvivalHandbook:onCreatePagesAsync()"] = "125:0d506e4b68283e85c8967fa2",
             ["Vintagestory.GameContent.WeatherSystemClient:OnRenderFrame(System.Single,Vintagestory.API.Client.EnumRenderStage)"] = "428:bc335716eb5a35acb7963d0d",
         };
 

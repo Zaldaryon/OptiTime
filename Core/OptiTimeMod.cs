@@ -249,6 +249,43 @@ namespace OptiTime
                 api.Logger.Warning("[OptiTime] TranslationService thread-safety fix failed: " + ex.Message);
             }
 
+            SafeCatalogIsolation.SetLogger(msg => api.Logger.Warning(msg));
+
+            try
+            {
+                var creativeSearchTarget = AccessTools.Method("Vintagestory.Common.CreativeTab:CreateSearchCache",
+                    new Type[] { typeof(IWorldAccessor) });
+                if (creativeSearchTarget != null &&
+                    !HasAnyConflictingPatches(creativeSearchTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(creativeSearchTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(creativeSearchTarget,
+                        prefix: new HarmonyMethod(typeof(SafeCatalogIsolation), nameof(SafeCatalogIsolation.CreateSearchCache_Prefix)));
+                    api.Logger.Notification("[OptiTime] Creative search exception isolation loaded");
+                }
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Warning("[OptiTime] Creative search exception isolation failed: " + ex.Message);
+            }
+
+            try
+            {
+                var handbookPagesTarget = AccessTools.Method("Vintagestory.GameContent.ModSystemSurvivalHandbook:onCreatePagesAsync");
+                if (handbookPagesTarget != null &&
+                    !HasAnyConflictingPatches(handbookPagesTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(handbookPagesTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(handbookPagesTarget,
+                        transpiler: new HarmonyMethod(typeof(SafeCatalogIsolation), nameof(SafeCatalogIsolation.TranspileCreatePagesAsync)));
+                    api.Logger.Notification("[OptiTime] Handbook page exception isolation loaded");
+                }
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Warning("[OptiTime] Handbook page exception isolation failed: " + ex.Message);
+            }
+
             try
             {
                 var onNewFrame = AccessTools.Method("Vintagestory.Client.ScreenManager:OnNewFrame", new Type[] { typeof(float) });
@@ -1172,6 +1209,7 @@ namespace OptiTime
                 OcclusionCullingOptimization.Cleanup();
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
+                SafeCatalogIsolation.Cleanup();
 
                 ProfilingHelper.Cleanup();
             }

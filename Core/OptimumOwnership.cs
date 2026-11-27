@@ -48,7 +48,9 @@ namespace OptiTime
         internal static readonly string[] AlwaysOnTargets =
         {
             "Vintagestory.API.Config.TranslationService:HasTranslation",
-            "Vintagestory.Client.ScreenManager:OnNewFrame"
+            "Vintagestory.Client.ScreenManager:OnNewFrame",
+            "Vintagestory.Common.CreativeTab:CreateSearchCache",
+            "Vintagestory.GameContent.ModSystemSurvivalHandbook:onCreatePagesAsync"
         };
 
         internal static readonly Feature[] Features =
