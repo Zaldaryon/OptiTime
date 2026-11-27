@@ -118,7 +118,7 @@ public class ModuleInventoryTests : OptiTimeScenarioBase
     /// Driven from the suite's own list rather than a hand-written
     /// <c>[InlineData]</c> set, so an option added upstream is covered here
     /// automatically instead of being quietly skipped - and as one scenario
-    /// rather than twenty, because <c>[ClientServerScenario]</c> is a
+    /// rather than twenty-one, because <c>[ClientServerScenario]</c> is a
     /// <c>FactAttribute</c> and cannot take parameters.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 900_000)]

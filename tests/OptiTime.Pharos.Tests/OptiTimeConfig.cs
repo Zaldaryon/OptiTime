@@ -101,6 +101,7 @@ public static partial class OptiTimeConfig
             ["dynlights"] = "DynamicLightOptimizations",
             ["entityanim"] = "EntityAnimationOptimizations",
             ["entityinterp"] = "EntityInterpolationOptimizations",
+            ["entityshape"] = "EntityShapeOptimizations",
             ["flysound"] = "FlySoundOptimizations",
             ["framepace"] = "PreciseFramePacingEnabled",
             ["guimgr"] = "GuiManagerOptimizations",
@@ -117,7 +118,7 @@ public static partial class OptiTimeConfig
             ["weatherwind"] = "WeatherWindOptimizations",
         };
 
-    /// <summary>The twenty option names, in the order the mod prints them.</summary>
+    /// <summary>The twenty-one option names, in the order the mod prints them.</summary>
     public static readonly string[] OptionNames = [.. Options.Keys];
 
     /// <summary>
@@ -183,7 +184,7 @@ public static partial class OptiTimeConfig
     /// <summary>
     /// The diag module registered for each option, when there is one.
     ///
-    /// The registry in <c>Core/Diagnostics</c> covers eighteen of the twenty
+    /// The registry in <c>Core/Diagnostics</c> covers eighteen of the twenty-one
     /// options. <c>shaders</c>/<c>blur</c> and <c>suppress</c> have no counters
     /// because they are asset and message toggles rather than hot paths, so they
     /// are exercised through the asset reload and the chat surface instead.
@@ -196,6 +197,7 @@ public static partial class OptiTimeConfig
             ["dynlights"] = "dynlights",
             ["entityanim"] = "entityanim",
             ["entityinterp"] = "entityinterp",
+            ["entityshape"] = "entityshape",
             ["flysound"] = "flysound",
             ["framepace"] = "framepace",
             ["guimgr"] = "guimgr",
@@ -241,6 +243,7 @@ public static partial class OptiTimeConfig
                 "Entity shadow distance cull loaded",
                 "Entity shadow distance cull skipped"),
             ["framepace"] = new("Precise frame pacing optimization loaded"),
+            ["entityshape"] = new("Entity reshape budget loaded"),
         };
 
     // ------------------------------------------------------------------ world

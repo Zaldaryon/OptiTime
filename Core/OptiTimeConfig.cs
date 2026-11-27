@@ -38,6 +38,7 @@ namespace OptiTime
         public bool EntityShadowDistanceCullEnabled { get; set; } = true;
         public bool EntityInterpolationOptimizations { get; set; } = true;
         public bool RepulseAgentsOptimizations { get; set; } = true;
+        public bool EntityShapeOptimizations { get; set; } = true;
         public bool SuppressCompatibilityMessages { get; set; } = false;
 
         private Dictionary<string, Action<bool>> optimizationSetters;
@@ -84,6 +85,7 @@ namespace OptiTime
                 [nameof(EntityShadowDistanceCullEnabled)] = v => EntityShadowDistanceCullEnabled = v,
                 [nameof(EntityInterpolationOptimizations)] = v => EntityInterpolationOptimizations = v,
                 [nameof(RepulseAgentsOptimizations)] = v => RepulseAgentsOptimizations = v,
+                [nameof(EntityShapeOptimizations)] = v => EntityShapeOptimizations = v,
                 [nameof(SuppressCompatibilityMessages)] = v => SuppressCompatibilityMessages = v,
                 [nameof(GuiManagerNoLinqEnabled)] = v => GuiManagerNoLinqEnabled = v,
                 [nameof(GuiManagerInputNoLinqEnabled)] = v => GuiManagerInputNoLinqEnabled = v,
@@ -113,6 +115,7 @@ namespace OptiTime
                 [nameof(EntityShadowDistanceCullEnabled)] = () => EntityShadowDistanceCullEnabled,
                 [nameof(EntityInterpolationOptimizations)] = () => EntityInterpolationOptimizations,
                 [nameof(RepulseAgentsOptimizations)] = () => RepulseAgentsOptimizations,
+                [nameof(EntityShapeOptimizations)] = () => EntityShapeOptimizations,
                 [nameof(SuppressCompatibilityMessages)] = () => SuppressCompatibilityMessages,
                 [nameof(GuiManagerNoLinqEnabled)] = () => GuiManagerNoLinqEnabled,
                 [nameof(GuiManagerInputNoLinqEnabled)] = () => GuiManagerInputNoLinqEnabled,
@@ -207,6 +210,7 @@ namespace OptiTime
                 nameof(EntityShadowDistanceCullEnabled) => Lang.Get("optitime:description-shadowentity"),
                 nameof(EntityInterpolationOptimizations) => Lang.Get("optitime:description-entityinterp"),
                 nameof(RepulseAgentsOptimizations) => Lang.Get("optitime:description-repulseagents"),
+                nameof(EntityShapeOptimizations) => Lang.Get("optitime:description-entityshape"),
                 nameof(SuppressCompatibilityMessages) => Lang.Get("optitime:description-suppress"),
                 _ => Lang.Get("optitime:description-unknown")
             };
@@ -330,6 +334,7 @@ namespace OptiTime
             PrintOptStatus(api, "shadowentity", EntityShadowDistanceCullEnabled, nameof(EntityShadowDistanceCullEnabled));
             PrintOptStatus(api, "entityinterp", EntityInterpolationOptimizations, nameof(EntityInterpolationOptimizations));
             PrintOptStatus(api, "repulseagents", RepulseAgentsOptimizations, nameof(RepulseAgentsOptimizations));
+            PrintOptStatus(api, "entityshape", EntityShapeOptimizations, nameof(EntityShapeOptimizations));
             PrintOptStatus(api, "suppress", SuppressCompatibilityMessages, nameof(SuppressCompatibilityMessages));
             api.ShowChatMessage($"profiling: {(EnableProfiling ? "ON" : "OFF")}");
         }
@@ -384,6 +389,7 @@ namespace OptiTime
                 ["shadowentity"] = (EntityShadowDistanceCullEnabled, "Entity Shadow Distance Cull", nameof(EntityShadowDistanceCullEnabled)),
                 ["entityinterp"] = (EntityInterpolationOptimizations, "Entity Interpolation", nameof(EntityInterpolationOptimizations)),
                 ["repulseagents"] = (RepulseAgentsOptimizations, "Repulse Agents", nameof(RepulseAgentsOptimizations)),
+                ["entityshape"] = (EntityShapeOptimizations, "Entity Reshape Budget", nameof(EntityShapeOptimizations)),
                 ["suppress"] = (SuppressCompatibilityMessages, "Suppress Compatibility Messages", nameof(SuppressCompatibilityMessages))
             };
 
