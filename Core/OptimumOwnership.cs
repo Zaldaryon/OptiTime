@@ -47,6 +47,7 @@ namespace OptiTime
         /// <summary>Methods OptiTime patches whatever the configuration says.</summary>
         internal static readonly string[] AlwaysOnTargets =
         {
+            "Vintagestory.API.Client.FrustumCulling:InFrustumAndRange",
             "Vintagestory.API.Config.TranslationService:HasTranslation",
             "Vintagestory.Client.ScreenManager:OnNewFrame",
             "Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame",
