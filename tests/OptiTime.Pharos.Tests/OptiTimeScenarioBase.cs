@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Vintagestory.API.Config;
@@ -17,6 +18,47 @@ namespace OptiTime.Pharos.Tests;
 /// </summary>
 public abstract class OptiTimeScenarioBase : ClientServerScenarioBase
 {
+    /// <summary>
+    /// The game mode each player really had when the pooled pair was captured, per server.
+    ///
+    /// Pharos 0.6.0 records a player's mode through <c>IWorldPlayerData.CurrentGameMode</c>,
+    /// which the game reports as spectator until the player's data is flagged as connected.
+    /// On a world booted from a save the capture happens before that flag is set, so every
+    /// rollback wrote spectator into the player: the hotbar and status bars disappeared from
+    /// every capture after the first test of a class. The stored mode is read here instead and
+    /// put back after each rollback.
+    /// </summary>
+    private static readonly ConditionalWeakTable<object, Dictionary<string, EnumGameMode>> CapturedGameModes = new();
+
+    protected override void OnRollbackCaptured()
+    {
+        base.OnRollbackCaptured();
+        if (ServerHost is not { } host) return;
+
+        Dictionary<string, EnumGameMode> modes = host.RunOnGameThread(() =>
+            host.Server.PlayersByUid.Values
+                .Where(player => player.WorldData is Vintagestory.Server.ServerWorldPlayerData)
+                .ToDictionary(player => player.PlayerUID, player => ((Vintagestory.Server.ServerWorldPlayerData)player.WorldData).GameMode));
+        CapturedGameModes.AddOrUpdate(host, modes);
+    }
+
+    protected override void OnRollbackRestored()
+    {
+        base.OnRollbackRestored();
+        if (ServerHost is not { } host || !CapturedGameModes.TryGetValue(host, out var modes)) return;
+
+        host.RunOnGameThread(() =>
+        {
+            foreach (var player in host.Server.PlayersByUid.Values)
+            {
+                if (!modes.TryGetValue(player.PlayerUID, out EnumGameMode mode) || player.WorldData.CurrentGameMode == mode) continue;
+                player.WorldData.CurrentGameMode = mode;
+                player.BroadcastPlayerData(true);
+            }
+            return true;
+        });
+    }
+
     /// <summary>
     /// The frame at which measurement starts. Engine mode is real-time, not
     /// deterministic, so every sample is taken well past chunk streaming and
