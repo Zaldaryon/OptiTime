@@ -48,7 +48,9 @@ namespace OptiTime
         internal static readonly string[] AlwaysOnTargets =
         {
             "Vintagestory.API.Client.FrustumCulling:InFrustumAndRange",
+            "Vintagestory.API.Common.AnimatableRenderer:Dispose",
             "Vintagestory.API.Common.AnimatableRenderer:OnRenderFrame",
+            "Vintagestory.API.Common.AnimatableRenderer:mainThreadInit",
             "Vintagestory.API.Common.AnimationUtil:Dispose",
             "Vintagestory.API.Common.AnimationUtil:OnRenderFrame",
             "Vintagestory.API.Common.AnimationUtil:StartAnimation",

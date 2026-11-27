@@ -339,6 +339,20 @@ namespace OptiTime
                         !HasAnyConflictingPatches(animRendererTarget) &&
                         (!optimumHostDetected || OptimumOwnership.IsVanillaBody(animRendererTarget, GameVersion.ShortGameVersion));
 
+                    var animRendererInitTarget = AccessTools.Method(
+                        "Vintagestory.API.Common.AnimatableRenderer:mainThreadInit",
+                        new Type[] { typeof(ICoreClientAPI), typeof(MeshData), typeof(EnumRenderStage) });
+                    var animRendererDisposeTarget = AccessTools.Method(
+                        "Vintagestory.API.Common.AnimatableRenderer:Dispose",
+                        Type.EmptyTypes);
+                    bool animRendererLifecycleReady = animRendererReady &&
+                        animRendererInitTarget != null && animRendererDisposeTarget != null &&
+                        !HasAnyConflictingPatches(animRendererInitTarget) &&
+                        !HasAnyConflictingPatches(animRendererDisposeTarget) &&
+                        (!optimumHostDetected ||
+                            (OptimumOwnership.IsVanillaBody(animRendererInitTarget, GameVersion.ShortGameVersion) &&
+                             OptimumOwnership.IsVanillaBody(animRendererDisposeTarget, GameVersion.ShortGameVersion)));
+
                     var animUtilRenderTarget = AccessTools.Method(
                         "Vintagestory.API.Common.AnimationUtil:OnRenderFrame",
                         new Type[] { typeof(float), typeof(EnumRenderStage) });
@@ -366,6 +380,13 @@ namespace OptiTime
                     {
                         harmony.Patch(animRendererTarget,
                             prefix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimatableRenderer_OnRenderFrame_Prefix)));
+                        if (animRendererLifecycleReady)
+                        {
+                            harmony.Patch(animRendererInitTarget,
+                                postfix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimatableRenderer_MainThreadInit_Postfix)));
+                            harmony.Patch(animRendererDisposeTarget,
+                                postfix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimatableRenderer_Dispose_Postfix)));
+                        }
                         api.Logger.Notification("[OptiTime] AnimatableRenderer frustum culling loaded");
                     }
 
@@ -377,7 +398,16 @@ namespace OptiTime
                             prefix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimationUtil_StartAnimation_Prefix)));
                         harmony.Patch(animUtilDisposeTarget,
                             postfix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimationUtil_Dispose_Postfix)));
-                        api.Logger.Notification("[OptiTime] Idle AnimationUtil parking loaded");
+
+                        if (animRendererLifecycleReady)
+                        {
+                            AnimatableOptimization.SetRendererParkingEnabled(true);
+                            api.Logger.Notification("[OptiTime] Idle AnimationUtil and AnimatableRenderer parking loaded");
+                        }
+                        else
+                        {
+                            api.Logger.Notification("[OptiTime] Idle AnimationUtil parking loaded");
+                        }
                     }
                 }
                 catch (Exception ex)
