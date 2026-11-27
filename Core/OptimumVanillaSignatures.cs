@@ -24,6 +24,7 @@ namespace OptiTime
             ["Vintagestory.API.Config.TranslationService:HasTranslation(System.String,System.Boolean,System.Boolean)"] = "85:ce229ad8d31eacad1b2020d7",
             ["Vintagestory.Client.NoObf.ChunkCuller:CullInvisibleChunks()"] = "327:89825b238cf6992fec119738",
             ["Vintagestory.Client.NoObf.ChunkRenderer:RenderShadow(System.Single)"] = "175:d29303c68fc30412be231953",
+            ["Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame(System.Single)"] = "260:b28c83a617b89aa9b0eadca1",
             ["Vintagestory.Client.NoObf.ClientMain:RemoveEntityRenderer(Vintagestory.API.Common.Entities.Entity)"] = "23:400816ef24be67a5c06e900b",
             ["Vintagestory.Client.NoObf.ClientPlatformWindows:window_RenderFrame(OpenTK.Windowing.Common.FrameEventArgs)"] = "116:70287b1a5f630580f26fd153",
             ["Vintagestory.Client.NoObf.GuiManager:OnBeforeRenderFrame3D(System.Single)"] = "26:b2fad83981bb4fbcdd38be82",
