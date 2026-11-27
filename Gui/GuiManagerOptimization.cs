@@ -12,13 +12,16 @@ namespace OptiTime
 {
     public class GuiManagerOptimization
     {
-        // Cached lists to avoid ToList() allocations
-        private static List<GuiDialog> cachedLoadedGuis = new List<GuiDialog>();
-        private static List<GuiDialog> cachedOpenedGuis = new List<GuiDialog>();
-        private static List<GuiDialog> cachedReversedGuis = new List<GuiDialog>();
-        private static readonly System.Collections.Generic.HashSet<string> suppressedPostRenderExceptions = new System.Collections.Generic.HashSet<string>();
+        // Cached lists to avoid ToList() allocations and preserve snapshot safety
+        private static readonly List<GuiDialog> cachedLoadedGuis = new List<GuiDialog>();
+        private static readonly List<GuiDialog> cachedOpenedGuis = new List<GuiDialog>();
+        private static readonly List<GuiDialog> cachedReversedGuis = new List<GuiDialog>();
+        private static bool loadedGuisInUse;
+        private static bool openedGuisInUse;
+        private static bool reversedGuisInUse;
+        private static readonly HashSet<string> suppressedPostRenderExceptions = new HashSet<string>();
 
-        // Cached field access — replaces dynamic dispatch
+        // Cached field access: replaces dynamic dispatch
         private static readonly AccessTools.FieldRef<ClientSystem, ClientMain> gameRef =
             AccessTools.FieldRefAccess<ClientSystem, ClientMain>("game");
         private static readonly AccessTools.FieldRef<ClientMain, List<GuiDialog>> openedGuisRef =
@@ -33,33 +36,39 @@ namespace OptiTime
             AccessTools.FieldRefAccess<GuiElementItemSlotGridBase, IInventory>("inventory");
         private static readonly AccessTools.FieldRef<GuiElementItemSlotGridBase, Vintagestory.API.Datastructures.OrderedDictionary<int, ItemSlot>> availableSlotsRef =
             AccessTools.FieldRefAccess<GuiElementItemSlotGridBase, Vintagestory.API.Datastructures.OrderedDictionary<int, ItemSlot>>("availableSlots");
-        private static System.Reflection.MethodInfo onEscapePressedMethod = null;
-        private static System.Reflection.MethodInfo requestFocusMethod = null;
-        private static System.Reflection.MethodInfo onMouseMoveOverMethod = null;
-        private static Type guiManagerType = null;
-        private static FieldInfo debugPrintField = null;
-        private static bool mouseMoveCoalescingEnabled = false;
+        private static readonly Action<GuiManager> onEscapePressedDelegate;
+        private static readonly Action<GuiManager, GuiDialog> requestFocusDelegate;
+        private static readonly Action<GuiManager, GuiDialog> onMouseMoveOverDelegate;
+        private static bool mouseMoveCoalescingEnabled;
         private static int mouseMoveCoalesceIntervalMs = 8;
         private static readonly System.Threading.Lock mouseMoveLock = new();
-        private static MouseEvent pendingMouseMoveEvent = null;
-        private static bool hasPendingMouseMove = false;
-        private static long lastMouseMoveQueuedMs = 0;
-        private static long lastMouseMoveProcessedMs = 0;
+        private static MouseEvent pendingMouseMoveEvent;
+        private static int pendingMouseDeltaX;
+        private static int pendingMouseDeltaY;
+        private static int pendingMouseMoveCount;
+        private static long lastMouseMoveQueuedMs;
+        private static long lastMouseMoveProcessedMs;
 
         static GuiManagerOptimization()
         {
             try
             {
-                guiManagerType = AccessTools.TypeByName("Vintagestory.Client.NoObf.GuiManager");
-                if (guiManagerType != null)
-                {
-                    debugPrintField = AccessTools.Field(guiManagerType, "DEBUG_PRINT_INTERACTIONS");
-                    onEscapePressedMethod = AccessTools.Method(guiManagerType, "OnEscapePressed");
-                    requestFocusMethod = AccessTools.Method(guiManagerType, "RequestFocus");
-                    onMouseMoveOverMethod = AccessTools.Method(guiManagerType, "OnMouseMoveOver", new Type[] { typeof(GuiDialog) });
-                }
+                Type managerType = typeof(GuiManager);
+                MethodInfo escapeMethod = AccessTools.Method(managerType, "OnEscapePressed");
+                if (escapeMethod != null)
+                    onEscapePressedDelegate = (Action<GuiManager>)escapeMethod.CreateDelegate(typeof(Action<GuiManager>));
+
+                MethodInfo focusMethod = AccessTools.Method(managerType, "RequestFocus", new[] { typeof(GuiDialog) });
+                if (focusMethod != null)
+                    requestFocusDelegate = (Action<GuiManager, GuiDialog>)focusMethod.CreateDelegate(typeof(Action<GuiManager, GuiDialog>));
+
+                MethodInfo mouseOverMethod = AccessTools.Method(managerType, "OnMouseMoveOver", new[] { typeof(GuiDialog) });
+                if (mouseOverMethod != null)
+                    onMouseMoveOverDelegate = (Action<GuiManager, GuiDialog>)mouseOverMethod.CreateDelegate(typeof(Action<GuiManager, GuiDialog>));
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         // Cleanup method to prevent memory leaks
@@ -71,15 +80,23 @@ namespace OptiTime
             cachedLoadedGuis.TrimExcess();
             cachedOpenedGuis.TrimExcess();
             cachedReversedGuis.TrimExcess();
+            loadedGuisInUse = false;
+            openedGuisInUse = false;
+            reversedGuisInUse = false;
             suppressedPostRenderExceptions.Clear();
 
-            // Don't clear reflection caches - they're reusable
-            pendingMouseMoveEvent = null;
-            hasPendingMouseMove = false;
+            // Don't clear reflection/delegate caches - they're reusable
+            lock (mouseMoveLock)
+            {
+                pendingMouseMoveEvent = null;
+                pendingMouseDeltaX = 0;
+                pendingMouseDeltaY = 0;
+                pendingMouseMoveCount = 0;
+                lastMouseMoveQueuedMs = 0;
+                lastMouseMoveProcessedMs = 0;
+            }
             mouseMoveCoalesceIntervalMs = 8;
             mouseMoveCoalescingEnabled = false;
-            lastMouseMoveQueuedMs = 0;
-            lastMouseMoveProcessedMs = 0;
         }
 
         public static void Configure(OptiTimeConfig config)
@@ -95,60 +112,130 @@ namespace OptiTime
             mouseMoveCoalesceIntervalMs = Math.Clamp(config.GuiManagerMouseMoveCoalesceIntervalMs, 1, 50);
         }
 
-        // Helper to update cached lists when needed
-        private static void UpdateCachedLoadedGuis(List<GuiDialog> loadedGuis)
+        private static List<GuiDialog> RentLoadedGuis(List<GuiDialog> loadedGuis, out bool rentedShared)
         {
-            cachedLoadedGuis.Clear();
-            cachedLoadedGuis.AddRange(loadedGuis);
-        }
-
-        private static void UpdateCachedOpenedGuis(List<GuiDialog> openedGuis)
-        {
-            cachedOpenedGuis.Clear();
-            cachedOpenedGuis.AddRange(openedGuis);
-        }
-
-        private static void UpdateCachedReversedGuis(List<GuiDialog> openedGuis)
-        {
-            cachedReversedGuis.Clear();
-            for (int i = openedGuis.Count - 1; i >= 0; i--)
+            List<GuiDialog> snapshot;
+            if (!loadedGuisInUse)
             {
-                cachedReversedGuis.Add(openedGuis[i]);
+                loadedGuisInUse = true;
+                rentedShared = true;
+                snapshot = cachedLoadedGuis;
+                snapshot.Clear();
             }
+            else
+            {
+                rentedShared = false;
+                snapshot = new List<GuiDialog>(loadedGuis.Count);
+            }
+
+            snapshot.AddRange(loadedGuis);
+            return snapshot;
         }
 
-        private static bool ProcessMouseMoveInternal(object __instance, MouseEvent args)
+        private static void ReleaseLoadedGuis(List<GuiDialog> snapshot, bool rentedShared)
+        {
+            snapshot.Clear();
+            if (rentedShared)
+                loadedGuisInUse = false;
+        }
+
+        private static List<GuiDialog> RentOpenedGuis(List<GuiDialog> openedGuis, out bool rentedShared)
+        {
+            List<GuiDialog> snapshot;
+            if (!openedGuisInUse)
+            {
+                openedGuisInUse = true;
+                rentedShared = true;
+                snapshot = cachedOpenedGuis;
+                snapshot.Clear();
+            }
+            else
+            {
+                rentedShared = false;
+                snapshot = new List<GuiDialog>(openedGuis.Count);
+            }
+
+            snapshot.AddRange(openedGuis);
+            return snapshot;
+        }
+
+        private static void ReleaseOpenedGuis(List<GuiDialog> snapshot, bool rentedShared)
+        {
+            snapshot.Clear();
+            if (rentedShared)
+                openedGuisInUse = false;
+        }
+
+        private static List<GuiDialog> RentReversedGuis(List<GuiDialog> openedGuis, out bool rentedShared)
+        {
+            List<GuiDialog> snapshot;
+            if (!reversedGuisInUse)
+            {
+                reversedGuisInUse = true;
+                rentedShared = true;
+                snapshot = cachedReversedGuis;
+                snapshot.Clear();
+            }
+            else
+            {
+                rentedShared = false;
+                snapshot = new List<GuiDialog>(openedGuis.Count);
+            }
+
+            for (int i = openedGuis.Count - 1; i >= 0; i--)
+                snapshot.Add(openedGuis[i]);
+
+            return snapshot;
+        }
+
+        private static void ReleaseReversedGuis(List<GuiDialog> snapshot, bool rentedShared)
+        {
+            snapshot.Clear();
+            if (rentedShared)
+                reversedGuisInUse = false;
+        }
+
+        private static bool ProcessMouseMoveInternal(GuiManager manager, MouseEvent args)
         {
             try
             {
-                if (args == null)
+                if (manager == null || args == null)
                     return false;
 
-                var game = gameRef(__instance as ClientSystem);
-                var loadedGuis = loadedGuisRef(game);
+                var game = gameRef(manager);
+                if (game == null)
+                    return false;
 
+                var loadedGuis = loadedGuisRef(game);
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
 
-                didHoverSlotEventTriggerRef(__instance as GuiManager) = false;
+                didHoverSlotEventTriggerRef(manager) = false;
 
-                UpdateCachedLoadedGuis(loadedGuis);
-
-                foreach (GuiDialog nowMouseOverDialog in cachedLoadedGuis)
+                List<GuiDialog> snapshot = RentLoadedGuis(loadedGuis, out bool rentedShared);
+                try
                 {
-                    if (nowMouseOverDialog.ShouldReceiveMouseEvents())
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        nowMouseOverDialog.OnMouseMove(args);
-                        if (args.Handled)
+                        GuiDialog nowMouseOverDialog = snapshot[i];
+                        if (nowMouseOverDialog != null && nowMouseOverDialog.ShouldReceiveMouseEvents())
                         {
-                            onMouseMoveOverMethod?.Invoke(__instance, new object[] { nowMouseOverDialog });
-                            return false;
+                            nowMouseOverDialog.OnMouseMove(args);
+                            if (args.Handled)
+                            {
+                                onMouseMoveOverDelegate?.Invoke(manager, nowMouseOverDialog);
+                                return false;
+                            }
                         }
                     }
-                }
 
-                onMouseMoveOverMethod?.Invoke(__instance, new object[] { null });
-                return false;
+                    onMouseMoveOverDelegate?.Invoke(manager, null);
+                    return false;
+                }
+                finally
+                {
+                    ReleaseLoadedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -156,53 +243,97 @@ namespace OptiTime
             }
         }
 
-        private static void ProcessPendingMouseMove(object instance)
+        private static MouseEvent BuildMergedMouseMoveEventLocked()
         {
-            if (!mouseMoveCoalescingEnabled || !hasPendingMouseMove)
+            MouseEvent latest = pendingMouseMoveEvent;
+            int totalDeltaX = pendingMouseDeltaX;
+            int totalDeltaY = pendingMouseDeltaY;
+            int count = pendingMouseMoveCount;
+
+            pendingMouseMoveEvent = null;
+            pendingMouseDeltaX = 0;
+            pendingMouseDeltaY = 0;
+            pendingMouseMoveCount = 0;
+
+            if (latest == null)
+                return null;
+
+            return count <= 1
+                ? latest
+                : new MouseEvent(latest.X, latest.Y, totalDeltaX, totalDeltaY, latest.Button, latest.Modifiers);
+        }
+
+        private static void ProcessPendingMouseMove(GuiManager manager)
+        {
+            if (!mouseMoveCoalescingEnabled || pendingMouseMoveEvent == null)
                 return;
 
             long nowMs = Environment.TickCount64;
-            MouseEvent pending = null;
+            MouseEvent pending;
 
             lock (mouseMoveLock)
             {
-                if (!hasPendingMouseMove)
+                if (pendingMouseMoveEvent == null)
                     return;
 
                 if (nowMs - lastMouseMoveQueuedMs < mouseMoveCoalesceIntervalMs)
                     return;
 
-                pending = pendingMouseMoveEvent;
-                pendingMouseMoveEvent = null;
-                hasPendingMouseMove = false;
+                pending = BuildMergedMouseMoveEventLocked();
                 lastMouseMoveProcessedMs = nowMs;
             }
 
             if (pending != null)
             {
-                ProcessMouseMoveInternal(instance, pending);
+                ProcessMouseMoveInternal(manager, pending);
             }
         }
 
-        // Prefix for OnBeforeRenderFrame3D - replace Reverse() with indexed loop
+        // Prefix for OnBeforeRenderFrame3D - iterate a reversed snapshot without LINQ allocations
         public static bool OnBeforeRenderFrame3D_Prefix(object __instance, float deltaTime)
         {
             try
             {
-                var game = gameRef(__instance as ClientSystem);
-                var openedGuis = openedGuisRef(game);
+                var manager = __instance as GuiManager;
+                if (manager == null)
+                    return true;
 
+                var game = gameRef(manager);
+                if (game == null)
+                    return true;
+
+                var openedGuis = openedGuisRef(game);
                 if (openedGuis == null || openedGuis.Count == 0)
                     return false;
 
-                for (int i = openedGuis.Count - 1; i >= 0; i--)
+                List<GuiDialog> snapshot = RentReversedGuis(openedGuis, out bool rentedShared);
+                try
                 {
-                    GuiDialog guiDialog = openedGuis[i];
-                    if (guiDialog.ShouldReceiveRenderEvents())
-                        guiDialog.OnBeforeRenderFrame3D(deltaTime);
-                }
+                    for (int i = 0; i < snapshot.Count; i++)
+                    {
+                        GuiDialog guiDialog = snapshot[i];
+                        if (guiDialog == null || !guiDialog.ShouldReceiveRenderEvents())
+                            continue;
 
-                return false;
+                        try
+                        {
+                            guiDialog.OnBeforeRenderFrame3D(deltaTime);
+                        }
+                        catch (Exception ex)
+                        {
+                            game.Logger?.Warning(
+                                "[OptiTime] GuiManager skipped dialog '{0}' during OnBeforeRenderFrame3D due to exception: {1}",
+                                guiDialog.DebugName ?? guiDialog.GetType().Name,
+                                ex.Message);
+                        }
+                    }
+
+                    return false;
+                }
+                finally
+                {
+                    ReleaseReversedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -210,61 +341,99 @@ namespace OptiTime
             }
         }
 
-        // Prefix for OnRenderFrameGUI - replace Reverse() with indexed loop
+        // Prefix for OnRenderFrameGUI - snapshot OpenedGuis, guard GL matrix stack in finally, and isolate per-dialog errors
         public static bool OnRenderFrameGUI_Prefix(object __instance, float deltaTime)
         {
+            var manager = __instance as GuiManager;
+            if (manager == null)
+                return true;
+
+            ClientMain game;
+            List<GuiDialog> openedGuis;
             try
             {
-                var game = gameRef(__instance as ClientSystem);
-                var openedGuis = openedGuisRef(game);
+                game = gameRef(manager);
+                if (game == null)
+                    return true;
 
+                openedGuis = openedGuisRef(game);
                 if (openedGuis == null)
                     return true;
 
                 if (mouseMoveCoalescingEnabled)
                 {
-                    ProcessPendingMouseMove(__instance);
+                    ProcessPendingMouseMove(manager);
                 }
 
                 // Skip rendering if player not loaded yet (prevents crash during initialization)
                 if (game.EntityPlayer == null)
                     return true;
+            }
+            catch
+            {
+                return true;
+            }
 
-                if (ProfilingHelper.Enabled)
-                {
-                    ProfilingHelper.Mark("opt-gui-render", $"opened={openedGuis.Count}", countOnly: true);
-                }
+            if (ProfilingHelper.Enabled)
+            {
+                ProfilingHelper.Mark("opt-gui-render", $"opened={openedGuis.Count}", countOnly: true);
+            }
 
+            List<GuiDialog> snapshot = RentReversedGuis(openedGuis, out bool rentedShared);
+            int prePushDepth = game.MvMatrix?.Count ?? 0;
+            try
+            {
                 game.GlPushMatrix();
+                int dialogBaseDepth = game.MvMatrix?.Count ?? 0;
                 string mouseCursor = null;
 
-                for (int i = openedGuis.Count - 1; i >= 0; i--)
+                for (int i = 0; i < snapshot.Count; i++)
                 {
-                    GuiDialog guiDialog = openedGuis[i];
-                    if (guiDialog.ShouldReceiveRenderEvents())
+                    GuiDialog guiDialog = snapshot[i];
+                    if (guiDialog == null || !guiDialog.ShouldReceiveRenderEvents())
+                        continue;
+
+                    try
                     {
                         guiDialog.OnRenderGUI(deltaTime);
-                        game.Platform.CheckGlError(guiDialog.DebugName);
+                        game.Platform?.CheckGlError(guiDialog.DebugName);
                         game.GlTranslate(0.0, 0.0, (double)guiDialog.ZSize);
                         if (guiDialog.MouseOverCursor != null)
                             mouseCursor = guiDialog.MouseOverCursor;
 
                         ScreenManager.FrameProfiler?.Mark("rendGui", guiDialog.DebugName);
                     }
+                    catch (Exception ex)
+                    {
+                        while (game.MvMatrix != null && game.MvMatrix.Count > dialogBaseDepth)
+                            game.GlPopMatrix();
+
+                        game.Logger?.Warning(
+                            "[OptiTime] GuiManager skipped dialog '{0}' during OnRenderFrameGUI due to exception: {1}",
+                            guiDialog.DebugName ?? guiDialog.GetType().Name,
+                            ex.Message);
+                    }
                 }
 
-                game.Platform.UseMouseCursor(mouseCursor ?? "normal");
-                game.GlPopMatrix();
-
-                ScreenManager.FrameProfiler?.Mark("rendGuiDone");
-
-                ModuleGuiMgr.OnRender(true);
-                return false;
+                game.Platform?.UseMouseCursor(mouseCursor ?? "normal");
             }
-            catch
+            catch (Exception ex)
             {
-                return true;
+                game.Logger?.Warning(
+                    "[OptiTime] GuiManager caught outer error during OnRenderFrameGUI: {0}",
+                    ex.Message);
             }
+            finally
+            {
+                while (game.MvMatrix != null && game.MvMatrix.Count > prePushDepth)
+                    game.GlPopMatrix();
+
+                ReleaseReversedGuis(snapshot, rentedShared);
+            }
+
+            ScreenManager.FrameProfiler?.Mark("rendGuiDone");
+            ModuleGuiMgr.OnRender(true);
+            return false;
         }
 
         // Prefix for OnFinalizeFrame - replace ToList() with direct iteration
@@ -272,30 +441,43 @@ namespace OptiTime
         {
             try
             {
-                var game = gameRef(__instance as ClientSystem);
-                var loadedGuis = loadedGuisRef(game);
+                var manager = __instance as GuiManager;
+                if (manager == null)
+                    return true;
+
+                var game = gameRef(manager);
+                var loadedGuis = game != null ? loadedGuisRef(game) : null;
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
 
-                UpdateCachedLoadedGuis(loadedGuis);
-
-                foreach (GuiDialog guiDialog in cachedLoadedGuis)
+                List<GuiDialog> snapshot = RentLoadedGuis(loadedGuis, out bool rentedShared);
+                try
                 {
-                    try
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        guiDialog.OnFinalizeFrame(dt);
+                        GuiDialog guiDialog = snapshot[i];
+                        if (guiDialog == null)
+                            continue;
 
-                        ScreenManager.FrameProfiler?.Mark("gdm-finFr-", guiDialog.DebugName);
+                        try
+                        {
+                            guiDialog.OnFinalizeFrame(dt);
+                            ScreenManager.FrameProfiler?.Mark("gdm-finFr-", guiDialog.DebugName);
+                        }
+                        catch (Exception ex)
+                        {
+                            game.Logger?.Warning(
+                                $"[OptiTime] GuiManager input optimization skipped one dialog during OnFinalizeFrame due to exception: {guiDialog.GetType().Name} :: {ex.Message}");
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        game.Logger?.Warning(
-                            $"[OptiTime] GuiManager input optimization skipped one dialog during OnFinalizeFrame due to exception: {guiDialog?.GetType()?.Name} :: {ex.Message}");
-                    }
+
+                    return false;
                 }
-
-                return false;
+                finally
+                {
+                    ReleaseLoadedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -349,44 +531,56 @@ namespace OptiTime
         {
             try
             {
-                var game = gameRef(__instance as ClientSystem);
-                var openedGuis = openedGuisRef(game);
+                var manager = __instance as GuiManager;
+                if (manager == null)
+                    return true;
+
+                var game = gameRef(manager);
+                var openedGuis = game != null ? openedGuisRef(game) : null;
                 int keyCode = args.KeyCode;
 
                 if (openedGuis == null || openedGuis.Count == 0)
                     return false;
 
-                UpdateCachedOpenedGuis(openedGuis);
-
-                foreach (GuiDialog guiDialog in cachedOpenedGuis)
+                List<GuiDialog> snapshot = RentOpenedGuis(openedGuis, out bool rentedShared);
+                try
                 {
-                    if (guiDialog.CaptureAllInputs())
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        guiDialog.OnKeyDown(args);
-                        if (args.Handled)
-                            return false;
-                    }
-                }
-
-                if (keyCode == 50 && (dialogsOpenedRef?.Invoke(game) ?? 0) > 0)
-                {
-                    onEscapePressedMethod?.Invoke(__instance, null);
-                    args.Handled = true;
-                }
-                else
-                {
-                    foreach (GuiDialog guiDialog in cachedOpenedGuis)
-                    {
-                        if (guiDialog.ShouldReceiveKeyboardEvents())
+                        GuiDialog guiDialog = snapshot[i];
+                        if (guiDialog != null && guiDialog.CaptureAllInputs())
                         {
                             guiDialog.OnKeyDown(args);
                             if (args.Handled)
-                                break;
+                                return false;
                         }
                     }
-                }
 
-                return false;
+                    if (keyCode == 50 && (dialogsOpenedRef?.Invoke(game) ?? 0) > 0)
+                    {
+                        onEscapePressedDelegate?.Invoke(manager);
+                        args.Handled = true;
+                    }
+                    else
+                    {
+                        for (int i = 0; i < snapshot.Count; i++)
+                        {
+                            GuiDialog guiDialog = snapshot[i];
+                            if (guiDialog != null && guiDialog.ShouldReceiveKeyboardEvents())
+                            {
+                                guiDialog.OnKeyDown(args);
+                                if (args.Handled)
+                                    break;
+                            }
+                        }
+                    }
+
+                    return false;
+                }
+                finally
+                {
+                    ReleaseOpenedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -399,24 +593,32 @@ namespace OptiTime
         {
             try
             {
-                var loadedGuis = loadedGuisRef(gameRef(__instance as ClientSystem));
+                var game = gameRef(__instance as ClientSystem);
+                var loadedGuis = game != null ? loadedGuisRef(game) : null;
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
 
-                UpdateCachedLoadedGuis(loadedGuis);
-
-                foreach (GuiDialog guiDialog in cachedLoadedGuis)
+                List<GuiDialog> snapshot = RentLoadedGuis(loadedGuis, out bool rentedShared);
+                try
                 {
-                    if (guiDialog.ShouldReceiveKeyboardEvents())
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        guiDialog.OnKeyUp(args);
-                        if (args.Handled)
-                            break;
+                        GuiDialog guiDialog = snapshot[i];
+                        if (guiDialog != null && guiDialog.ShouldReceiveKeyboardEvents())
+                        {
+                            guiDialog.OnKeyUp(args);
+                            if (args.Handled)
+                                break;
+                        }
                     }
-                }
 
-                return false;
+                    return false;
+                }
+                finally
+                {
+                    ReleaseLoadedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -429,24 +631,32 @@ namespace OptiTime
         {
             try
             {
-                var loadedGuis = loadedGuisRef(gameRef(__instance as ClientSystem));
+                var game = gameRef(__instance as ClientSystem);
+                var loadedGuis = game != null ? loadedGuisRef(game) : null;
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
 
-                UpdateCachedLoadedGuis(loadedGuis);
-
-                foreach (GuiDialog guiDialog in cachedLoadedGuis)
+                List<GuiDialog> snapshot = RentLoadedGuis(loadedGuis, out bool rentedShared);
+                try
                 {
-                    if (guiDialog.ShouldReceiveKeyboardEvents())
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        guiDialog.OnKeyPress(args);
-                        if (args.Handled)
-                            break;
+                        GuiDialog guiDialog = snapshot[i];
+                        if (guiDialog != null && guiDialog.ShouldReceiveKeyboardEvents())
+                        {
+                            guiDialog.OnKeyPress(args);
+                            if (args.Handled)
+                                break;
+                        }
                     }
-                }
 
-                return false;
+                    return false;
+                }
+                finally
+                {
+                    ReleaseLoadedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -459,32 +669,42 @@ namespace OptiTime
         {
             try
             {
-                var game = gameRef(__instance as ClientSystem);
-                var loadedGuis = loadedGuisRef(game);
+                var manager = __instance as GuiManager;
+                if (manager == null)
+                    return true;
+
+                var game = gameRef(manager);
+                var loadedGuis = game != null ? loadedGuisRef(game) : null;
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
 
-                UpdateCachedLoadedGuis(loadedGuis);
-
-                foreach (GuiDialog dialog in cachedLoadedGuis)
+                List<GuiDialog> snapshot = RentLoadedGuis(loadedGuis, out bool rentedShared);
+                try
                 {
-                    if (dialog.ShouldReceiveMouseEvents())
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        dialog.OnMouseDown(args);
-                        if (args.Handled)
+                        GuiDialog dialog = snapshot[i];
+                        if (dialog != null && dialog.ShouldReceiveMouseEvents())
                         {
-                            bool debugPrint = debugPrintField != null && (debugPrintField.GetValue(null) as bool? ?? false);
-                            if (debugPrint)
-                                game.Logger.Debug("[GuiManager] OnMouseDown handled by {0}", dialog.GetType().Name);
+                            dialog.OnMouseDown(args);
+                            if (args.Handled)
+                            {
+                                if (GuiManager.DEBUG_PRINT_INTERACTIONS)
+                                    game.Logger?.Debug("[GuiManager] OnMouseDown handled by {0}", dialog.GetType().Name);
 
-                            requestFocusMethod?.Invoke(__instance, new object[] { dialog });
-                            break;
+                                requestFocusDelegate?.Invoke(manager, dialog);
+                                break;
+                            }
                         }
                     }
-                }
 
-                return false;
+                    return false;
+                }
+                finally
+                {
+                    ReleaseLoadedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -498,29 +718,35 @@ namespace OptiTime
             try
             {
                 var game = gameRef(__instance as ClientSystem);
-                var loadedGuis = loadedGuisRef(game);
+                var loadedGuis = game != null ? loadedGuisRef(game) : null;
 
                 if (loadedGuis == null || loadedGuis.Count == 0)
                     return false;
 
-                UpdateCachedLoadedGuis(loadedGuis);
-
-                foreach (GuiDialog guiDialog in cachedLoadedGuis)
+                List<GuiDialog> snapshot = RentLoadedGuis(loadedGuis, out bool rentedShared);
+                try
                 {
-                    if (guiDialog.ShouldReceiveMouseEvents())
+                    for (int i = 0; i < snapshot.Count; i++)
                     {
-                        guiDialog.OnMouseUp(args);
-                        if (args.Handled)
+                        GuiDialog guiDialog = snapshot[i];
+                        if (guiDialog != null && guiDialog.ShouldReceiveMouseEvents())
                         {
-                            bool debugPrint = debugPrintField != null && (debugPrintField.GetValue(null) as bool? ?? false);
-                            if (debugPrint)
-                                game.Logger.Debug("[GuiManager] OnMouseUp handled by {0}", guiDialog.GetType().Name);
-                            break;
+                            guiDialog.OnMouseUp(args);
+                            if (args.Handled)
+                            {
+                                if (GuiManager.DEBUG_PRINT_INTERACTIONS)
+                                    game.Logger?.Debug("[GuiManager] OnMouseUp handled by {0}", guiDialog.GetType().Name);
+                                break;
+                            }
                         }
                     }
-                }
 
-                return false;
+                    return false;
+                }
+                finally
+                {
+                    ReleaseLoadedGuis(snapshot, rentedShared);
+                }
             }
             catch
             {
@@ -528,38 +754,45 @@ namespace OptiTime
             }
         }
 
-        // Prefix for OnMouseMove - replace ToList()
+        // Prefix for OnMouseMove - accumulate coalesced deltas and dispatch cleanly
         public static bool OnMouseMove_Prefix(object __instance, MouseEvent args)
         {
+            var manager = __instance as GuiManager;
+            if (manager == null || args == null)
+                return false;
+
             if (!mouseMoveCoalescingEnabled)
             {
-                return ProcessMouseMoveInternal(__instance, args);
+                return ProcessMouseMoveInternal(manager, args);
             }
 
             long nowMs = Environment.TickCount64;
-            bool processNow = false;
             MouseEvent coalescedEvent = null;
 
             lock (mouseMoveLock)
             {
                 lastMouseMoveQueuedMs = nowMs;
                 pendingMouseMoveEvent = args;
-                hasPendingMouseMove = true;
+                pendingMouseDeltaX += args.DeltaX;
+                pendingMouseDeltaY += args.DeltaY;
+                pendingMouseMoveCount++;
 
                 if (lastMouseMoveProcessedMs == 0 || nowMs - lastMouseMoveProcessedMs >= mouseMoveCoalesceIntervalMs)
                 {
-                    processNow = true;
-                    coalescedEvent = args;
-                    pendingMouseMoveEvent = null;
-                    hasPendingMouseMove = false;
+                    coalescedEvent = BuildMergedMouseMoveEventLocked();
                     lastMouseMoveProcessedMs = nowMs;
                 }
             }
 
-            if (!processNow)
+            if (coalescedEvent == null)
                 return false;
 
-            return ProcessMouseMoveInternal(__instance, coalescedEvent);
+            bool result = ProcessMouseMoveInternal(manager, coalescedEvent);
+            if (!ReferenceEquals(coalescedEvent, args) && coalescedEvent.Handled)
+            {
+                args.Handled = true;
+            }
+            return result;
         }
 
         // Prefix for ComposeInteractiveElements - add null safety for mod compatibility
