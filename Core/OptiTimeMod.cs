@@ -329,6 +329,62 @@ namespace OptiTime
                     FrustumCullingOptimization.Cleanup();
                     api.Logger.Warning("[OptiTime] Frustum range-first culling optimization failed: " + ex.Message);
                 }
+
+                try
+                {
+                    var animRendererTarget = AccessTools.Method(
+                        "Vintagestory.API.Common.AnimatableRenderer:OnRenderFrame",
+                        new Type[] { typeof(float), typeof(EnumRenderStage) });
+                    bool animRendererReady = animRendererTarget != null &&
+                        !HasAnyConflictingPatches(animRendererTarget) &&
+                        (!optimumHostDetected || OptimumOwnership.IsVanillaBody(animRendererTarget, GameVersion.ShortGameVersion));
+
+                    var animUtilRenderTarget = AccessTools.Method(
+                        "Vintagestory.API.Common.AnimationUtil:OnRenderFrame",
+                        new Type[] { typeof(float), typeof(EnumRenderStage) });
+                    var animUtilStartTarget = AccessTools.Method(
+                        "Vintagestory.API.Common.AnimationUtil:StartAnimation",
+                        new Type[] { typeof(AnimationMetaData) });
+                    var animUtilDisposeTarget = AccessTools.Method(
+                        "Vintagestory.API.Common.AnimationUtil:Dispose",
+                        Type.EmptyTypes);
+                    bool animUtilReady = animUtilRenderTarget != null && animUtilStartTarget != null && animUtilDisposeTarget != null &&
+                        !HasAnyConflictingPatches(animUtilRenderTarget) &&
+                        !HasAnyConflictingPatches(animUtilStartTarget) &&
+                        !HasAnyConflictingPatches(animUtilDisposeTarget) &&
+                        (!optimumHostDetected ||
+                            (OptimumOwnership.IsVanillaBody(animUtilRenderTarget, GameVersion.ShortGameVersion) &&
+                             OptimumOwnership.IsVanillaBody(animUtilStartTarget, GameVersion.ShortGameVersion) &&
+                             OptimumOwnership.IsVanillaBody(animUtilDisposeTarget, GameVersion.ShortGameVersion)));
+
+                    if (animRendererReady || animUtilReady)
+                    {
+                        AnimatableOptimization.SetClientActive(true);
+                    }
+
+                    if (animRendererReady)
+                    {
+                        harmony.Patch(animRendererTarget,
+                            prefix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimatableRenderer_OnRenderFrame_Prefix)));
+                        api.Logger.Notification("[OptiTime] AnimatableRenderer frustum culling loaded");
+                    }
+
+                    if (animUtilReady)
+                    {
+                        harmony.Patch(animUtilRenderTarget,
+                            postfix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimationUtil_OnRenderFrame_Postfix)));
+                        harmony.Patch(animUtilStartTarget,
+                            prefix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimationUtil_StartAnimation_Prefix)));
+                        harmony.Patch(animUtilDisposeTarget,
+                            postfix: new HarmonyMethod(typeof(AnimatableOptimization), nameof(AnimatableOptimization.AnimationUtil_Dispose_Postfix)));
+                        api.Logger.Notification("[OptiTime] Idle AnimationUtil parking loaded");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AnimatableOptimization.Cleanup();
+                    api.Logger.Warning("[OptiTime] Animatable optimization failed: " + ex.Message);
+                }
             }
 
             try
@@ -1332,6 +1388,7 @@ namespace OptiTime
                 EntityShadowCullingOptimization.Cleanup();
                 OcclusionCullingOptimization.Cleanup();
                 FrustumCullingOptimization.Cleanup();
+                AnimatableOptimization.Cleanup();
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
                 SafeCatalogIsolation.Cleanup();
