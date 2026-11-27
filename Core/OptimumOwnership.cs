@@ -48,6 +48,10 @@ namespace OptiTime
         internal static readonly string[] AlwaysOnTargets =
         {
             "Vintagestory.API.Client.FrustumCulling:InFrustumAndRange",
+            "Vintagestory.API.Common.AnimatableRenderer:OnRenderFrame",
+            "Vintagestory.API.Common.AnimationUtil:Dispose",
+            "Vintagestory.API.Common.AnimationUtil:OnRenderFrame",
+            "Vintagestory.API.Common.AnimationUtil:StartAnimation",
             "Vintagestory.API.Config.TranslationService:HasTranslation",
             "Vintagestory.Client.ScreenManager:OnNewFrame",
             "Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame",
