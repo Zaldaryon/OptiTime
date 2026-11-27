@@ -43,7 +43,7 @@ public sealed class ModuleEntityAnim : IDiagModule
     }
 
     /// <param name="tier">0=close/always, 1=medium (every 2nd), 2=far (every 3rd)</param>
-    /// <param name="updated">Whether animation was actually ticked this frame</param>
+    /// <param name="updated">Whether the pose matrices were recomputed this frame</param>
     public static void OnEntity(int tier, bool updated)
     {
         if (!enabled) return;
