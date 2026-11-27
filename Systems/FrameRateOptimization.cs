@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
@@ -19,12 +20,20 @@ namespace OptiTime
         public const double DefaultUndershootPercent = 0.075;
         public const double DefaultYieldThresholdMs = 0.25;
         public const int DefaultSpinWaitIterations = 32;
+        public const long FocusLossDebounceMs = 300L;
+        public const int MinLogicalProcessorsForSpinWait = 5;
         internal const int MinimumBackgroundFps = 5;
+
+        private const uint TimerPeriodMs = 1u;
+        private const uint TimerrNoError = 0u;
 
         private static readonly AccessTools.FieldRef<ClientPlatformWindows, Stopwatch> frameStopWatchRef;
         private static readonly AccessTools.FieldRef<FrameProfilerUtil, ProfileEntryRange> currentEntryRef;
         private static readonly MethodInfo sleepMethod = AccessTools.Method(typeof(Thread), nameof(Thread.Sleep), new[] { typeof(int) });
         private static readonly MethodInfo replacementSleepMethod = AccessTools.Method(typeof(FrameRateOptimization), nameof(WaitForRemainingFrameTime));
+        private static readonly long focusLossDebounceTicks = Stopwatch.Frequency * FocusLossDebounceMs / 1000L;
+        private static readonly object timerResolutionLock = new object();
+        private static readonly EventHandler processExitHandler = OnProcessExit;
 
         private static bool frameStopWatchAvailable;
         private static bool preciseFramePacingEnabled;
@@ -33,6 +42,20 @@ namespace OptiTime
         private static double undershootPercent = DefaultUndershootPercent;
         private static double yieldThresholdMs = DefaultYieldThresholdMs;
         private static int spinWaitIterations = DefaultSpinWaitIterations;
+        private static bool timerResolutionActive;
+        private static bool processExitRegistered;
+        private static long focusLostTimestampTicks;
+        private static int logicalProcessorCount = Environment.ProcessorCount;
+        private static System.Func<bool> isWindowsProvider = OperatingSystem.IsWindows;
+        private static System.Func<uint, uint> timeBeginPeriodProvider = TimeBeginPeriod;
+        private static System.Func<uint, uint> timeEndPeriodProvider = TimeEndPeriod;
+        private static System.Func<long> timestampProvider = Stopwatch.GetTimestamp;
+
+        [DllImport("winmm.dll", EntryPoint = "timeBeginPeriod", ExactSpelling = true)]
+        private static extern uint TimeBeginPeriod(uint uPeriod);
+
+        [DllImport("winmm.dll", EntryPoint = "timeEndPeriod", ExactSpelling = true)]
+        private static extern uint TimeEndPeriod(uint uPeriod);
 
         static FrameRateOptimization()
         {
@@ -72,10 +95,17 @@ namespace OptiTime
                 backgroundMaxFps = Math.Clamp(configuredBackgroundFps, MinimumBackgroundFps, 240);
             }
 
-            // Tunable pacing knobs — clamped to sane ranges.
+            // Tunable pacing knobs, clamped to sane ranges.
             undershootPercent = Math.Clamp(config?.PreciseFramePacingUndershootPercent ?? DefaultUndershootPercent, 0.01, 0.25);
             yieldThresholdMs = Math.Clamp(config?.PreciseFramePacingYieldThresholdMs ?? DefaultYieldThresholdMs, 0.05, 2.0);
             spinWaitIterations = Math.Clamp(config?.PreciseFramePacingSpinIterations ?? DefaultSpinWaitIterations, 8, 256);
+
+            if (!backgroundFpsLimiterEnabled)
+            {
+                focusLostTimestampTicks = 0L;
+            }
+
+            UpdateTimerResolution(preciseFramePacingEnabled);
         }
 
         public static void Cleanup()
@@ -83,6 +113,61 @@ namespace OptiTime
             preciseFramePacingEnabled = false;
             backgroundFpsLimiterEnabled = false;
             backgroundMaxFps = 20;
+            focusLostTimestampTicks = 0L;
+            UpdateTimerResolution(false);
+        }
+
+        internal static void OnProcessExit(object sender, EventArgs e)
+        {
+            UpdateTimerResolution(false);
+        }
+
+        private static void UpdateTimerResolution(bool shouldBeActive)
+        {
+            lock (timerResolutionLock)
+            {
+                if (shouldBeActive)
+                {
+                    if (timerResolutionActive || !isWindowsProvider())
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        if (!processExitRegistered)
+                        {
+                            AppDomain.CurrentDomain.ProcessExit += processExitHandler;
+                            processExitRegistered = true;
+                        }
+
+                        if (timeBeginPeriodProvider(TimerPeriodMs) == TimerrNoError)
+                        {
+                            timerResolutionActive = true;
+                        }
+                    }
+                    catch
+                    {
+                        // Keep frame pacing functional even if winmm.dll is unavailable.
+                    }
+                }
+                else
+                {
+                    if (!timerResolutionActive)
+                    {
+                        return;
+                    }
+
+                    timerResolutionActive = false;
+                    try
+                    {
+                        timeEndPeriodProvider(TimerPeriodMs);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
         }
 
         public static void OnNewFrame_Postfix(float dt)
@@ -92,12 +177,34 @@ namespace OptiTime
                 return;
 
             bool focused = platform.IsFocused;
-            if (backgroundFpsLimiterEnabled && !focused)
+            bool focusLossSustained = false;
+
+            if (focused)
+            {
+                focusLostTimestampTicks = 0L;
+            }
+            else
+            {
+                long nowTicks = timestampProvider();
+                if (nowTicks <= 0L)
+                    nowTicks = 1L;
+
+                if (focusLostTimestampTicks == 0L || nowTicks < focusLostTimestampTicks)
+                {
+                    focusLostTimestampTicks = nowTicks;
+                }
+                else if (nowTicks - focusLostTimestampTicks >= focusLossDebounceTicks)
+                {
+                    focusLossSustained = true;
+                }
+            }
+
+            if (backgroundFpsLimiterEnabled && focusLossSustained)
             {
                 platform.MaxFps = backgroundMaxFps;
             }
 
-            ModuleBgFps.OnFrame(focused);
+            ModuleBgFps.OnFrame(!focusLossSustained);
             ProfilingHelper.RecordFrame(dt, focused, platform.MaxFps);
         }
 
@@ -204,10 +311,11 @@ namespace OptiTime
 
             int yieldCount = 0;
             int spinCount = 0;
+            bool allowSpin = logicalProcessorCount >= MinLogicalProcessorsForSpinWait;
 
             while ((remainingTicks = targetTicks - frameStopWatch.ElapsedTicks) > 0L)
             {
-                if (remainingTicks > yieldThresholdTicks)
+                if (!allowSpin || remainingTicks > yieldThresholdTicks)
                 {
                     Thread.Yield();
                     yieldCount++;
