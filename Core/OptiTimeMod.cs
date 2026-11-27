@@ -44,6 +44,7 @@ namespace OptiTime
             FrameRateOptimization.Configure(Config);
             ParticleOptimization.SetLogger(msg => staticCapi?.Logger?.Warning(msg));
             ParticleOptimization.Configure(Config.ParticleOptimizations, Config.ParticleViewDistanceScalingEnabled);
+            OcclusionCullingOptimization.Configure(Config.OcclusionCullingOptimizations);
             GuiManagerOptimization.Configure(Config);
             ProfilingHelper.SetEnabled(Config.EnableProfiling);
         }
@@ -457,7 +458,7 @@ namespace OptiTime
                     {
                         harmony.Patch(
                             target,
-                            transpiler: new HarmonyMethod(typeof(OcclusionCullingOptimization), "TranspileThreshold"));
+                            prefix: new HarmonyMethod(typeof(OcclusionCullingOptimization), nameof(OcclusionCullingOptimization.CullInvisibleChunks_Prefix)));
                         api.Logger.Notification("[OptiTime] Occlusion culling optimization loaded");
                     }
                 }
