@@ -175,7 +175,7 @@ public class ConfigPersistenceTests : OptiTimeScenarioBase
         // Every toggle goes through ApplyRuntimeConfig. Two rounds of the full
         // set exercises all the Configure/SetLogger call sites it reaches,
         // including the particle and GUI paths that hold static state. Two,
-        // not ten: each round is forty toggles plus twenty status reads, and
+        // not ten: each round is forty-two toggles plus twenty-one status reads, and
         // ten rounds of that overruns the watchdog without reaching a call site
         // the two do not.
         for (int round = 0; round < 2; round++)

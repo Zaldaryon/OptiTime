@@ -108,7 +108,8 @@ namespace OptiTime
             new Feature(nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), new[] { "Vintagestory.Client.NoObf.ChunkRenderer:RenderShadow" }, "OptimumShadowFarVegetation"),
             new Feature(nameof(OptiTimeConfig.EntityShadowDistanceCullEnabled), new[] { "Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderFrameShadows" }, "OptimumEntityShadowCull"),
             new Feature(nameof(OptiTimeConfig.EntityInterpolationOptimizations), new[] { "EntityBehaviorInterpolatePosition:OnReceivedServerPos" }),
-            new Feature(nameof(OptiTimeConfig.RepulseAgentsOptimizations), new[] { "Vintagestory.GameContent.EntityBehaviorRepulseAgents:OnGameTick" }, "OptimumRepulsionGate")
+            new Feature(nameof(OptiTimeConfig.RepulseAgentsOptimizations), new[] { "Vintagestory.GameContent.EntityBehaviorRepulseAgents:OnGameTick" }, "OptimumRepulsionGate"),
+            new Feature(nameof(OptiTimeConfig.EntityShapeOptimizations), new[] { "Vintagestory.GameContent.EntityShapeRenderer:TesselateShape" })
         };
 
         private static readonly Dictionary<string, string> SignatureCache = new Dictionary<string, string>();

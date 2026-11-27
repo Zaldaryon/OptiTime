@@ -77,6 +77,7 @@ namespace OptiTime
             ["shadowentity"] = "EntityShadowDistanceCullEnabled",
             ["entityinterp"] = "EntityInterpolationOptimizations",
             ["repulseagents"] = "RepulseAgentsOptimizations",
+            ["entityshape"] = "EntityShapeOptimizations",
             ["suppress"] = "SuppressCompatibilityMessages"
         };
 
@@ -809,6 +810,23 @@ namespace OptiTime
                 }
             }
 
+            if (config.EntityShapeOptimizations)
+            {
+                try
+                {
+                    var target = AccessTools.Method("Vintagestory.GameContent.EntityShapeRenderer:TesselateShape", Type.EmptyTypes);
+                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.EntityShapeOptimizations), "Entity reshape budget", target))
+                    {
+                        EntityShapeOptimization.Initialize(api, harmony, target);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning("[OptiTime] Failed to load entity reshape budget: " + ex.Message);
+                    config.EntityShapeOptimizations = false;
+                }
+            }
+
             if (optimumHostDetected)
                 AuditOptimumPatches(api);
 
@@ -1066,6 +1084,7 @@ namespace OptiTime
             if (config.EntityShadowDistanceCullEnabled) count++;
             if (config.EntityInterpolationOptimizations) count++;
             if (config.RepulseAgentsOptimizations) count++;
+            if (config.EntityShapeOptimizations) count++;
             if (config.ShaderOptimizations && !config.IsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations))) count++;
 
             if (count > 0)
@@ -1270,6 +1289,7 @@ namespace OptiTime
                 HandbookOptimization.Cleanup();
                 EntityInterpolationOptimization.Cleanup();
                 RepulseAgentsOptimization.Cleanup();
+                EntityShapeOptimization.Cleanup();
                 EntityAnimationOptimization.Cleanup();
 
                 // Cleanup recipe lookup optimization (no resources currently)
@@ -1746,6 +1766,7 @@ namespace OptiTime
             DiagRegistry.Clear();
             if (config.EntityInterpolationOptimizations) DiagRegistry.Register(new ModuleEntityInterp());
             if (config.RepulseAgentsOptimizations) DiagRegistry.Register(new ModuleRepulse());
+            if (config.EntityShapeOptimizations) DiagRegistry.Register(new ModuleEntityShape());
             if (config.EntityAnimationOptimizations) DiagRegistry.Register(new ModuleEntityAnim());
             if (config.DynamicLightOptimizations) DiagRegistry.Register(new ModuleDynLights());
             if (config.FlySoundOptimizations) DiagRegistry.Register(new ModuleFlySound());

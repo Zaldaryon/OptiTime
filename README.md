@@ -22,6 +22,7 @@ If you'd like to support my mods and need a server of your own, check out:
 - **Dynamic Lights** - Cull lights based on view distance.
 - **Entity Animations** - Distance-based LOD for animation updates (conservative thresholds: 48/80 blocks).
 - **Entity Interpolation** - Smoother remote entity movement in multiplayer (flood protection).
+- **Entity Reshape Budget** - When many creatures change outfit or gear at once, rebuild their shapes one per frame instead of all in one long frame; the old look stays visible until the new one is ready.
 - **Fly Sound** - Volume updates only on meaningful changes.
 - **Frame Pacing** - Hybrid sleep/yield/spin frame pacing when VSync is off.
 - **GUI Manager** - LINQ-free render iteration with conflict auto-disable (opt-out); input patches optional/off by default.
@@ -55,8 +56,8 @@ Use `.optitime` command in-game:
 .optitime <opt>            - Show info about optimization
 ```
 
-**Available command options (20):**
-`ambientsound`, `bgfps`, `blur`, `dynlights`, `entityanim`, `entityinterp`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `repulseagents`, `shaders`, `shadowentity`, `shadowveg`, `suppress`, `tickingblocks`, `weatherwind`
+**Available command options (21):**
+`ambientsound`, `bgfps`, `blur`, `dynlights`, `entityanim`, `entityinterp`, `entityshape`, `flysound`, `framepace`, `guimgr`, `handbook`, `occlusion`, `particles`, `recipe`, `repulseagents`, `shaders`, `shadowentity`, `shadowveg`, `suppress`, `tickingblocks`, `weatherwind`
 
 Options are not a count of Harmony patches or diagnostic modules. `shaders` and `blur` control shader assets; `suppress` controls compatibility chat messages, not performance. Other options can cover multiple patches, and conditions or mod conflicts can leave an enabled configuration inactive. For example, entity shadow culling requires shadow quality above 1; status reports why it is inactive at lower quality.
 
@@ -104,6 +105,7 @@ ConfigLib is optional. OptiTime also supports JSON config and commands.
 .optitime shadowveg off  - Disable far shadow vegetation cull
 .optitime entityinterp off - Disable entity interpolation smoothing
 .optitime repulseagents off - Disable repulse agents distance cull
+.optitime entityshape off - Disable the entity reshape budget
 ```
 
 **Note:** Some changes require a game restart to take effect.

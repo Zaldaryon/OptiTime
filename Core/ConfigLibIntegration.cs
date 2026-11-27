@@ -171,6 +171,9 @@ namespace OptiTime
                 case "RepulseAgentsOptimizations":
                     config.RepulseAgentsOptimizations = value;
                     break;
+                case "EntityShapeOptimizations":
+                    config.EntityShapeOptimizations = value;
+                    break;
                 case "BackgroundMaxFps":
                     config.BackgroundMaxFps = tree.GetInt("value", config.BackgroundMaxFps);
                     feedback = config.BackgroundMaxFps.ToString(CultureInfo.InvariantCulture);
