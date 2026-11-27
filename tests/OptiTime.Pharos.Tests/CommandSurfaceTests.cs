@@ -69,9 +69,9 @@ public class CommandSurfaceTests : OptiTimeScenarioBase
     /// player reads before deciding whether to turn something off, so it has to
     /// contain a state and a description rather than just echoing the name.
     ///
-    /// All twenty in one scenario: <c>[ClientServerScenario]</c> is a
-    /// <c>FactAttribute</c> and cannot take parameters, and twenty separate
-    /// scenarios would mean twenty boots for a check that takes milliseconds.
+    /// All twenty-one in one scenario: <c>[ClientServerScenario]</c> is a
+    /// <c>FactAttribute</c> and cannot take parameters, and twenty-one separate
+    /// scenarios would mean twenty-one boots for a check that takes milliseconds.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 600_000)]
     public async Task EverySingleOptionQueryDescribesItself()

@@ -23,7 +23,7 @@ public class ConfigLibSchemaTests
             .Where(setting => setting.TryGetProperty("code", out _))
             .ToArray();
 
-        Assert.Equal(26, settings.Length);
+        Assert.Equal(27, settings.Length);
 
         HashSet<string> configProperties = typeof(OptiTimeConfig)
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)

@@ -53,6 +53,8 @@ namespace OptiTime
             ["Vintagestory.Common.InventoryCraftingGrid:FindMatchingRecipe()"] = "165:b2ab2626b1844078d3a6dc84",
             ["Vintagestory.GameContent.CollectibleBehaviorHandbookTextAndExtraInfo:GetHandbookInfo(Vintagestory.API.Common.ItemSlot,Vintagestory.API.Client.ICoreClientAPI,Vintagestory.API.Common.ItemStack[],Vintagestory.API.Common.ActionConsumable<System.String>)"] = "331:abddee5fb85066d15c85700b",
             ["Vintagestory.GameContent.EntityBehaviorRepulseAgents:OnGameTick(System.Single)"] = "170:0569a0ac05cab57e48884fca",
+            ["Vintagestory.GameContent.EntityShapeRenderer:TesselateShape()"] = "17:8c0ed5faea4a5dca3d0464f7",
+            ["Vintagestory.GameContent.EntityShapeRenderer:TesselateShape(System.Action<Vintagestory.API.Client.MeshData>,System.String[])"] = "69:eabcd8b2238f7c81e021b5f6",
             ["Vintagestory.GameContent.ModSystemSurvivalHandbook:onCreatePagesAsync()"] = "125:0d506e4b68283e85c8967fa2",
             ["Vintagestory.GameContent.WeatherSystemClient:OnRenderFrame(System.Single,Vintagestory.API.Client.EnumRenderStage)"] = "428:bc335716eb5a35acb7963d0d",
         };

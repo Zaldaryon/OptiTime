@@ -172,6 +172,14 @@
       "comment": "optitime:setting-repulseagents-tooltip"
     },
     {
+      "code": "EntityShapeOptimizations",
+      "type": "boolean",
+      "default": true,
+      "clientSide": true,
+      "ingui": "optitime:setting-entityshape",
+      "comment": "optitime:setting-entityshape-tooltip"
+    },
+    {
       "code": "ShadowFarVegetationCullEnabled",
       "type": "boolean",
       "default": true,
