@@ -44,6 +44,7 @@ namespace OptiTime
             FrameRateOptimization.Configure(Config);
             ParticleOptimization.SetLogger(msg => staticCapi?.Logger?.Warning(msg));
             ParticleOptimization.Configure(Config.ParticleOptimizations, Config.ParticleViewDistanceScalingEnabled);
+            DynamicLightOptimization.Configure(Config.DynamicLightOptimizations);
             OcclusionCullingOptimization.Configure(Config.OcclusionCullingOptimizations);
             GuiManagerOptimization.Configure(Config);
             ProfilingHelper.SetEnabled(Config.EnableProfiling);
@@ -831,6 +832,12 @@ namespace OptiTime
                 AuditOptimumPatches(api);
 
             api.Event.LevelFinalize += OnLevelFinalize;
+            api.Event.LeaveWorld += OnLeaveWorld;
+        }
+
+        private void OnLeaveWorld()
+        {
+            DynamicLightOptimization.Cleanup();
         }
 
         private void OnLevelFinalize()
@@ -1254,6 +1261,7 @@ namespace OptiTime
                 if (capi != null)
                 {
                     capi.Event.LevelFinalize -= OnLevelFinalize;
+                    capi.Event.LeaveWorld -= OnLeaveWorld;
                 }
 
                 // Unregister view distance watcher
@@ -1282,6 +1290,7 @@ namespace OptiTime
 
                 // Clear static references unconditionally so runtime or session-scoped toggles never leak state
                 ParticleOptimization.Cleanup();
+                DynamicLightOptimization.Cleanup();
                 AmbientSoundOptimization.Cleanup();
                 GuiManagerOptimization.Cleanup();
                 FlySoundOptimization.Cleanup();
