@@ -209,7 +209,8 @@ public class VanillaBaselineCapture : RenderingFidelityBase
 [ServerWorld(
     seed: OptiTimeConfig.WorldSeed,
     playStyle: OptiTimeConfig.PlayStyle,
-    worldType: OptiTimeConfig.WorldType)]
+    worldType: OptiTimeConfig.WorldType,
+    SaveFile = OptiTimeConfig.VisualWorldSave)]
 [ClientSetting("viewDistance", OptiTimeConfig.ViewDistance)]
 [PharosMods(OptiTimeConfig.ModAssembly)]
 [ClientSetting("wavingStuff", false)]

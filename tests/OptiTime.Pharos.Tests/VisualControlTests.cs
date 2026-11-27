@@ -83,10 +83,39 @@ public abstract class VisualControlBase : RenderingFidelityBase
 
 }
 
+/// <summary>
+/// Generates the world the cross-boot visual comparisons load, in vanilla, and saves it to
+/// <see cref="OptiTimeConfig.VisualWorldSave"/>. Every pose is visited first so the chunks each
+/// one shows are in the save. Run it before the visual controls in the same output folder.
+/// </summary>
 [ServerWorld(
     seed: OptiTimeConfig.WorldSeed,
     playStyle: OptiTimeConfig.PlayStyle,
     worldType: OptiTimeConfig.WorldType)]
+[ClientSetting("viewDistance", OptiTimeConfig.ViewDistance)]
+[ClientSetting("wavingStuff", false)]
+public class VisualWorldFixture : RenderingFidelityBase
+{
+    [ClientServerScenario(TimeoutMs = 900_000)]
+    public async Task SaveTheVisualWorld()
+    {
+        await WarmUpAsync();
+        foreach (CameraPose pose in OptiTimeConfig.Poses)
+        {
+            await CaptureAtAsync(pose);
+        }
+
+        string save = Path.Combine(AppContext.BaseDirectory, OptiTimeConfig.VisualWorldSave);
+        await ServerHost!.SaveWorldAsync(save);
+        Assert.True(new FileInfo(save).Length > 0, $"The visual world save {save} is empty.");
+    }
+}
+
+[ServerWorld(
+    seed: OptiTimeConfig.WorldSeed,
+    playStyle: OptiTimeConfig.PlayStyle,
+    worldType: OptiTimeConfig.WorldType,
+    SaveFile = OptiTimeConfig.VisualWorldSave)]
 [ClientSetting("viewDistance", OptiTimeConfig.ViewDistance)]
 [ClientSetting("wavingStuff", false)]
 public class FreshVanillaVisualControl : VisualControlBase
@@ -98,7 +127,8 @@ public class FreshVanillaVisualControl : VisualControlBase
 [ServerWorld(
     seed: OptiTimeConfig.WorldSeed,
     playStyle: OptiTimeConfig.PlayStyle,
-    worldType: OptiTimeConfig.WorldType)]
+    worldType: OptiTimeConfig.WorldType,
+    SaveFile = OptiTimeConfig.VisualWorldSave)]
 [ClientSetting("viewDistance", OptiTimeConfig.ViewDistance)]
 [ClientSetting("wavingStuff", false)]
 [PharosMods(OptiTimeConfig.ModAssembly)]
