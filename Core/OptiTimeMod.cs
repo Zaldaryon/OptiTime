@@ -415,6 +415,59 @@ namespace OptiTime
                     AnimatableOptimization.Cleanup();
                     api.Logger.Warning("[OptiTime] Animatable optimization failed: " + ex.Message);
                 }
+
+                try
+                {
+                    var sunMoonRenderTarget = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.SystemRenderSunMoon:OnRenderFrame3D",
+                        new Type[] { typeof(float) });
+                    var sunMoonPostTarget = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.SystemRenderSunMoon:OnRenderFrame3DPost",
+                        new Type[] { typeof(float) });
+                    var sunMoonDisposeTarget = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.SystemRenderSunMoon:Dispose",
+                        new Type[] { typeof(Vintagestory.Client.NoObf.ClientMain) });
+
+                    bool sunMoonRenderReady = sunMoonRenderTarget != null &&
+                        !HasAnyConflictingPatches(sunMoonRenderTarget) &&
+                        (!optimumHostDetected || OptimumOwnership.IsVanillaBody(sunMoonRenderTarget, GameVersion.ShortGameVersion));
+
+                    bool sunMoonPostReady = sunMoonPostTarget != null && sunMoonDisposeTarget != null &&
+                        !HasAnyConflictingPatches(sunMoonPostTarget) &&
+                        !HasAnyConflictingPatches(sunMoonDisposeTarget) &&
+                        (!optimumHostDetected ||
+                            (OptimumOwnership.IsVanillaBody(sunMoonPostTarget, GameVersion.ShortGameVersion) &&
+                             OptimumOwnership.IsVanillaBody(sunMoonDisposeTarget, GameVersion.ShortGameVersion)));
+
+                    if (sunMoonRenderReady || sunMoonPostReady)
+                    {
+                        SunMoonOptimization.SetClientActive(true);
+                    }
+
+                    if (sunMoonRenderReady)
+                    {
+                        harmony.Patch(sunMoonRenderTarget,
+                            prefix: new HarmonyMethod(typeof(SunMoonOptimization), nameof(SunMoonOptimization.OnRenderFrame3D_Prefix)));
+                    }
+
+                    if (sunMoonPostReady)
+                    {
+                        harmony.Patch(sunMoonPostTarget,
+                            prefix: new HarmonyMethod(typeof(SunMoonOptimization), nameof(SunMoonOptimization.OnRenderFrame3DPost_Prefix)));
+                        harmony.Patch(sunMoonDisposeTarget,
+                            postfix: new HarmonyMethod(typeof(SunMoonOptimization), nameof(SunMoonOptimization.Dispose_Postfix)));
+                    }
+
+                    if (sunMoonRenderReady || sunMoonPostReady)
+                    {
+                        api.Logger.Notification("[OptiTime] Sun/moon occlusion query ring and scratch optimization loaded");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SunMoonOptimization.Cleanup();
+                    api.Logger.Warning("[OptiTime] Sun/moon optimization failed: " + ex.Message);
+                }
             }
 
             try
@@ -1419,6 +1472,7 @@ namespace OptiTime
                 OcclusionCullingOptimization.Cleanup();
                 FrustumCullingOptimization.Cleanup();
                 AnimatableOptimization.Cleanup();
+                SunMoonOptimization.Cleanup();
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
                 SafeCatalogIsolation.Cleanup();
