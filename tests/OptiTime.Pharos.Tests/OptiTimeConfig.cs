@@ -360,6 +360,18 @@ public static partial class OptiTimeConfig
     public const string BaselineDirectory = "baselines";
 
     /// <summary>
+    /// The world every cross-boot visual comparison boots from, relative to the test assembly.
+    ///
+    /// Generating the seed again is not enough: the game generates chunks in the order the
+    /// client asks for them, and trees and decorations that cross chunk borders come out
+    /// differently from one boot to the next. A missing tree also drops its shadow, so two
+    /// vanilla boots of the same seed differed by more than <see cref="VisualDiffPixelBudget"/>
+    /// at the overlook pose before any mod was involved. <c>VisualWorldFixture</c> writes this
+    /// save once per validation run; the classes that compare captures across boots load it.
+    /// </summary>
+    public const string VisualWorldSave = "artifacts/visual-world.vcdbs";
+
+    /// <summary>
     /// How many pixels may differ before a frame counts as visually wrong.
     /// Generous on purpose: the mod is allowed to differ slightly, since it
     /// culls particles and vegetation by design. A large diff means geometry is

@@ -17,12 +17,13 @@ New-Item -ItemType Directory -Path $results -Force | Out-Null
 $controlArtifacts = Join-Path $PSScriptRoot 'bin/Release/net10.0/artifacts/visual-control'
 if (Test-Path -LiteralPath $controlArtifacts) { Copy-Item -LiteralPath $controlArtifacts -Destination (Join-Path $results 'prior-visual-controls') -Recurse }
 $runs = @(
+    @{ Name = 'visual-world'; Filter = 'FullyQualifiedName~VisualWorldFixture' },
     @{ Name = 'fresh-vanilla'; Filter = 'FullyQualifiedName~FreshVanillaVisualControl' },
     @{ Name = 'fresh-mod'; Filter = 'FullyQualifiedName~FreshModVisualControl' },
-    @{ Name = 'regressions'; Filter = 'FullyQualifiedName!~VanillaBaselineCapture&FullyQualifiedName!~BootVanillaPerformanceTests&FullyQualifiedName!~BootDisabledPerformanceTests&FullyQualifiedName!~BootEnabledPerformanceTests&FullyQualifiedName!~FreshVanillaVisualControl&FullyQualifiedName!~FreshModVisualControl' }
+    @{ Name = 'regressions'; Filter = 'FullyQualifiedName!~VanillaBaselineCapture&FullyQualifiedName!~BootVanillaPerformanceTests&FullyQualifiedName!~BootDisabledPerformanceTests&FullyQualifiedName!~BootEnabledPerformanceTests&FullyQualifiedName!~FreshVanillaVisualControl&FullyQualifiedName!~FreshModVisualControl&FullyQualifiedName!~VisualWorldFixture' }
 )
 if ($VisualOnly) {
-    $runs[2].Filter = 'FullyQualifiedName~OptiTimeRenderingFidelity|FullyQualifiedName~SceneCoverageTests'
+    $runs[3].Filter = 'FullyQualifiedName~OptiTimeRenderingFidelity|FullyQualifiedName~SceneCoverageTests'
     $runs += @{ Name = 'fresh-vanilla-repeat'; Filter = 'FullyQualifiedName~FreshVanillaVisualControl' }
 }
 $boots = @('BootVanillaPerformanceTests','BootDisabledPerformanceTests','BootEnabledPerformanceTests','BootEnabledPerformanceTests','BootDisabledPerformanceTests','BootVanillaPerformanceTests')
