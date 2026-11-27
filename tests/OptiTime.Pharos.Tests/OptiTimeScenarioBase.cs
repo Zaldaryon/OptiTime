@@ -680,7 +680,11 @@ public abstract class OptiTimeScenarioBase : ClientServerScenarioBase
             && !state.Value.Enabled
             && (state.Value.Conflict?.StartsWith("Shadow quality", StringComparison.Ordinal) ?? false)
             && Vintagestory.Client.NoObf.ClientSettings.ShadowMapQuality <= 1;
-        if (expectedShadowSkip)
+        bool expectedPlatformSkip = optimization.Equals("framepace", StringComparison.OrdinalIgnoreCase)
+            && !state.Value.Enabled
+            && !OperatingSystem.IsWindows()
+            && (state.Value.Conflict?.Contains("non-Windows", StringComparison.OrdinalIgnoreCase) ?? false);
+        if (expectedShadowSkip || expectedPlatformSkip)
         {
             Console.WriteLine($"configuration {optimization}={enabled}, effective=OFF: {state.Value.Conflict}; not an active benchmark variant");
             return state.Value;

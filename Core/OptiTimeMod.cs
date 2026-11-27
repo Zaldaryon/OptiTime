@@ -18,6 +18,8 @@ namespace OptiTime
         private bool ancestralBlissDetected = false;
         private bool coriaenderDetected = false;
         private bool optimumHostDetected = false;
+        private bool externalWorldShaderOverrideDetected = false;
+        private bool externalBlurOverrideDetected = false;
         private bool runtimeUnsupported = false;
         private Action<int> viewDistanceChangedDelegate = null;
         
@@ -41,7 +43,7 @@ namespace OptiTime
 
             FrameRateOptimization.Configure(Config);
             ParticleOptimization.SetLogger(msg => staticCapi?.Logger?.Warning(msg));
-            ParticleOptimization.ConfigureScaling(Config.ParticleViewDistanceScalingEnabled);
+            ParticleOptimization.Configure(Config.ParticleOptimizations, Config.ParticleViewDistanceScalingEnabled);
             GuiManagerOptimization.Configure(Config);
             ProfilingHelper.SetEnabled(Config.EnableProfiling);
         }
@@ -132,8 +134,8 @@ namespace OptiTime
             }
             else
             {
-                // Granular shader disabling
-                var shadersToDisable = new List<string>();
+                var shadersToDisable = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var supersededPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 // Coriaender patches chunkliquid at runtime via regex; our replacement would break its patterns
                 if (coriaenderDetected)
@@ -147,8 +149,61 @@ namespace OptiTime
                     shadersToDisable.Add("shaders/blur.fsh");
                     shadersToDisable.Add("shaders/blur.vsh");
                 }
+
+                IReadOnlyDictionary<string, string> vanillaHashes = ResolveVanillaShaderHashes();
+                bool nonVanillaUnderneath = false;
+
+                foreach (string path in OptiTimeShaderPaths)
+                {
+                    if (shadersToDisable.Contains(path))
+                        continue;
+
+                    if (clientApi.Assets?.AllAssets == null ||
+                        !clientApi.Assets.AllAssets.TryGetValue(new AssetLocation("game", path), out IAsset current) ||
+                        current == null)
+                    {
+                        continue;
+                    }
+
+                    if (!IsOptiTimeOrigin(current.Origin))
+                    {
+                        supersededPaths.Add(path);
+                        continue;
+                    }
+
+                    if (!IsUnderlyingShaderVanilla(clientApi, path, vanillaHashes))
+                    {
+                        shadersToDisable.Add(path);
+                        nonVanillaUnderneath = true;
+                    }
+                }
+
+                // Keep blur vertex and fragment shaders atomic so texCoords[9] stays matched.
+                if (config.BlurOptimizationEnabled &&
+                    (shadersToDisable.Contains("shaders/blur.fsh") ||
+                     shadersToDisable.Contains("shaders/blur.vsh") ||
+                     supersededPaths.Contains("shaders/blur.fsh") ||
+                     supersededPaths.Contains("shaders/blur.vsh")))
+                {
+                    externalBlurOverrideDetected = true;
+                    AddIfOptiTimeOwnsShader(clientApi, "shaders/blur.fsh", shadersToDisable);
+                    AddIfOptiTimeOwnsShader(clientApi, "shaders/blur.vsh", shadersToDisable);
+                }
+
+                if (!coriaenderDetected &&
+                    (shadersToDisable.Contains("shaders/chunkliquid.fsh") || supersededPaths.Contains("shaders/chunkliquid.fsh")) &&
+                    (shadersToDisable.Contains("shaders/chunkshadowmap.fsh") || supersededPaths.Contains("shaders/chunkshadowmap.fsh")))
+                {
+                    externalWorldShaderOverrideDetected = true;
+                }
+
                 if (shadersToDisable.Count > 0)
-                    TryDisableOptiTimeShaders(clientApi, coriaenderDetected ? "CoriaenderShaders" : "config", shadersToDisable.ToArray());
+                {
+                    string reason = coriaenderDetected && !nonVanillaUnderneath
+                        ? "CoriaenderShaders"
+                        : (nonVanillaUnderneath ? "external shader override" : "config");
+                    TryDisableOptiTimeShaders(clientApi, reason, shadersToDisable.ToArray());
+                }
             }
         }
 
@@ -220,11 +275,10 @@ namespace OptiTime
             if (config.PreciseFramePacingEnabled)
             {
                 // Thread.Yield() loop causes lag spikes on Linux PREEMPT kernels
-                // (sched_yield latency 1-4ms per call). Auto-disable on non-Windows.
+                // (sched_yield latency 1-4ms per call). Auto-disable on non-Windows for this session.
                 if (Environment.OSVersion.Platform != PlatformID.Win32NT)
                 {
-                    config.PreciseFramePacingEnabled = false;
-                    config.Save(api);
+                    config.ForceOffForSession(nameof(OptiTimeConfig.PreciseFramePacingEnabled), "Auto-disabled on non-Windows");
                     ApplyRuntimeConfig();
                     api.Logger.Notification("[OptiTime] Precise frame pacing auto-disabled on non-Windows (sched_yield latency)");
                 }
@@ -437,8 +491,8 @@ namespace OptiTime
                     }
                     else
                     {
-                        config.GuiManagerNoLinqEnabled = false;
-                        config.Save(api);
+                        config.ForceOffForSession(nameof(OptiTimeConfig.GuiManagerNoLinqEnabled), "Existing GUI render patches");
+                        ApplyRuntimeConfig();
                         api.Logger.Warning("[OptiTime] GUI Manager render optimization disabled due to existing GUI patches (potential mod conflict).");
                     }
 
@@ -485,8 +539,8 @@ namespace OptiTime
                         }
                         else
                         {
-                            config.GuiManagerInputNoLinqEnabled = false;
-                            config.Save(api);
+                            config.ForceOffForSession(nameof(OptiTimeConfig.GuiManagerInputNoLinqEnabled), "Existing GUI input patches");
+                            ApplyRuntimeConfig();
                             api.Logger.Warning("[OptiTime] GUI Manager input optimization disabled due to existing GUI patches (potential mod conflict).");
                         }
                     }
@@ -880,9 +934,7 @@ namespace OptiTime
 
         private void DisableOptimizationForConflict(ICoreClientAPI api, string optimizationName, string reason)
         {
-            config.SetOptimization(optimizationName, false);
-            config.MarkAsConflictDisabled(optimizationName, reason);
-            config.Save(api);
+            config.ForceOffForSession(optimizationName, reason);
             ApplyRuntimeConfig();
             api.Logger.Warning("[OptiTime] " + reason);
         }
@@ -923,44 +975,11 @@ namespace OptiTime
             try
             {
                 var origins = api.Assets?.Origins;
-                if (origins == null || origins.Count == 0)
+                if (origins == null || origins.Count == 0 || pathsToDisable == null || pathsToDisable.Length == 0)
                     return;
 
-                bool disableAll = pathsToDisable.Length == OptiTimeShaderPaths.Length;
-
-                if (disableAll)
-                {
-                    // Remove entire OptiTime shader origin
-                    List<IAssetOrigin> toRemove = new List<IAssetOrigin>();
-                    foreach (var origin in origins)
-                    {
-                        if (!IsOptiTimeOrigin(origin))
-                            continue;
-                        if (OriginContainsOptiTimeShaders(origin))
-                            toRemove.Add(origin);
-                    }
-
-                    if (toRemove.Count == 0)
-                    {
-                        api.Logger.Warning("[OptiTime] ShaderOptimizations disabled, but OptiTime shader origin was not found.");
-                        return;
-                    }
-
-                    for (int i = 0; i < toRemove.Count; i++)
-                    {
-                        origins.Remove(toRemove[i]);
-                    }
-
-                    api.Assets.Reload(AssetCategory.shaders);
-                    api.Assets.Reload(AssetCategory.shaderincludes);
-                    api.Logger.Notification($"[OptiTime] All shader assets disabled ({reason}).");
-                }
-                else
-                {
-                    // Removing entries from AllAssets and reloading does not work: the reload reads the OptiTime
-                    // origin again and the override comes back. Hiding the files in the origin does.
-                    HideOptiTimeShaders(api, new List<string>(pathsToDisable), reason);
-                }
+                // Hide only shader files inside the asset origin wrapper so OptiTime's own lang and config assets stay loaded.
+                HideOptiTimeShaders(api, new List<string>(pathsToDisable), reason);
             }
             catch (Exception ex)
             {
@@ -1000,40 +1019,6 @@ namespace OptiTime
                 return true;
 
             return !string.IsNullOrEmpty(modId) && string.Equals(folder, modId, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private bool OriginContainsOptiTimeShaders(IAssetOrigin origin)
-        {
-            try
-            {
-                foreach (var category in new[] { AssetCategory.shaders, AssetCategory.shaderincludes })
-                {
-                    var assets = origin.GetAssets(category, false);
-                    foreach (var asset in assets)
-                    {
-                        if (asset?.Location == null)
-                            continue;
-                        if (!string.Equals(asset.Location.Domain, "game", StringComparison.OrdinalIgnoreCase))
-                            continue;
-                        if (IsOptiTimeShaderPath(asset.Location.Path))
-                            return true;
-                    }
-                }
-            }
-            catch { }
-            return false;
-        }
-
-        private bool IsOptiTimeShaderPath(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return false;
-            for (int i = 0; i < OptiTimeShaderPaths.Length; i++)
-            {
-                if (path.Equals(OptiTimeShaderPaths[i], StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-            return false;
         }
 
         public void RegisterCommands(ICoreClientAPI api)
@@ -1094,6 +1079,12 @@ namespace OptiTime
 
                     if (config.IsConflictDisabled(optName))
                     {
+                        if (config.IsForcedOffForSession(optName))
+                        {
+                            config.SetOptimization(optName, true);
+                            config.Save(capi);
+                        }
+
                         string reason = config.GetConflictReason(optName) ?? "conflict detected";
                         capi.ShowChatMessage($"[OptiTime] {command}: cannot enable");
                         capi.ShowChatMessage($"[OptiTime] {reason}");
@@ -1163,35 +1154,15 @@ namespace OptiTime
 
                 harmony?.UnpatchAll("com.zaldaryon.optitime");
 
-                // Clear static references to prevent memory leaks
-                if (config != null)
-                {
-                    if (config.ParticleOptimizations)
-                        ParticleOptimization.Cleanup();
-                    if (config.AmbientSoundOptimizations)
-                        AmbientSoundOptimization.Cleanup();
-                    if (config.GuiManagerOptimizations)
-                        GuiManagerOptimization.Cleanup();
-                    if (config.FlySoundOptimizations)
-                        FlySoundOptimization.Cleanup();
-                    FrameRateOptimization.Cleanup();
-                    if (config.HandbookOptimizations)
-                        HandbookOptimization.Cleanup();
-                    EntityInterpolationOptimization.Cleanup();
-                    RepulseAgentsOptimization.Cleanup();
-                }
-                else
-                {
-                    // If config is null, clean up everything to be safe
-                    ParticleOptimization.Cleanup();
-                    AmbientSoundOptimization.Cleanup();
-                    GuiManagerOptimization.Cleanup();
-                    FlySoundOptimization.Cleanup();
-                    FrameRateOptimization.Cleanup();
-                    HandbookOptimization.Cleanup();
-                    EntityInterpolationOptimization.Cleanup();
-                    RepulseAgentsOptimization.Cleanup();
-                }
+                // Clear static references unconditionally so runtime or session-scoped toggles never leak state
+                ParticleOptimization.Cleanup();
+                AmbientSoundOptimization.Cleanup();
+                GuiManagerOptimization.Cleanup();
+                FlySoundOptimization.Cleanup();
+                FrameRateOptimization.Cleanup();
+                HandbookOptimization.Cleanup();
+                EntityInterpolationOptimization.Cleanup();
+                RepulseAgentsOptimization.Cleanup();
 
                 // Cleanup recipe lookup optimization (no resources currently)
                 RecipeLookupCacheOptimization.Cleanup();
@@ -1210,6 +1181,12 @@ namespace OptiTime
             }
             finally
             {
+                ancestralBlissDetected = false;
+                coriaenderDetected = false;
+                optimumHostDetected = false;
+                externalWorldShaderOverrideDetected = false;
+                externalBlurOverrideDetected = false;
+                runtimeUnsupported = false;
                 harmony = null;
                 config = null;
                 Config = null;
@@ -1307,9 +1284,8 @@ namespace OptiTime
 
         private void ApplyOptimumShaderPolicyCore(ICoreClientAPI api)
         {
-            var revert = new List<string>();
-            string gameVersion = GameVersion.ShortGameVersion;
-            IReadOnlyDictionary<string, string> vanillaHashes = OptimumVanillaSignatures.ShadersForGameVersion(gameVersion);
+            var revert = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            IReadOnlyDictionary<string, string> vanillaHashes = OptimumVanillaSignatures.ShadersForGameVersion(GameVersion.ShortGameVersion);
 
             foreach (string path in OptiTimeShaderPaths)
             {
@@ -1322,17 +1298,60 @@ namespace OptiTime
                 if (!config.BlurOptimizationEnabled && path.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase))
                     wanted = false;
 
-                IAsset underneath = FindShaderUnderneath(api, path);
-                bool underneathIsVanilla = underneath?.Data != null && vanillaHashes != null &&
-                    vanillaHashes.TryGetValue(path, out string expected) &&
-                    string.Equals(expected, Sha256Hex(underneath.Data), StringComparison.OrdinalIgnoreCase);
+                bool underneathIsVanilla = IsUnderlyingShaderVanilla(api, path, vanillaHashes);
 
                 if (!wanted || !underneathIsVanilla)
                     revert.Add(path);
             }
 
+            if (revert.Contains("shaders/blur.fsh") || revert.Contains("shaders/blur.vsh"))
+            {
+                AddIfOptiTimeOwnsShader(api, "shaders/blur.fsh", revert);
+                AddIfOptiTimeOwnsShader(api, "shaders/blur.vsh", revert);
+            }
+
             if (revert.Count > 0)
-                HideOptiTimeShaders(api, revert, "Optimum");
+                HideOptiTimeShaders(api, revert.ToList(), "Optimum");
+        }
+
+        private static IReadOnlyDictionary<string, string> ResolveVanillaShaderHashes()
+        {
+            return OptimumVanillaSignatures.ShadersForGameVersion(GameVersion.ShortGameVersion)
+                ?? OptimumVanillaSignatures.ShadersForGameVersion("1.22.7");
+        }
+
+        private bool IsUnderlyingShaderVanilla(ICoreClientAPI api, string path, IReadOnlyDictionary<string, string> vanillaHashes)
+        {
+            try
+            {
+                if (vanillaHashes == null || !vanillaHashes.TryGetValue(path, out string expected))
+                    return false;
+
+                IAsset underneath = FindShaderUnderneath(api, path);
+                if (underneath == null)
+                    return false;
+
+                if (underneath.Data == null)
+                    underneath.Origin?.TryLoadAsset(underneath);
+
+                return underneath.Data != null &&
+                    string.Equals(expected, Sha256Hex(underneath.Data), StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void AddIfOptiTimeOwnsShader(ICoreClientAPI api, string path, HashSet<string> targetPaths)
+        {
+            if (api.Assets?.AllAssets != null &&
+                api.Assets.AllAssets.TryGetValue(new AssetLocation("game", path), out IAsset current) &&
+                current != null &&
+                IsOptiTimeOrigin(current.Origin))
+            {
+                targetPaths.Add(path);
+            }
         }
 
         private static string Sha256Hex(byte[] data)
@@ -1358,6 +1377,9 @@ namespace OptiTime
                         found = asset;
                 }
             }
+
+            if (found != null && found.Data == null)
+                found.Origin?.TryLoadAsset(found);
 
             return found;
         }
@@ -1435,7 +1457,7 @@ namespace OptiTime
             // Check for Ancestral Bliss Shaders
             if (ancestralBlissDetected)
             {
-                config.MarkAsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations), "Ancestral Bliss compatibility mode");
+                config.ForceOffForSession(nameof(OptiTimeConfig.ShaderOptimizations), "Ancestral Bliss compatibility mode");
                 api.Logger.Notification("═══════════════════════════════════════════════════════");
                 api.Logger.Notification("[OptiTime] Ancestral Bliss Shaders detected");
                 api.Logger.Notification("[OptiTime] Running in compatibility mode:");
@@ -1461,9 +1483,7 @@ namespace OptiTime
                 api.Logger.Warning("[OptiTime] All other optimizations remain active");
                 api.Logger.Warning("═══════════════════════════════════════════════════════");
                 
-                config.EntityAnimationOptimizations = false;
-                config.MarkAsConflictDisabled(nameof(OptiTimeConfig.EntityAnimationOptimizations), combatOverhaulDetected ? "Combat Overhaul compatibility mode" : "Overhaullib compatibility mode");
-                config.Save(api);
+                config.ForceOffForSession(nameof(OptiTimeConfig.EntityAnimationOptimizations), combatOverhaulDetected ? "Combat Overhaul compatibility mode" : "Overhaullib compatibility mode");
                 
                 if (!config.SuppressCompatibilityMessages)
                 {
@@ -1492,10 +1512,7 @@ namespace OptiTime
                 api.Logger.Warning("[OptiTime] All other optimizations remain active");
                 api.Logger.Warning("═══════════════════════════════════════════════════════");
 
-                config.ParticleViewDistanceScalingEnabled = false;
-                config.MarkAsConflictDisabled(nameof(OptiTimeConfig.ParticleViewDistanceScalingEnabled),
-                    modName + " compatibility mode");
-                config.Save(api);
+                config.ForceOffForSession(nameof(OptiTimeConfig.ParticleViewDistanceScalingEnabled), modName + " compatibility mode");
                 ApplyRuntimeConfig();
 
                 if (!config.SuppressCompatibilityMessages)
@@ -1514,9 +1531,7 @@ namespace OptiTime
                 api.Logger.Warning("[OptiTime] All other optimizations remain active");
                 api.Logger.Warning("═══════════════════════════════════════════════════════");
 
-                config.HandbookOptimizations = false;
-                config.MarkAsConflictDisabled(nameof(OptiTimeConfig.HandbookOptimizations), "Electrical Progressive compatibility mode");
-                config.Save(api);
+                config.ForceOffForSession(nameof(OptiTimeConfig.HandbookOptimizations), "Electrical Progressive compatibility mode");
 
                 if (!config.SuppressCompatibilityMessages)
                 {
@@ -1535,15 +1550,23 @@ namespace OptiTime
                 api.Logger.Warning("[OptiTime] All code optimizations remain active");
                 api.Logger.Warning("═══════════════════════════════════════════════════════");
 
-                config.ShaderOptimizations = false;
-                config.MarkAsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations), "CoriaenderShaders compatibility mode");
-                config.Save(api);
+                config.ForceOffForSession(nameof(OptiTimeConfig.ShaderOptimizations), "CoriaenderShaders compatibility mode");
 
                 if (!config.SuppressCompatibilityMessages)
                 {
                     api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-title"));
                     api.ShowChatMessage(Lang.Get("optitime:compat-coriaender-desc"));
                 }
+            }
+
+            if (externalWorldShaderOverrideDetected && !config.IsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations)))
+            {
+                config.ForceOffForSession(nameof(OptiTimeConfig.ShaderOptimizations), "External shader override");
+            }
+
+            if (externalBlurOverrideDetected && !config.IsConflictDisabled(nameof(OptiTimeConfig.BlurOptimizationEnabled)))
+            {
+                config.ForceOffForSession(nameof(OptiTimeConfig.BlurOptimizationEnabled), "External blur shader override");
             }
 
             // Check for smoke/firearms mods whose particles spawn via off-thread pools
@@ -1669,7 +1692,7 @@ namespace OptiTime
                 case "on": module.Enable(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: ON"); break;
                 case "off": module.Disable(); capi.ShowChatMessage($"[OptiTime] diag {module.ShortName}: OFF"); break;
                 case "dump":
-                    if (!module.Enabled)
+                    if (module.IsAvailable && !module.Enabled)
                     {
                         capi.ShowChatMessage($"[OptiTime] diag {module.ShortName} is not enabled, run `.optitime diag {module.ShortName} on` first, then play ~30s before dumping");
                         break;
