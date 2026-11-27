@@ -288,6 +288,24 @@ namespace OptiTime
 
             try
             {
+                var chunkUploadTarget = AccessTools.Method("Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame",
+                    new Type[] { typeof(float) });
+                if (chunkUploadTarget != null &&
+                    !HasAnyConflictingPatches(chunkUploadTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(chunkUploadTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(chunkUploadTarget,
+                        prefix: new HarmonyMethod(typeof(ChunkUploadOptimization), nameof(ChunkUploadOptimization.OnBeforeFrame_Prefix)));
+                    api.Logger.Notification("[OptiTime] Chunk upload budget and queue sort optimization loaded");
+                }
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Warning("[OptiTime] Chunk upload optimization failed: " + ex.Message);
+            }
+
+            try
+            {
                 var onNewFrame = AccessTools.Method("Vintagestory.Client.ScreenManager:OnNewFrame", new Type[] { typeof(float) });
                 if (onNewFrame != null)
                 {
@@ -1262,6 +1280,7 @@ namespace OptiTime
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
                 SafeCatalogIsolation.Cleanup();
+                ChunkUploadOptimization.Cleanup();
 
                 ProfilingHelper.Cleanup();
             }

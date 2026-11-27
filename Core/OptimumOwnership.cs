@@ -49,6 +49,7 @@ namespace OptiTime
         {
             "Vintagestory.API.Config.TranslationService:HasTranslation",
             "Vintagestory.Client.ScreenManager:OnNewFrame",
+            "Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame",
             "Vintagestory.Common.CreativeTab:CreateSearchCache",
             "Vintagestory.GameContent.ModSystemSurvivalHandbook:onCreatePagesAsync"
         };

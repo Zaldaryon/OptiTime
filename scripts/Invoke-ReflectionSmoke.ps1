@@ -23,10 +23,28 @@ function Emit-Check($Name, $Ok, $Detail) {
     "{0}|{1}|{2}" -f $Name, $Ok, $Detail
 }
 
+$searchDirs = @(
+    $GamePath,
+    (Join-Path $GamePath "Lib"),
+    (Join-Path $GamePath "Mods")
+)
+$resolveHandler = [System.ResolveEventHandler]{
+    param($sender, $eventArgs)
+    $assemblyFile = (New-Object System.Reflection.AssemblyName($eventArgs.Name)).Name + ".dll"
+    foreach ($dir in $searchDirs) {
+        $candidate = Join-Path $dir $assemblyFile
+        if (Test-Path -LiteralPath $candidate) {
+            return [System.Reflection.Assembly]::LoadFrom($candidate)
+        }
+    }
+    return $null
+}
+[System.AppDomain]::CurrentDomain.add_AssemblyResolve($resolveHandler)
+
 $api = [System.Reflection.Assembly]::LoadFrom((Join-Path $GamePath "VintagestoryAPI.dll"))
 $lib = [System.Reflection.Assembly]::LoadFrom((Join-Path $GamePath "VintagestoryLib.dll"))
-$survival = [System.Reflection.Assembly]::LoadFrom((Join-Path $GamePath "Mods\VSSurvivalMod.dll"))
-$mod = [System.Reflection.Assembly]::LoadFrom($DllPath)
+$survival = [System.Reflection.Assembly]::LoadFrom((Join-Path (Join-Path $GamePath "Mods") "VSSurvivalMod.dll"))
+$mod = [System.Reflection.Assembly]::LoadFrom((Resolve-Path -LiteralPath $DllPath).Path)
 
 $publicInstance = [System.Reflection.BindingFlags]::Public -bor [System.Reflection.BindingFlags]::Instance
 $nonPublicInstance = [System.Reflection.BindingFlags]::NonPublic -bor [System.Reflection.BindingFlags]::Instance
@@ -36,10 +54,14 @@ $failed = 0
 
 $grid = $api.GetType("Vintagestory.API.Common.GridRecipe")
 $player = $api.GetType("Vintagestory.API.Common.IPlayer")
+$world = $api.GetType("Vintagestory.API.Common.IWorldAccessor")
 $slot = $api.GetType("Vintagestory.API.Common.ItemSlot")
 $slots = if ($slot) { $slot.MakeArrayType() } else { $null }
-$gridMatches = if ($grid -and $player -and $slots) { $grid.GetMethod("Matches", $publicInstance, $null, [Type[]]@($player, $slots, [int]), $null) } else { $null }
-$gridShapeLess = if ($grid -and $slots) { $grid.GetMethod("MatchesShapeLess", $nonPublicInstance, $null, [Type[]]@($slots, [int]), $null) } else { $null }
+$recipeIngredient = $api.GetType("Vintagestory.API.Common.IRecipeIngredient")
+$recipeIngredients = if ($recipeIngredient) { $recipeIngredient.MakeArrayType() } else { $null }
+
+$gridMatches = if ($grid -and $player -and $world -and $slots) { $grid.GetMethod("Matches", $publicInstance, $null, [Type[]]@($player, $world, $slots, [int]), $null) } else { $null }
+$gridShapeLess = if ($grid -and $slots -and $world -and $recipeIngredients) { $grid.GetMethod("MatchesShapeLess", $nonPublicInstance, $null, [Type[]]@($slots, $world, $recipeIngredients), $null) } else { $null }
 Emit-Check "GridRecipe.Matches" ($null -ne $gridMatches) ([string]$gridMatches)
 if (-not $gridMatches) { $failed++ }
 Emit-Check "GridRecipe.MatchesShapeLess" ($null -ne $gridShapeLess) ([string]$gridShapeLess)
@@ -52,7 +74,7 @@ Emit-Check "BlockLiquidContainerBase.GetContainableProps" ($null -ne $containabl
 if (-not $containable) { $failed++ }
 
 $recipeOpt = $mod.GetType("OptiTime.RecipeLookupCacheOptimization")
-$recipePrefix = if ($recipeOpt) { $recipeOpt.GetMethod("Matches_Prefix", $anyStatic) } else { $null }
+$recipePrefix = if ($recipeOpt) { $recipeOpt.GetMethod("MatchesWithWorld_Prefix", $anyStatic) } else { $null }
 Emit-Check "Recipe prefix exists" ($null -ne $recipePrefix) ([string]$recipePrefix)
 if (-not $recipePrefix) { $failed++ }
 
@@ -64,16 +86,15 @@ if (-not $dirA) { $failed++ }
 Emit-Check "Handbook container->item path exists" ($null -ne $dirB) ([string]$dirB)
 if (-not $dirB) { $failed++ }
 
-$found = $false
-if ($onBefore -and $onBefore.GetMethodBody()) {
-    $bytes = $onBefore.GetMethodBody().GetILAsByteArray()
-    $hasThree = $bytes -contains 0x19
-    $hasTwo = $bytes -contains 0x18
-    $hasMul = $bytes -contains 0x5A
-    $found = $hasThree -and $hasTwo -and $hasMul
-}
-Emit-Check "Chunk IL budget anchors" $found "Expected OnBeforeFrame IL to contain ldc.i4.3, ldc.i4.2, and mul opcodes"
-if (-not $found) { $failed++ }
+$chunkTessMgr = $lib.GetType("Vintagestory.Client.NoObf.ChunkTesselatorManager")
+$onBefore = if ($chunkTessMgr) { $chunkTessMgr.GetMethod("OnBeforeFrame", $publicInstance, $null, [Type[]]@([float]), $null) } else { $null }
+Emit-Check "ChunkTesselatorManager.OnBeforeFrame" ($null -ne $onBefore) ([string]$onBefore)
+if (-not $onBefore) { $failed++ }
+
+$chunkUploadOpt = $mod.GetType("OptiTime.ChunkUploadOptimization")
+$chunkUploadPrefix = if ($chunkUploadOpt) { $chunkUploadOpt.GetMethod("OnBeforeFrame_Prefix", $anyStatic) } else { $null }
+Emit-Check "ChunkUploadOptimization prefix exists" ($null -ne $chunkUploadPrefix) ([string]$chunkUploadPrefix)
+if (-not $chunkUploadPrefix) { $failed++ }
 
 if ($failed -gt 0) {
     exit 1
