@@ -23,13 +23,14 @@ namespace OptiTime
     public static class ParticleOptimization
     {
         // --- Configuration ---
-        private static int cachedViewDistance = 256;
-        private static bool scalingEnabled;
+        private static volatile int cachedViewDistance = 256;
+        private static volatile bool optimizationsEnabled;
+        private static volatile bool scalingEnabled;
         private static Action<string> logger;
 
         // --- Frustum culling state ---
         private static FrustumCulling frustumCuller;
-        private static bool frustumAvailable;
+        private static volatile bool frustumAvailable;
 
         // --- Pool occupancy state (cached per-pool via reflection) ---
         private static readonly AccessTools.FieldRef<ParticlePoolQuads, int> poolSizeRef =
@@ -41,7 +42,7 @@ namespace OptiTime
         // We skip all rejection on off-thread pools when these mods are detected.
         private static readonly AccessTools.FieldRef<ParticlePoolQuads, bool> offthreadRef =
             AccessTools.FieldRefAccess<ParticlePoolQuads, bool>("offthread");
-        private static bool skipOffthreadRejection;
+        private static volatile bool skipOffthreadRejection;
 
         // --- Frame-time throttle state ---
         private static float spawnMultiplier = 1.0f;
@@ -58,6 +59,18 @@ namespace OptiTime
         public static void SetLogger(Action<string> log) => logger = log;
 
         public static void SetSkipOffthreadRejection(bool skip) => skipOffthreadRejection = skip;
+
+        public static void Configure(bool enabled, bool viewDistanceScalingEnabled)
+        {
+            optimizationsEnabled = enabled;
+            scalingEnabled = viewDistanceScalingEnabled;
+            if (!enabled)
+            {
+                spawnMultiplier = 1.0f;
+                lastFrameTimestamp = 0;
+                cachedFrameMs = 0;
+            }
+        }
 
         public static void ConfigureScaling(bool enabled)
         {
@@ -94,6 +107,9 @@ namespace OptiTime
         /// </summary>
         public static void UpdateFrameTime()
         {
+            if (!optimizationsEnabled)
+                return;
+
             long now = Stopwatch.GetTimestamp();
             if (lastFrameTimestamp != 0)
             {
@@ -118,6 +134,7 @@ namespace OptiTime
         public static void Cleanup()
         {
             cachedViewDistance = 256;
+            optimizationsEnabled = false;
             scalingEnabled = false;
             skipOffthreadRejection = false;
             logger = null;
@@ -137,7 +154,7 @@ namespace OptiTime
             IParticlePropertiesProvider particleProperties,
             ref int __result)
         {
-            if (!scalingEnabled)
+            if (!optimizationsEnabled)
                 return true;
 
             // Critical particles always pass
@@ -156,7 +173,7 @@ namespace OptiTime
             var rng = Rng;
 
             // --- TECHNIQUE 1: View distance rejection (cheapest check first) ---
-            if (cachedViewDistance >= 384)
+            if (scalingEnabled && cachedViewDistance >= 384)
             {
                 float vdReject = cachedViewDistance >= 512 ? 0.50f : 0.25f;
                 if (rng.NextDouble() < vdReject)

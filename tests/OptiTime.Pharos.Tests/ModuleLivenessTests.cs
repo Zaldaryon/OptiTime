@@ -66,61 +66,49 @@ public class ModuleLivenessTests : OptiTimeScenarioBase
     }
 
     /// <summary>
-    /// Pins the one finding here that is a mod defect rather than a harness
-    /// limit: turning <c>particles</c> off does not stop particle culling.
-    ///
-    /// <para>The Harmony prefix is gated on a different flag from the one the
-    /// command toggles:</para>
-    ///
-    /// <code>
-    /// public static bool SpawnParticlesPrefix(ParticlePoolQuads __instance, ...)
-    /// {
-    ///     if (!scalingEnabled) return true;
-    ///     ...
-    /// }
-    ///
-    /// // OptiTimeMod.ApplyRuntimeConfig
-    /// ParticleOptimization.ConfigureScaling(config.ParticleViewDistanceScalingEnabled);
-    /// </code>
-    ///
-    /// <para><c>.optitime particles off</c> sets <c>ParticleOptimizations = false</c>
-    /// and <c>status</c> prints <c>particles: OFF</c>. Nothing ever reads that
-    /// flag at run time, so the prefix keeps rejecting spawns and the counter
-    /// keeps counting. <c>ParticleViewDistanceScalingEnabled</c> is the flag that
-    /// matters, and it is not in <c>OptimizationMap</c>, so no command reaches
-    /// it at all.</para>
-    ///
-    /// <para>The test asserts what actually happens and names why, so it fails
-    /// loudly if the mod is fixed rather than quietly passing on the old
-    /// behaviour.</para>
+    /// Verifies that toggling <c>particles</c> off stops particle culling at
+    /// runtime without requiring a restart, and turning it back on resumes
+    /// spawn filtering.
     /// </summary>
     [ClientServerScenario(TimeoutMs = 900_000)]
-    public async Task ParticleOptionDoesNotGateItsOwnOptimization()
+    public async Task ParticleOptionGatesItsOwnOptimizationAtRuntime()
     {
         await SettleInAPopulatedWorldAsync();
 
-        await SetOptimizationAsync("particles", enabled: false);
-        DiagCounters off = await CaptureDiagAsync("particles");
+        try
+        {
+            await SetOptimizationAsync("particles", enabled: false);
+            DiagCounters off = await CaptureDiagAsync("particles", frames: 120);
 
-        CommandOutput reply = await RunCommandAsync($"{OptiTimeConfig.Command} particles off");
-        await WriteArtifactAsync(nameof(ModuleLivenessTests), "particles-off.txt",
-            Unescape(reply.Text));
+            CommandOutput reply = await RunCommandAsync($"{OptiTimeConfig.Command} particles off");
+            await WriteArtifactAsync(nameof(ModuleLivenessTests), "particles-off.txt",
+                Unescape(reply.Text));
 
-        double requestedWithOptionOff = off.Require(DiagCounter.ParticlesRequested, "particles");
+            double requestedWithOptionOff = off.Require(DiagCounter.ParticlesRequested, "particles");
 
-        Console.WriteLine(
-            $"particles: option OFF, counter still saw {requestedWithOptionOff} spawn requests");
+            Console.WriteLine(
+                $"particles: option OFF, counter saw {requestedWithOptionOff} spawn requests");
 
-        Assert.True(requestedWithOptionOff > 0,
-            "The particle counter went to zero with 'particles' off, which means the option " +
-            "does gate its optimization after all and this finding no longer applies. " +
-            "Update this test and finding 4.5 in the report.");
+            Assert.Equal(0, requestedWithOptionOff);
 
-        Assert.True(Unescape(reply.Text).Contains("restart", StringComparison.OrdinalIgnoreCase),
-            "'.optitime particles off' did not tell the player a restart is required. The mod " +
-            "applies its Harmony patches once at boot, so a runtime toggle of any " +
-            "patch-backed option changes the flag and not the behaviour - the player needs " +
-            "to be told.");
+            Assert.True(Unescape(reply.Text).Contains("restart", StringComparison.OrdinalIgnoreCase),
+                "'.optitime particles off' did not tell the player a restart is required.");
+
+            await SetOptimizationAsync("particles", enabled: true);
+            DiagCounters on = await CaptureDiagAsync("particles", frames: 120);
+            double requestedWithOptionOn = on.Require(DiagCounter.ParticlesRequested, "particles");
+            for (int attempt = 0; attempt < 4 && requestedWithOptionOn == 0; attempt++)
+            {
+                on = await CaptureDiagAsync("particles", frames: 120);
+                requestedWithOptionOn = on.Require(DiagCounter.ParticlesRequested, "particles");
+            }
+            Assert.True(requestedWithOptionOn > 0,
+                "Re-enabling 'particles' did not resume particle optimization filtering.");
+        }
+        finally
+        {
+            await SetOptimizationAsync("particles", enabled: true);
+        }
     }
 
     private static string Unescape(string text) =>

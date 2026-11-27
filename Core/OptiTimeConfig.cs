@@ -67,6 +67,7 @@ namespace OptiTime
                 [nameof(DynamicLightOptimizations)] = v => DynamicLightOptimizations = v,
                 [nameof(EntityAnimationOptimizations)] = v => EntityAnimationOptimizations = v,
                 [nameof(ParticleOptimizations)] = v => ParticleOptimizations = v,
+                [nameof(ParticleViewDistanceScalingEnabled)] = v => ParticleViewDistanceScalingEnabled = v,
                 [nameof(OcclusionCullingOptimizations)] = v => OcclusionCullingOptimizations = v,
                 [nameof(AmbientSoundOptimizations)] = v => AmbientSoundOptimizations = v,
                 [nameof(FlySoundOptimizations)] = v => FlySoundOptimizations = v,
@@ -86,6 +87,7 @@ namespace OptiTime
                 [nameof(SuppressCompatibilityMessages)] = v => SuppressCompatibilityMessages = v,
                 [nameof(GuiManagerNoLinqEnabled)] = v => GuiManagerNoLinqEnabled = v,
                 [nameof(GuiManagerInputNoLinqEnabled)] = v => GuiManagerInputNoLinqEnabled = v,
+                [nameof(GuiManagerMouseMoveCoalescingEnabled)] = v => GuiManagerMouseMoveCoalescingEnabled = v,
                 [nameof(EnableProfiling)] = v => EnableProfiling = v
             };
 
@@ -94,6 +96,7 @@ namespace OptiTime
                 [nameof(DynamicLightOptimizations)] = () => DynamicLightOptimizations,
                 [nameof(EntityAnimationOptimizations)] = () => EntityAnimationOptimizations,
                 [nameof(ParticleOptimizations)] = () => ParticleOptimizations,
+                [nameof(ParticleViewDistanceScalingEnabled)] = () => ParticleViewDistanceScalingEnabled,
                 [nameof(OcclusionCullingOptimizations)] = () => OcclusionCullingOptimizations,
                 [nameof(AmbientSoundOptimizations)] = () => AmbientSoundOptimizations,
                 [nameof(FlySoundOptimizations)] = () => FlySoundOptimizations,
@@ -113,6 +116,7 @@ namespace OptiTime
                 [nameof(SuppressCompatibilityMessages)] = () => SuppressCompatibilityMessages,
                 [nameof(GuiManagerNoLinqEnabled)] = () => GuiManagerNoLinqEnabled,
                 [nameof(GuiManagerInputNoLinqEnabled)] = () => GuiManagerInputNoLinqEnabled,
+                [nameof(GuiManagerMouseMoveCoalescingEnabled)] = () => GuiManagerMouseMoveCoalescingEnabled,
                 [nameof(EnableProfiling)] = () => EnableProfiling
             };
         }
