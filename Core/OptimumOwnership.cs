@@ -62,7 +62,15 @@ namespace OptiTime
                 "Vintagestory.API.Common.FrameProfilerUtil:Leave"
             }, "OptimumPreciseFramePacing"),
             new Feature(nameof(OptiTimeConfig.DynamicLightOptimizations), new[] { "Vintagestory.Client.NoObf.SystemRenderPlayerEffects:onBeforeRender" }, "OptimumDynamicLightCache"),
-            new Feature(nameof(OptiTimeConfig.EntityAnimationOptimizations), new[] { "Vintagestory.Client.NoObf.SystemRenderEntities:OnBeforeRender" }),
+            new Feature(nameof(OptiTimeConfig.EntityAnimationOptimizations), new[]
+            {
+                "Vintagestory.Client.NoObf.SystemRenderEntities:OnBeforeRender",
+                "Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderOpaque3D",
+                "Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderAfterOIT",
+                "Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderFrame2D",
+                "Vintagestory.Client.NoObf.HudEntityNameTags:OnRenderGUI",
+                "Vintagestory.Client.NoObf.ClientMain:RemoveEntityRenderer"
+            }),
             new Feature(nameof(OptiTimeConfig.ParticleOptimizations), new[]
             {
                 "Vintagestory.Client.NoObf.ParticlePoolQuads:SpawnParticles",

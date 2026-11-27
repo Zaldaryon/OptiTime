@@ -388,6 +388,7 @@ namespace OptiTime
                             target,
                             prefix: new HarmonyMethod(typeof(EntityAnimationOptimization), "OptimizeEntityAnimations"));
                         api.Logger.Notification("[OptiTime] Entity animation optimization loaded");
+                        PatchVisibleEntityPasses(api);
                     }
                 }
                 catch (Exception ex)
@@ -888,6 +889,56 @@ namespace OptiTime
             catch { }
         }
 
+        /// <summary>
+        /// Points the entity render passes and the name tag HUD at the renderers the entity animation
+        /// pass marked visible. Each pass is independent: one that another mod already patches keeps
+        /// walking every renderer, and none is patched unless removed renderers can be tracked.
+        /// </summary>
+        private void PatchVisibleEntityPasses(ICoreClientAPI api)
+        {
+            try
+            {
+                var removeRenderer = AccessTools.Method("Vintagestory.Client.NoObf.ClientMain:RemoveEntityRenderer", new Type[] { typeof(Entity) })
+                    ?? throw new InvalidOperationException("ClientMain.RemoveEntityRenderer not found");
+                harmony.Patch(removeRenderer,
+                    postfix: new HarmonyMethod(typeof(EntityAnimationOptimization), nameof(EntityAnimationOptimization.OnEntityRendererRemoved)));
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Warning("[OptiTime] Visible entity list disabled: " + ex.Message);
+                return;
+            }
+
+            var renderPass = new HarmonyMethod(typeof(EntityAnimationOptimization), nameof(EntityAnimationOptimization.TranspileRenderPass));
+            var nameTags = new HarmonyMethod(typeof(EntityAnimationOptimization), nameof(EntityAnimationOptimization.RenderVisibleNameTags));
+            var passes = new (string Target, HarmonyMethod Prefix, HarmonyMethod Transpiler)[]
+            {
+                ("Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderOpaque3D", null, renderPass),
+                ("Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderAfterOIT", null, renderPass),
+                ("Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderFrame2D", null, renderPass),
+                ("Vintagestory.Client.NoObf.HudEntityNameTags:OnRenderGUI", nameTags, null)
+            };
+
+            foreach (var pass in passes)
+            {
+                try
+                {
+                    var method = AccessTools.Method(pass.Target, new Type[] { typeof(float) });
+                    if (method == null || HasAnyConflictingPatches(method))
+                    {
+                        api.Logger.Warning($"[OptiTime] Visible entity list not applied to {pass.Target} (missing or patched by another mod)");
+                        continue;
+                    }
+
+                    harmony.Patch(method, prefix: pass.Prefix, transpiler: pass.Transpiler);
+                }
+                catch (Exception ex)
+                {
+                    api.Logger.Warning($"[OptiTime] Visible entity list not applied to {pass.Target}: {ex.Message}");
+                }
+            }
+        }
+
         private bool HasConflictingPrefix(System.Reflection.MethodBase method)
         {
             try
@@ -1200,6 +1251,7 @@ namespace OptiTime
                 HandbookOptimization.Cleanup();
                 EntityInterpolationOptimization.Cleanup();
                 RepulseAgentsOptimization.Cleanup();
+                EntityAnimationOptimization.Cleanup();
 
                 // Cleanup recipe lookup optimization (no resources currently)
                 RecipeLookupCacheOptimization.Cleanup();
