@@ -307,6 +307,30 @@ namespace OptiTime
                 api.Logger.Warning("[OptiTime] Chunk upload optimization failed: " + ex.Message);
             }
 
+            if (api.Side == EnumAppSide.Client)
+            {
+                try
+                {
+                    var frustumRangeTarget = AccessTools.Method(
+                        "Vintagestory.API.Client.FrustumCulling:InFrustumAndRange",
+                        new Type[] { typeof(Vintagestory.API.MathTools.Sphere), typeof(bool), typeof(int) });
+                    if (frustumRangeTarget != null &&
+                        !HasAnyConflictingPatches(frustumRangeTarget) &&
+                        (!optimumHostDetected || OptimumOwnership.IsVanillaBody(frustumRangeTarget, GameVersion.ShortGameVersion)))
+                    {
+                        FrustumCullingOptimization.SetClientActive(true);
+                        harmony.Patch(frustumRangeTarget,
+                            prefix: new HarmonyMethod(typeof(FrustumCullingOptimization), nameof(FrustumCullingOptimization.InFrustumAndRange_Prefix)));
+                        api.Logger.Notification("[OptiTime] Frustum range-first culling optimization loaded");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    FrustumCullingOptimization.Cleanup();
+                    api.Logger.Warning("[OptiTime] Frustum range-first culling optimization failed: " + ex.Message);
+                }
+            }
+
             try
             {
                 var onNewFrame = AccessTools.Method("Vintagestory.Client.ScreenManager:OnNewFrame", new Type[] { typeof(float) });
@@ -1307,6 +1331,7 @@ namespace OptiTime
                 ShadowOptimization.Cleanup();
                 EntityShadowCullingOptimization.Cleanup();
                 OcclusionCullingOptimization.Cleanup();
+                FrustumCullingOptimization.Cleanup();
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
                 SafeCatalogIsolation.Cleanup();

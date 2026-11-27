@@ -16,6 +16,7 @@ namespace OptiTime
         private static readonly Dictionary<string, string> Methods1227 = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["EntityBehaviorInterpolatePosition:OnReceivedServerPos(System.Boolean,Vintagestory.API.Common.EnumHandling&)"] = "135:ac67b1d0fc6c0c535b0282e6",
+            ["Vintagestory.API.Client.FrustumCulling:InFrustumAndRange(Vintagestory.API.MathTools.Sphere,System.Boolean,System.Int32)"] = "100:57fc811bce769ca02486db53",
             ["Vintagestory.API.Client.GuiComposer:PostRender(System.Single)"] = "72:0e1c3e07b09c16e5782dfc3a",
             ["Vintagestory.API.Client.GuiElementItemSlotGridBase:ComposeInteractiveElements()"] = "480:26de8fb8f5322bf9303c2f0e",
             ["Vintagestory.API.Common.FrameProfilerUtil:Leave()"] = "47:79fe32e9df5a603e8b225905",
