@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Text.Json;
+using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Zaldaryon.Pharos.Assertions;
@@ -312,7 +314,7 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
                 Assert.True(fastPath > 0,
                     "The GUI Manager render fast path did not execute while an inventory dialog was open.");
                 Assert.True(fastPath <= calls,
-                    $"guimgr reports {fastPath} fast-path renders out of {calls} calls. " +
+                $"guimgr reports {fastPath} fast-path renders out of {calls} calls. " +
                     "More fast-path renders than total calls means the two counters are " +
                     "incremented on different code paths and at least one is wrong.");
             }
@@ -322,6 +324,108 @@ public class GuiOptimizationTests : OptiTimeScenarioBase
                 await Session!.StepFramesAsync(5);
             }
         });
+    }
+
+    /// <summary>
+    /// Verifies that a dialog throwing during OnRenderGUI or closing multiple
+    /// sibling dialogs mid-frame keeps MvMatrix depth balanced and leaves the
+    /// live GUI pipeline responsive without double-rendering or overflowing.
+    /// </summary>
+    [ClientServerScenario(TimeoutMs = 600_000)]
+    public async Task ThrowingAndCascadeClosingDialogsKeepMatrixStackBalanced()
+    {
+        await WarmUpAsync();
+        await WithOptimizationStateRestoredAsync("guimgr", async () =>
+        {
+            await SetOptimizationAsync("guimgr", enabled: true);
+
+            object clientObj = Client!.Client;
+            ICoreClientAPI capi = GetDialogApi(clientObj);
+            int depthBefore = Client.RunOnClientThread(() => ReadMatrixDepth(clientObj));
+
+            var cascadeVictim = new TestProbeDialog(capi, "ProbeVictim", null);
+            var cascadeCloser = new TestProbeDialog(capi, "ProbeCloser", dlg =>
+            {
+                dlg.TryClose();
+                cascadeVictim.TryClose();
+            });
+            int throwFramesRemaining = 3;
+            var throwingDialog = new TestProbeDialog(capi, "ProbeThrower", _ =>
+            {
+                if (throwFramesRemaining > 0)
+                {
+                    throwFramesRemaining--;
+                    throw new InvalidOperationException("Simulated dialog render failure");
+                }
+            });
+
+            Client.RunOnClientThread(() =>
+            {
+                capi.Gui.RegisterDialog(cascadeVictim, cascadeCloser, throwingDialog);
+                cascadeVictim.TryOpen();
+                cascadeCloser.TryOpen();
+                throwingDialog.TryOpen();
+            });
+
+            try
+            {
+                await Session!.StepFramesAsync(15);
+
+                int depthAfter = Client.RunOnClientThread(() => ReadMatrixDepth(clientObj));
+                Assert.Equal(depthBefore, depthAfter);
+                Assert.Equal(0, throwFramesRemaining);
+
+                await OpenDialogRequiredAsync("GuiDialogInventory", "inventorydialog");
+                Assert.True(Client.Ui!.IsOpen("GuiDialogInventory"), "Inventory failed to open after throwing dialog.");
+                await CloseDialogAsync("GuiDialogInventory");
+                AssertNoUnexpectedClientErrors("guimgr matrix balance");
+            }
+            finally
+            {
+                Client.RunOnClientThread(() =>
+                {
+                    throwingDialog.TryClose();
+                    cascadeCloser.TryClose();
+                    cascadeVictim.TryClose();
+                });
+                await Session!.StepFramesAsync(5);
+            }
+        });
+    }
+
+    private static ICoreClientAPI GetDialogApi(object clientObj)
+    {
+        FieldInfo? apiField = clientObj.GetType().GetField("api", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        return (ICoreClientAPI)(apiField?.GetValue(clientObj)
+            ?? throw new InvalidOperationException("Could not read ClientMain.api"));
+    }
+
+    private static int ReadMatrixDepth(object clientObj)
+    {
+        FieldInfo? mvField = clientObj.GetType().GetField("MvMatrix", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        object mv = mvField?.GetValue(clientObj) ?? throw new InvalidOperationException("Could not read ClientMain.MvMatrix");
+        PropertyInfo? countProp = mv.GetType().GetProperty("Count", BindingFlags.Instance | BindingFlags.Public);
+        return (int)(countProp?.GetValue(mv) ?? throw new InvalidOperationException("Could not read StackMatrix4.Count"));
+    }
+
+    private sealed class TestProbeDialog : GuiDialog
+    {
+        private readonly Action<GuiDialog>? onRender;
+
+        public TestProbeDialog(ICoreClientAPI capi, string debugName, Action<GuiDialog>? onRender) : base(capi)
+        {
+            DebugNameValue = debugName;
+            this.onRender = onRender;
+        }
+
+        private string DebugNameValue { get; }
+        public override string DebugName => DebugNameValue;
+        public override string ToggleKeyCombinationCode => null!;
+
+        public override void OnRenderGUI(float deltaTime)
+        {
+            onRender?.Invoke(this);
+        }
     }
 
     private string? DialogHotkey(string dialogName) => Client!.RunOnClientThread(() =>
