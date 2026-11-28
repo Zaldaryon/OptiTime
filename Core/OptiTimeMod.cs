@@ -1037,6 +1037,7 @@ namespace OptiTime
 
         private void OnLeaveWorld()
         {
+            AmbientSoundOptimization.Cleanup();
             DynamicLightOptimization.Cleanup();
             EntityShadowCullingOptimization.OnLeaveWorld();
             GuiItemRenderInfoOptimization.ResetSessionState();
