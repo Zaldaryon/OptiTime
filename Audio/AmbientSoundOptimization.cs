@@ -1,8 +1,4 @@
 using HarmonyLib;
-using System.Collections.Generic;
-using System.Reflection;
-using Vintagestory.API.Common.Entities;
-using Vintagestory.API.MathTools;
 using Vintagestory.Client.NoObf;
 using OptiTime.Diagnostics;
 
@@ -10,19 +6,22 @@ namespace OptiTime
 {
     public class AmbientSoundOptimization
     {
-        private static Vec3d lastPlayerPos;
+        private const double PositionThresholdSquared = 0.09;
+        private const int FallbackTickInterval = 10;
+
+        private static double lastPlayerX = double.NaN;
+        private static double lastPlayerY = double.NaN;
+        private static double lastPlayerZ = double.NaN;
         private static int fallbackCounter;
 
         private static readonly AccessTools.FieldRef<ClientSystem, ClientMain> gameRef =
             AccessTools.FieldRefAccess<ClientSystem, ClientMain>("game");
-        private static readonly AccessTools.FieldRef<SystemPlayerSounds, Dictionary<AmbientSound, AmbientSound>> ambientSoundsRef =
-            AccessTools.FieldRefAccess<SystemPlayerSounds, Dictionary<AmbientSound, AmbientSound>>("ambientSounds");
-        private static readonly MethodInfo updatePositionMethod =
-            AccessTools.Method(typeof(AmbientSound), "updatePosition", new[] { typeof(EntityPos) });
 
         public static void Cleanup()
         {
-            lastPlayerPos = null;
+            lastPlayerX = double.NaN;
+            lastPlayerY = double.NaN;
+            lastPlayerZ = double.NaN;
             fallbackCounter = 0;
         }
 
@@ -30,35 +29,39 @@ namespace OptiTime
         {
             try
             {
-                var game = gameRef(__instance);
-                var player = game.EntityPlayer;
-                var currentPos = player.Pos.XYZ;
-
-                if (++fallbackCounter >= 10)
+                if (__instance == null)
                 {
-                    fallbackCounter = 0;
+                    return true;
                 }
-                else if (lastPlayerPos != null)
+
+                var pos = gameRef(__instance)?.EntityPlayer?.Pos;
+                if (pos == null)
                 {
-                    if (currentPos.SquareDistanceTo(lastPlayerPos) < 0.09)
+                    return true;
+                }
+
+                double x = pos.X;
+                double y = pos.InternalY;
+                double z = pos.Z;
+
+                if (++fallbackCounter < FallbackTickInterval)
+                {
+                    double dx = x - lastPlayerX;
+                    double dy = y - lastPlayerY;
+                    double dz = z - lastPlayerZ;
+                    if (dx * dx + dy * dy + dz * dz < PositionThresholdSquared)
                     {
                         ModuleAmbientSound.OnCall(true);
                         return false;
                     }
                 }
 
+                fallbackCounter = 0;
+                lastPlayerX = x;
+                lastPlayerY = y;
+                lastPlayerZ = z;
                 ModuleAmbientSound.OnCall(false);
-
-                if (lastPlayerPos == null)
-                    lastPlayerPos = new Vec3d();
-                lastPlayerPos.Set(currentPos.X, currentPos.Y, currentPos.Z);
-
-                var ambientSounds = ambientSoundsRef(__instance);
-                var posArg = new object[] { player.Pos };
-                foreach (var kvp in ambientSounds)
-                    updatePositionMethod.Invoke(kvp.Value, posArg);
-
-                return false;
+                return true;
             }
             catch
             {
