@@ -2,7 +2,7 @@
 
 Clientside performance optimizations for Vintage Story through shader optimization and code patches.
 
-Current version: 1.5.18
+Current version: 1.5.19
 
 If you'd like to support my mods and need a server of your own, check out:
 
