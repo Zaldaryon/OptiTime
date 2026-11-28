@@ -28,7 +28,7 @@ public sealed class ModuleFramePace : IDiagModule
     {
         if (!IsAvailable)
         {
-            DiagLog.Line(api, "framepace", "DISABLED in config (PreciseFramePacingEnabled=false)");
+            DiagLog.Line(api, "framepace", "unavailable (PreciseFramePacingEnabled is off, or auto-disabled on non-Windows)");
             return;
         }
         var (precise, fallback, sleepMs, avgOvershoot, maxOvershoot, p99Overshoot) = ProfilingHelper.GetFramePacingStats();
