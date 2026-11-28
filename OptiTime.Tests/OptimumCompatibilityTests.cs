@@ -15,7 +15,7 @@ namespace OptiTime.Tests;
 
 public class OptimumCompatibilityTests
 {
-    private const string SupportedGameVersion = "1.22.7";
+    private static readonly string SupportedGameVersion = "1.22.7";
 
     private static readonly string[] OptimumLangKeys =
     {

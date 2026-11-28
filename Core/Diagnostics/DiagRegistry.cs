@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Vintagestory.API.Client;
 
 namespace OptiTime.Diagnostics;
@@ -31,11 +32,13 @@ public static class DiagRegistry
     public static void DumpAll(ICoreClientAPI api)
     {
         DiagLog.Header(api, "diagnostic dump (all modules)");
+        // Unavailable modules can never be enabled, so they are only listed while some module is on.
+        bool anyEnabled = modules.Values.Any(m => m.Enabled);
         foreach (var m in modules.Values)
         {
             if (!m.IsAvailable)
             {
-                DiagLog.Line(api, m.ShortName, "DISABLED in config");
+                if (anyEnabled) DiagLog.Line(api, m.ShortName, "unavailable");
                 continue;
             }
             if (!m.Enabled) continue;
