@@ -51,15 +51,19 @@ namespace OptiTime
                     BuildAllStacksOrderCache(capi.World, allStacks);
                     token.ThrowIfCancellationRequested();
 
-                    Parallel.ForEach(allStacks, new ParallelOptions { CancellationToken = token }, stack =>
+                    var stackReflection = ResolveStackIndexReflection();
+                    int maxParallelism = Math.Max(1, Math.Min(2, Environment.ProcessorCount / 2));
+                    Parallel.ForEach(allStacks, new ParallelOptions
                     {
-                        IndexStackRelationships(capi, stack, allStacks);
+                        CancellationToken = token,
+                        MaxDegreeOfParallelism = maxParallelism
+                    }, stack =>
+                    {
+                        IndexStackRelationships(capi, stack, stackReflection);
                     });
 
                     token.ThrowIfCancellationRequested();
                     IndexEntityRelationships(capi);
-                    token.ThrowIfCancellationRequested();
-                    IndexStorageRelationships(capi, allStacks);
                     token.ThrowIfCancellationRequested();
 
                     // Check generation before writing results — if Cleanup ran, discard
@@ -96,7 +100,79 @@ namespace OptiTime
             });
         }
 
-        private static void IndexStackRelationships(ICoreClientAPI capi, ItemStack stack, ItemStack[] allStacks)
+        private readonly struct StackIndexReflection
+        {
+            public readonly Type HarvestableType;
+            public readonly System.Reflection.FieldInfo HarvestableStacksField;
+            public readonly Type FruitingBushType;
+            public readonly System.Reflection.FieldInfo FruitingBushStacksField;
+            public readonly Type FruitTreeBranchType;
+            public readonly System.Reflection.FieldInfo FruitTreeTypePropsField;
+            public readonly Type BlockToolMoldType;
+            public readonly Type BlockIngotMoldType;
+            public readonly Type BlockAnvilType;
+
+            public StackIndexReflection(
+                Type harvestableType,
+                System.Reflection.FieldInfo harvestableStacksField,
+                Type fruitingBushType,
+                System.Reflection.FieldInfo fruitingBushStacksField,
+                Type fruitTreeBranchType,
+                System.Reflection.FieldInfo fruitTreeTypePropsField,
+                Type blockToolMoldType,
+                Type blockIngotMoldType,
+                Type blockAnvilType)
+            {
+                HarvestableType = harvestableType;
+                HarvestableStacksField = harvestableStacksField;
+                FruitingBushType = fruitingBushType;
+                FruitingBushStacksField = fruitingBushStacksField;
+                FruitTreeBranchType = fruitTreeBranchType;
+                FruitTreeTypePropsField = fruitTreeTypePropsField;
+                BlockToolMoldType = blockToolMoldType;
+                BlockIngotMoldType = blockIngotMoldType;
+                BlockAnvilType = blockAnvilType;
+            }
+        }
+
+        private static StackIndexReflection ResolveStackIndexReflection()
+        {
+            Type harvestableType = AccessTools.TypeByName("Vintagestory.GameContent.BlockBehaviorHarvestable");
+            Type fruitingBushType = AccessTools.TypeByName("Vintagestory.GameContent.BlockBehaviorFruitingBush");
+            Type fruitTreeBranchType = AccessTools.TypeByName("Vintagestory.GameContent.BlockFruitTreeBranch");
+
+            return new StackIndexReflection(
+                harvestableType,
+                harvestableType != null ? AccessTools.Field(harvestableType, "harvestedStacks") : null,
+                fruitingBushType,
+                fruitingBushType != null ? AccessTools.Field(fruitingBushType, "harvestedStacks") : null,
+                fruitTreeBranchType,
+                fruitTreeBranchType != null ? AccessTools.Field(fruitTreeBranchType, "TypeProps") : null,
+                AccessTools.TypeByName("Vintagestory.GameContent.BlockToolMold"),
+                AccessTools.TypeByName("Vintagestory.GameContent.BlockIngotMold"),
+                AccessTools.TypeByName("Vintagestory.GameContent.BlockAnvil"));
+        }
+
+        private static BlockBehavior FindBlockBehavior(Block block, Type behaviorType)
+        {
+            if (behaviorType == null || block?.BlockBehaviors == null)
+            {
+                return null;
+            }
+
+            BlockBehavior[] behaviors = block.BlockBehaviors;
+            for (int i = 0; i < behaviors.Length; i++)
+            {
+                if (behaviorType.IsInstanceOfType(behaviors[i]))
+                {
+                    return behaviors[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static void IndexStackRelationships(ICoreClientAPI capi, ItemStack stack, in StackIndexReflection refl)
         {
             try
             {
@@ -129,60 +205,33 @@ namespace OptiTime
                     // Ref: CollectibleBehaviorHandbookTextAndExtraInfo.cs lines 226-260, 340-365
                     BlockDropItemStack[] harvestedStacks = null;
 
-                    var harvestableType = AccessTools.TypeByName("Vintagestory.GameContent.BlockBehaviorHarvestable");
-                    if (harvestableType != null)
+                    BlockBehavior harvestable = FindBlockBehavior(stack.Block, refl.HarvestableType);
+                    if (harvestable != null)
                     {
-                        var getBehaviorMethod = AccessTools.Method(stack.Block.GetType(), "GetBehavior");
-                        if (getBehaviorMethod != null)
+                        harvestedStacks = refl.HarvestableStacksField?.GetValue(harvestable) as BlockDropItemStack[];
+                    }
+
+                    // BlockBehaviorFruitingBush: berry bushes (blueberry, cranberry, etc.)
+                    if (harvestedStacks == null)
+                    {
+                        BlockBehavior fruitingBush = FindBlockBehavior(stack.Block, refl.FruitingBushType);
+                        if (fruitingBush != null)
                         {
-                            var genericMethod = getBehaviorMethod.MakeGenericMethod(harvestableType);
-                            var harvestable = genericMethod.Invoke(stack.Block, null);
-                            if (harvestable != null)
-                            {
-                                var harvestedStacksField = AccessTools.Field(harvestableType, "harvestedStacks");
-                                harvestedStacks = harvestedStacksField?.GetValue(harvestable) as BlockDropItemStack[];
-                            }
+                            harvestedStacks = refl.FruitingBushStacksField?.GetValue(fruitingBush) as BlockDropItemStack[];
                         }
                     }
 
-                    // BlockBehaviorFruitingBush — berry bushes (blueberry, cranberry, etc.)
-                    // Ref: BlockBehaviorFruitingBush.cs — harvestedStacks loaded from block.Attributes["harvestedStacks"]
-                    if (harvestedStacks == null)
+                    // BlockFruitTreeBranch: fruit trees (cherry, peach, etc.)
+                    if (harvestedStacks == null && refl.FruitTreeBranchType != null && refl.FruitTreeBranchType.IsInstanceOfType(stack.Block))
                     {
-                        var fruitingBushType = AccessTools.TypeByName("Vintagestory.GameContent.BlockBehaviorFruitingBush");
-                        if (fruitingBushType != null)
+                        if (refl.FruitTreeTypePropsField?.GetValue(stack.Block) is System.Collections.IDictionary typeProps)
                         {
-                            var getBehaviorMethod = AccessTools.Method(stack.Block.GetType(), "GetBehavior");
-                            if (getBehaviorMethod != null)
+                            string treeType = stack.Attributes?.GetString("type", "unknown") ?? "unknown";
+                            if (typeProps.Contains(treeType))
                             {
-                                var genericMethod = getBehaviorMethod.MakeGenericMethod(fruitingBushType);
-                                var fruitingBush = genericMethod.Invoke(stack.Block, null);
-                                if (fruitingBush != null)
-                                {
-                                    var field = AccessTools.Field(fruitingBushType, "harvestedStacks");
-                                    harvestedStacks = field?.GetValue(fruitingBush) as BlockDropItemStack[];
-                                }
-                            }
-                        }
-                    }
-
-                    // BlockFruitTreeBranch — fruit trees (cherry, peach, etc.)
-                    // Ref: BlockFruitTreeBranch.cs — TypeProps[type].FruitStacks
-                    if (harvestedStacks == null)
-                    {
-                        var fruitTreeBranchType = AccessTools.TypeByName("Vintagestory.GameContent.BlockFruitTreeBranch");
-                        if (fruitTreeBranchType != null && fruitTreeBranchType.IsInstanceOfType(stack.Block))
-                        {
-                            var typePropsField = AccessTools.Field(fruitTreeBranchType, "TypeProps");
-                            if (typePropsField?.GetValue(stack.Block) is System.Collections.IDictionary typeProps)
-                            {
-                                string treeType = stack.Attributes?.GetString("type", "unknown") ?? "unknown";
-                                if (typeProps.Contains(treeType))
-                                {
-                                    var props = typeProps[treeType];
-                                    var fruitStacksField = AccessTools.Field(props.GetType(), "FruitStacks");
-                                    harvestedStacks = fruitStacksField?.GetValue(props) as BlockDropItemStack[];
-                                }
+                                var props = typeProps[treeType];
+                                var fruitStacksField = props != null ? AccessTools.Field(props.GetType(), "FruitStacks") : null;
+                                harvestedStacks = fruitStacksField?.GetValue(props) as BlockDropItemStack[];
                             }
                         }
                     }
@@ -217,18 +266,14 @@ namespace OptiTime
                     fuelsCache.Enqueue(stack);
                 }
 
-                var blockToolMoldType = AccessTools.TypeByName("Vintagestory.GameContent.BlockToolMold");
-                var blockIngotMoldType = AccessTools.TypeByName("Vintagestory.GameContent.BlockIngotMold");
                 var collectibleType = stack.Collectible.GetType();
-
-                if ((blockToolMoldType != null && blockToolMoldType.IsAssignableFrom(collectibleType)) ||
-                    (blockIngotMoldType != null && blockIngotMoldType.IsAssignableFrom(collectibleType)))
+                if ((refl.BlockToolMoldType != null && refl.BlockToolMoldType.IsAssignableFrom(collectibleType)) ||
+                    (refl.BlockIngotMoldType != null && refl.BlockIngotMoldType.IsAssignableFrom(collectibleType)))
                 {
                     moldsCache.Enqueue(stack);
                 }
 
-                var blockAnvilType = AccessTools.TypeByName("Vintagestory.GameContent.BlockAnvil");
-                if (blockAnvilType != null && blockAnvilType.IsAssignableFrom(collectibleType))
+                if (refl.BlockAnvilType != null && refl.BlockAnvilType.IsAssignableFrom(collectibleType))
                 {
                     anvilsCache.Enqueue(stack);
                 }
