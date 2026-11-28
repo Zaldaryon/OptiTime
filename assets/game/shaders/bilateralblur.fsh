@@ -27,15 +27,17 @@ void main(void)
 
 	float wsum = w1 + w2 + w3 + w4 + w5 + w6 + w7 + w8 + w9;
 
-	vec4 out_colour = texture(inputTexture, texCoords[1]) * w1;
-	out_colour += texture(inputTexture, texCoords[2]) * w2;
-	out_colour += texture(inputTexture, texCoords[3]) * w3;
-	out_colour += texture(inputTexture, texCoords[4]) * w4;
-	out_colour += texture(inputTexture, texCoords[5]) * w5;
-	out_colour += texture(inputTexture, texCoords[6]) * w6;
-	out_colour += texture(inputTexture, texCoords[7]) * w7;
-	out_colour += texture(inputTexture, texCoords[8]) * w8;
-	out_colour += texture(inputTexture, texCoords[9]) * w9;
+	// SSAO outputs monochrome (occ, occ, occ, 1.0) and final.fsh reads only .r; accumulate as scalar float.
+	float outOcc = texture(inputTexture, texCoords[1]).r * w1;
+	outOcc += texture(inputTexture, texCoords[2]).r * w2;
+	outOcc += texture(inputTexture, texCoords[3]).r * w3;
+	outOcc += texture(inputTexture, texCoords[4]).r * w4;
+	outOcc += texture(inputTexture, texCoords[5]).r * w5;
+	outOcc += texture(inputTexture, texCoords[6]).r * w6;
+	outOcc += texture(inputTexture, texCoords[7]).r * w7;
+	outOcc += texture(inputTexture, texCoords[8]).r * w8;
+	outOcc += texture(inputTexture, texCoords[9]).r * w9;
 
-	outColor = out_colour / wsum;
+	float occ = outOcc / wsum;
+	outColor = vec4(occ, occ, occ, 1.0);
 }

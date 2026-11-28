@@ -80,6 +80,8 @@ namespace OptiTime
             ["shaders/chunkliquid.fsh"] = "ce805570dd44781a8dcf306efe2f5ae618667055779f7592c78c8c328c6ce694",
             ["shaders/chunkopaque.fsh"] = "546a8bce43b0e4032399cea9e18e6b1659df521dc4daf77176b7c13949605175",
             ["shaders/chunkshadowmap.fsh"] = "a96252453f35c30a7df5f2f0d4e174f4f01fb02a0037aaa1b1fb75d09028ef8a",
+            ["shaders/chunkshadowmap.vsh"] = "1cf6eb9b879fe868f404ac46df9b27531abade3c697b6eb0f5acfe2a15117c99",
+            ["shaders/godrays.fsh"] = "bc3396f4450cebc03138e711811c6e47f777626ea804cf1acad8cdd548b13064",
             ["shaders/ssao.fsh"] = "9f4b5a1a3c0fb5b76202c948c9d1369aaf2d532bdf967a3204d1dc96a2310a4d",
         };
 
