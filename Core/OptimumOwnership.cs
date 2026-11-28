@@ -57,6 +57,8 @@ namespace OptiTime
             "Vintagestory.API.Config.TranslationService:HasTranslation",
             "Vintagestory.Client.ScreenManager:OnNewFrame",
             "Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame",
+            "Vintagestory.Client.NoObf.ClientPlatformWindows:LoadFrameBuffer",
+            "Vintagestory.Client.NoObf.ClientPlatformWindows:SetupDefaultFrameBuffers",
             "Vintagestory.Client.NoObf.InventoryItemRenderer:GetItemStackRenderInfo",
             "Vintagestory.Client.NoObf.InventoryItemRenderer:RenderItemstackToGui",
             "Vintagestory.Client.NoObf.SystemRenderSunMoon:Dispose",
