@@ -208,14 +208,17 @@ namespace OptiTime
                         solidProgram.Stop();
                     }
 
-                    if (ShaderProgramBase.CurrentShaderProgram != chunkshadowmap)
+                    if (ShaderProgramBase.CurrentShaderProgram != chunkshadowmap && !chunkshadowmap.Disposed)
                     {
                         chunkshadowmap.Use();
                     }
 
-                    chunkshadowmap.MvpMatrix = shadowMvpMatrix;
-                    chunkshadowmap.Uniform("subpixelPaddingX", subPixelPaddingX);
-                    chunkshadowmap.Uniform("subpixelPaddingY", subPixelPaddingY);
+                    if (!chunkshadowmap.Disposed)
+                    {
+                        chunkshadowmap.MvpMatrix = shadowMvpMatrix;
+                        chunkshadowmap.Uniform("subpixelPaddingX", subPixelPaddingX);
+                        chunkshadowmap.Uniform("subpixelPaddingY", subPixelPaddingY);
+                    }
                 }
             }
             else

@@ -356,6 +356,40 @@ namespace OptiTime
                     api.Logger.Warning("[OptiTime] Frustum range-first culling optimization failed: " + ex.Message);
                 }
 
+                if (config.ShaderOptimizations && !ancestralBlissDetected)
+                {
+                    try
+                    {
+                        var setupFboTarget = AccessTools.Method(
+                            "Vintagestory.Client.NoObf.ClientPlatformWindows:SetupDefaultFrameBuffers",
+                            Type.EmptyTypes);
+                        var loadFboTarget = AccessTools.Method(
+                            "Vintagestory.Client.NoObf.ClientPlatformWindows:LoadFrameBuffer",
+                            new Type[] { typeof(EnumFrameBuffer) });
+                        if (setupFboTarget != null &&
+                            loadFboTarget != null &&
+                            !HasAnyConflictingPatches(setupFboTarget) &&
+                            !HasAnyConflictingPatches(loadFboTarget) &&
+                            (!optimumHostDetected ||
+                             (OptimumOwnership.IsVanillaBody(setupFboTarget, GameVersion.ShortGameVersion) &&
+                              OptimumOwnership.IsVanillaBody(loadFboTarget, GameVersion.ShortGameVersion))))
+                        {
+                            BloomFramebufferOptimization.Configure(true, api.Logger);
+                            harmony.Patch(setupFboTarget,
+                                postfix: new HarmonyMethod(typeof(BloomFramebufferOptimization), nameof(BloomFramebufferOptimization.SetupDefaultFrameBuffers_Postfix)));
+                            harmony.Patch(loadFboTarget,
+                                postfix: new HarmonyMethod(typeof(BloomFramebufferOptimization), nameof(BloomFramebufferOptimization.LoadFrameBuffer_Postfix)));
+                            bool appliedNow = BloomFramebufferOptimization.ApplyToFrameBuffers(api.Render?.FrameBuffers, api.Logger);
+                            api.Logger.Notification("[OptiTime] Half-resolution FindBright bloom FBO optimization loaded (activeNow={0})", appliedNow);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        BloomFramebufferOptimization.Cleanup();
+                        api.Logger.Warning("[OptiTime] Half-resolution FindBright bloom FBO optimization failed: " + ex.Message);
+                    }
+                }
+
                 try
                 {
                     var animRendererTarget = AccessTools.Method(
@@ -1722,6 +1756,7 @@ namespace OptiTime
                 EntityShadowCullingOptimization.Cleanup();
                 OcclusionCullingOptimization.Cleanup();
                 FrustumCullingOptimization.Cleanup();
+                BloomFramebufferOptimization.Cleanup();
                 AnimatableOptimization.Cleanup();
                 SunMoonOptimization.Cleanup();
                 GuiItemRenderInfoOptimization.Cleanup();
