@@ -125,7 +125,16 @@ public class OptimumCompatibilityTests
         Assert.NotNull(recorded);
 
         var actual = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        foreach (string path in new[] { "shaders/blur.fsh", "shaders/blur.vsh", "shaders/chunkliquid.fsh", "shaders/chunkshadowmap.fsh" })
+        foreach (string path in new[]
+        {
+            "shaders/bilateralblur.fsh",
+            "shaders/blur.fsh",
+            "shaders/blur.vsh",
+            "shaders/chunkliquid.fsh",
+            "shaders/chunkopaque.fsh",
+            "shaders/chunkshadowmap.fsh",
+            "shaders/ssao.fsh"
+        })
         {
             actual[path] = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(gameDirectory, "assets", "game", path)))).ToLowerInvariant();
         }

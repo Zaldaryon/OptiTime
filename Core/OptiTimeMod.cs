@@ -57,10 +57,13 @@ namespace OptiTime
         
         private static readonly string[] OptiTimeShaderPaths = new[]
         {
+            "shaders/bilateralblur.fsh",
             "shaders/blur.fsh",
             "shaders/blur.vsh",
             "shaders/chunkliquid.fsh",
-            "shaders/chunkshadowmap.fsh"
+            "shaders/chunkopaque.fsh",
+            "shaders/chunkshadowmap.fsh",
+            "shaders/ssao.fsh"
         };
         private static readonly Dictionary<string, string> OptimizationMap = new Dictionary<string, string>
         {
@@ -145,11 +148,14 @@ namespace OptiTime
                 var shadersToDisable = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var supersededPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                // Coriaender patches chunkliquid at runtime via regex; our replacement would break its patterns
+                // Coriaender patches world and post-process shaders at runtime; keep only blur independent
                 if (coriaenderDetected)
                 {
+                    shadersToDisable.Add("shaders/bilateralblur.fsh");
                     shadersToDisable.Add("shaders/chunkliquid.fsh");
+                    shadersToDisable.Add("shaders/chunkopaque.fsh");
                     shadersToDisable.Add("shaders/chunkshadowmap.fsh");
+                    shadersToDisable.Add("shaders/ssao.fsh");
                 }
 
                 if (!config.BlurOptimizationEnabled)
@@ -1756,7 +1762,7 @@ namespace OptiTime
                     continue;
 
                 bool wanted = config.ShaderOptimizations && !ancestralBlissDetected;
-                if (coriaenderDetected && (path == "shaders/chunkliquid.fsh" || path == "shaders/chunkshadowmap.fsh"))
+                if (coriaenderDetected && !path.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase))
                     wanted = false;
                 if (!config.BlurOptimizationEnabled && path.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase))
                     wanted = false;

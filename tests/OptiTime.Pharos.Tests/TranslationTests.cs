@@ -265,10 +265,13 @@ public partial class ModArtifactTests
 
         string[] expected =
         [
+            "assets/game/shaders/bilateralblur.fsh",
             "assets/game/shaders/blur.fsh",
             "assets/game/shaders/blur.vsh",
             "assets/game/shaders/chunkliquid.fsh",
+            "assets/game/shaders/chunkopaque.fsh",
             "assets/game/shaders/chunkshadowmap.fsh",
+            "assets/game/shaders/ssao.fsh",
         ];
 
         string[] present = [.. ModArtifact.Entries(zip, "assets/").Select(n => n.ToLowerInvariant())];

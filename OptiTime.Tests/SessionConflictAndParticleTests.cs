@@ -22,10 +22,13 @@ namespace OptiTime.Tests
     {
         private static readonly string[] OptiTimeShaderPaths =
         {
+            "shaders/bilateralblur.fsh",
             "shaders/blur.fsh",
             "shaders/blur.vsh",
             "shaders/chunkliquid.fsh",
-            "shaders/chunkshadowmap.fsh"
+            "shaders/chunkopaque.fsh",
+            "shaders/chunkshadowmap.fsh",
+            "shaders/ssao.fsh"
         };
 
         private readonly List<string> tempDirectories = new();
