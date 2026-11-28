@@ -1,9 +1,8 @@
 using HarmonyLib;
 using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Reflection.Emit;
 using Vintagestory.API.Client;
+using Vintagestory.API.MathTools;
+using Vintagestory.Client;
 using Vintagestory.Client.NoObf;
 using OptiTime.Diagnostics;
 
@@ -11,15 +10,116 @@ namespace OptiTime
 {
     public static class ShadowOptimization
     {
-        // --- Skip BlendNoCull (vegetation) in far cascade shadow ---
+        private const string SolidShadowProgramName = "optitime_chunkshadowmap_solid";
+
+        private const string SolidShadowFragmentSource =
+            "#version 330 core\n" +
+            "void main()\n" +
+            "{\n" +
+            "}\n";
+
+        private static readonly AccessTools.FieldRef<ChunkRenderer, ClientMain> gameRef =
+            AccessTools.FieldRefAccess<ChunkRenderer, ClientMain>("game");
+
+        private static readonly AccessTools.FieldRef<ChunkRenderer, ClientPlatformAbstract> platformRef =
+            AccessTools.FieldRefAccess<ChunkRenderer, ClientPlatformAbstract>("platform");
+
+        private static readonly AccessTools.FieldRef<ChunkRenderer, float> subPixelPaddingXRef =
+            AccessTools.FieldRefAccess<ChunkRenderer, float>("subPixelPaddingX");
+
+        private static readonly AccessTools.FieldRef<ChunkRenderer, float> subPixelPaddingYRef =
+            AccessTools.FieldRefAccess<ChunkRenderer, float>("subPixelPaddingY");
+
+        private static readonly AccessTools.FieldRef<ClientMain, EnumRenderStage> currentRenderStageRef =
+            AccessTools.FieldRefAccess<ClientMain, EnumRenderStage>("currentRenderStage");
+
+        private static readonly AccessTools.FieldRef<ClientMain, float[]> shadowMvpMatrixRef =
+            AccessTools.FieldRefAccess<ClientMain, float[]>("shadowMvpMatrix");
 
         private static Action<string> logger;
+        private static bool farVegetationCullEnabled;
+        private static bool solidDepthPassEnabled;
+        private static ShaderProgram solidShadowProgram;
 
         public static void SetLogger(Action<string> log) => logger = log;
 
+        public static void Configure(bool farVegetationCull, bool solidDepthPass)
+        {
+            farVegetationCullEnabled = farVegetationCull;
+            solidDepthPassEnabled = solidDepthPass;
+        }
+
+        public static bool IsSolidShadowShaderReady =>
+            solidDepthPassEnabled &&
+            solidShadowProgram != null &&
+            !solidShadowProgram.Disposed &&
+            !solidShadowProgram.LoadError &&
+            solidShadowProgram.ProgramId > 0;
+
         /// <summary>
-        /// Called from transpiled IL. Returns true if vegetation should be culled (far shadow pass).
+        /// Compiles or recompiles the depth-only shadow shader used for solid terrain passes
+        /// (Opaque and TopSoil), cloning Chunkshadowmap's expanded vertex shader so SSBO and
+        /// vertex-warping behavior stay identical to vanilla without texture fetches or discard.
         /// </summary>
+        public static bool RebuildSolidShadowShader(ICoreClientAPI api)
+        {
+            DisposeSolidShadowProgram(api);
+            if (!solidDepthPassEnabled || api?.Shader == null)
+            {
+                return false;
+            }
+
+            ShaderProgram program = null;
+            try
+            {
+                ShaderProgramChunkshadowmap baseProgram = ShaderPrograms.Chunkshadowmap;
+                if (baseProgram == null || baseProgram.Disposed || baseProgram.LoadError)
+                {
+                    return false;
+                }
+
+                string vertexCode = baseProgram.VertexShader?.Code;
+                if (string.IsNullOrEmpty(vertexCode))
+                {
+                    return false;
+                }
+
+                program = new ShaderProgram
+                {
+                    LoadFromFile = false,
+                    Oit = false,
+                    VertexShader = new Shader(EnumShaderType.VertexShader, vertexCode, "chunkshadowmapsolid.vsh"),
+                    FragmentShader = new Shader(EnumShaderType.FragmentShader, SolidShadowFragmentSource, "chunkshadowmapsolid.fsh")
+                };
+
+                if (baseProgram.includes != null)
+                {
+                    foreach (string inc in baseProgram.includes)
+                    {
+                        program.includes.Add(inc);
+                    }
+                }
+
+                api.Shader.RegisterMemoryShaderProgram(SolidShadowProgramName, program);
+                if (!program.Compile() || program.LoadError || program.ProgramId <= 0)
+                {
+                    TryDisposeProgram(program);
+                    logger?.Invoke("[OptiTime] Solid shadow depth shader failed to compile; falling back to vanilla shadow shader");
+                    return false;
+                }
+
+                solidShadowProgram = program;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                TryDisposeProgram(program);
+                solidShadowProgram = null;
+                logger?.Invoke("[OptiTime] Solid shadow depth shader setup failed: " + ex.Message);
+                return false;
+            }
+        }
+
         public static bool ShouldCullVegetation(int currentRenderStage)
         {
             bool cull = currentRenderStage == (int)EnumRenderStage.ShadowFar;
@@ -27,121 +127,186 @@ namespace OptiTime
             return cull;
         }
 
-        public static IEnumerable<CodeInstruction> TranspileRenderShadow(IEnumerable<CodeInstruction> instructions, ILGenerator il)
+        public static bool RenderShadow_Prefix(ChunkRenderer __instance, float dt)
         {
-            var codes = new List<CodeInstruction>(instructions);
-            var renderMethod = AccessTools.Method(typeof(MeshDataPoolManager), nameof(MeshDataPoolManager.Render));
-            var currentRenderStageField = AccessTools.Field(typeof(ClientMain), "currentRenderStage");
-
-            // Find the loop that renders poolsByRenderPass[2] (BlendNoCull).
-            // Pattern: ldc.i4.2 → ldelem → loop with Render calls.
-            // We wrap the entire BlendNoCull loop in a check:
-            //   if (game.currentRenderStage == ShadowFar) skip;
-            //
-            // The method has 4 render loops for passes [0], [5], [2], [1].
-            // We need to find the third loop (pass index 2).
-
-            int passIndex2Loc = -1;
-            int loopEndLoc = -1;
-
-            for (int i = 0; i < codes.Count - 4; i++)
+            if (!farVegetationCullEnabled && !solidDepthPassEnabled)
             {
-                // Look for: ldc.i4.2 followed by ldelem.ref (loading poolsByRenderPass[2])
-                // Require preceding ldfld to avoid false matches on other ldc.i4.2 uses
-                if (codes[i].opcode == OpCodes.Ldc_I4_2 &&
-                    i + 1 < codes.Count && codes[i + 1].opcode == OpCodes.Ldelem_Ref)
-                {
-                    // Verify this is in the shadow render context by checking nearby Render calls
-                    bool hasRenderCall = false;
-                    for (int j = i; j < Math.Min(i + 30, codes.Count); j++)
-                    {
-                        if (codes[j].Calls(renderMethod))
-                        {
-                            hasRenderCall = true;
-                            break;
-                        }
-                    }
-                    if (!hasRenderCall) continue;
-
-                    // Walk backwards to find the start of this loop block.
-                    // The loop starts with a local variable init (ldc.i4.0 + stloc for the loop counter).
-                    // We look for the preceding GlDisableCullFace call as anchor (not any callvirt inside the loop).
-                    var disableCullFace = AccessTools.Method(typeof(ClientPlatformAbstract), "GlDisableCullFace");
-                    for (int j = i - 1; j >= Math.Max(0, i - 30); j--)
-                    {
-                        if ((codes[j].opcode == OpCodes.Callvirt || codes[j].opcode == OpCodes.Call) &&
-                            codes[j].operand is System.Reflection.MethodInfo mi && mi == disableCullFace)
-                        {
-                            for (int k = j + 1; k <= i; k++)
-                            {
-                                if (codes[k].opcode == OpCodes.Ldc_I4_0)
-                                {
-                                    passIndex2Loc = k;
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                    if (passIndex2Loc < 0) continue;
-
-                    // Find the end of this loop: look for the next ldc.i4.1 + ldelem (pass [1]) or
-                    // the next ldc.i4.0 + stloc that starts the pass [1] loop
-                    for (int j = i + 1; j < codes.Count - 2; j++)
-                    {
-                        if (codes[j].opcode == OpCodes.Ldc_I4_1 &&
-                            codes[j + 1].opcode == OpCodes.Ldelem_Ref)
-                        {
-                            // Walk back to find the ldc.i4.0 that starts the [1] loop
-                            for (int k = j - 1; k > i; k--)
-                            {
-                                if (codes[k].opcode == OpCodes.Ldc_I4_0)
-                                {
-                                    loopEndLoc = k;
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                    break;
-                }
+                return true;
             }
 
-            if (passIndex2Loc >= 0 && loopEndLoc > passIndex2Loc)
+            if (__instance == null)
             {
-                // Insert a branch: if (game.currentRenderStage == ShadowFar) goto skipLabel
-                var skipLabel = il.DefineLabel();
-                var skipLabelInstr = new CodeInstruction(OpCodes.Nop);
-                skipLabelInstr.labels.Add(skipLabel);
+                return true;
+            }
 
-                var checkInstructions = new List<CodeInstruction>
+            ClientMain game = gameRef(__instance);
+            ClientPlatformAbstract platform = platformRef(__instance);
+            ShaderProgramChunkshadowmap chunkshadowmap = ShaderPrograms.Chunkshadowmap;
+            int[] textureIds = __instance.textureIds;
+            MeshDataPoolManager[][] poolsByRenderPass = __instance.poolsByRenderPass;
+
+            if (game?.EntityPlayer == null || platform == null || chunkshadowmap == null || textureIds == null || poolsByRenderPass == null)
+            {
+                return true;
+            }
+
+            if (ShaderProgramBase.CurrentShaderProgram != chunkshadowmap)
+            {
+                return true;
+            }
+
+            float subPixelPaddingX = subPixelPaddingXRef(__instance);
+            float subPixelPaddingY = subPixelPaddingYRef(__instance);
+            EnumRenderStage currentRenderStage = currentRenderStageRef(game);
+            float[] shadowMvpMatrix = shadowMvpMatrixRef(game);
+            Vec3d cameraPos = game.EntityPlayer.CameraPos;
+
+            ScreenManager.FrameProfiler.Mark("rend3D-rets-begin");
+            platform.GlDepthMask(flag: true);
+            platform.GlToggleBlend(on: false);
+            platform.GlEnableDepthTest();
+            platform.GlDisableCullFace();
+
+            EnumFrustumCullMode frustumCullMode = currentRenderStage == EnumRenderStage.ShadowFar
+                ? EnumFrustumCullMode.CullInstantShadowPassFar
+                : EnumFrustumCullMode.CullInstantShadowPassNear;
+
+            ShaderProgram solidProgram = solidShadowProgram;
+            bool useSolidDepth = solidDepthPassEnabled &&
+                shadowMvpMatrix != null &&
+                solidProgram != null &&
+                !solidProgram.Disposed &&
+                !solidProgram.LoadError &&
+                solidProgram.ProgramId > 0;
+
+            if (useSolidDepth)
+            {
+                chunkshadowmap.Stop();
+                try
                 {
-                    new CodeInstruction(OpCodes.Ldarg_0), // this (ChunkRenderer)
-                    new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ChunkRenderer), "game")),
-                    new CodeInstruction(OpCodes.Ldfld, currentRenderStageField),
-                    new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(ShadowOptimization), nameof(ShouldCullVegetation))),
-                    new CodeInstruction(OpCodes.Brtrue, skipLabel)
-                };
+                    solidProgram.Use();
+                    solidProgram.UniformMatrix("mvpMatrix", shadowMvpMatrix);
 
-                codes.InsertRange(passIndex2Loc, checkInstructions);
+                    MeshDataPoolManager[] opaquePools = poolsByRenderPass[0];
+                    for (int i = 0; i < textureIds.Length; i++)
+                    {
+                        opaquePools[i].Render(cameraPos, "origin", frustumCullMode);
+                    }
+                    ScreenManager.FrameProfiler.Mark("rend3D-rets-op");
 
-                // Adjust loopEndLoc for the inserted instructions
-                loopEndLoc += checkInstructions.Count;
+                    MeshDataPoolManager[] topSoilPools = poolsByRenderPass[5];
+                    for (int j = 0; j < textureIds.Length; j++)
+                    {
+                        topSoilPools[j].Render(cameraPos, "origin", frustumCullMode);
+                    }
+                    ScreenManager.FrameProfiler.Mark("rend3D-rets-tpp");
+                }
+                finally
+                {
+                    if (ShaderProgramBase.CurrentShaderProgram == solidProgram)
+                    {
+                        solidProgram.Stop();
+                    }
 
-                // Insert the skip label nop at the loop end
-                codes.Insert(loopEndLoc, skipLabelInstr);
+                    if (ShaderProgramBase.CurrentShaderProgram != chunkshadowmap)
+                    {
+                        chunkshadowmap.Use();
+                    }
+
+                    chunkshadowmap.MvpMatrix = shadowMvpMatrix;
+                    chunkshadowmap.Uniform("subpixelPaddingX", subPixelPaddingX);
+                    chunkshadowmap.Uniform("subpixelPaddingY", subPixelPaddingY);
+                }
             }
             else
             {
-                logger?.Invoke("[OptiTime] Shadow far vegetation cull: IL anchors not found, optimization inactive");
+                chunkshadowmap.Uniform("subpixelPaddingX", subPixelPaddingX);
+                chunkshadowmap.Uniform("subpixelPaddingY", subPixelPaddingY);
+
+                MeshDataPoolManager[] opaquePools = poolsByRenderPass[0];
+                for (int i = 0; i < textureIds.Length; i++)
+                {
+                    chunkshadowmap.Tex2d2D = textureIds[i];
+                    opaquePools[i].Render(cameraPos, "origin", frustumCullMode);
+                }
+                ScreenManager.FrameProfiler.Mark("rend3D-rets-op");
+
+                MeshDataPoolManager[] topSoilPools = poolsByRenderPass[5];
+                for (int j = 0; j < textureIds.Length; j++)
+                {
+                    chunkshadowmap.Tex2d2D = textureIds[j];
+                    topSoilPools[j].Render(cameraPos, "origin", frustumCullMode);
+                }
+                ScreenManager.FrameProfiler.Mark("rend3D-rets-tpp");
             }
 
-            return codes;
+            platform.GlDisableCullFace();
+
+            bool cullVegetation = farVegetationCullEnabled && ShouldCullVegetation((int)currentRenderStage);
+            if (!cullVegetation)
+            {
+                MeshDataPoolManager[] blendNoCullPools = poolsByRenderPass[2];
+                for (int k = 0; k < textureIds.Length; k++)
+                {
+                    chunkshadowmap.Tex2d2D = textureIds[k];
+                    blendNoCullPools[k].Render(cameraPos, "origin", frustumCullMode);
+                }
+            }
+
+            MeshDataPoolManager[] opaqueNoCullPools = poolsByRenderPass[1];
+            for (int l = 0; l < textureIds.Length; l++)
+            {
+                chunkshadowmap.Tex2d2D = textureIds[l];
+                opaqueNoCullPools[l].Render(cameraPos, "origin", frustumCullMode);
+            }
+
+            platform.GlToggleBlend(on: true);
+            return false;
+        }
+
+        private static void DisposeSolidShadowProgram(ICoreClientAPI api)
+        {
+            ShaderProgram existing = solidShadowProgram;
+            solidShadowProgram = null;
+            TryDisposeProgram(existing);
+
+            if (api?.Shader != null)
+            {
+                try
+                {
+                    if (api.Shader.GetProgramByName(SolidShadowProgramName) is ShaderProgram registered &&
+                        !ReferenceEquals(registered, existing))
+                    {
+                        TryDisposeProgram(registered);
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static void TryDisposeProgram(ShaderProgram program)
+        {
+            if (program == null || program.Disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                program.Dispose();
+            }
+            catch
+            {
+            }
         }
 
         public static void Cleanup()
         {
+            DisposeSolidShadowProgram(null);
+            farVegetationCullEnabled = false;
+            solidDepthPassEnabled = false;
             logger = null;
         }
     }

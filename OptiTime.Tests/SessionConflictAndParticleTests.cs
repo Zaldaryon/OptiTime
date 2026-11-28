@@ -28,6 +28,7 @@ namespace OptiTime.Tests
             "shaders/chunkliquid.fsh",
             "shaders/chunkopaque.fsh",
             "shaders/chunkshadowmap.fsh",
+            "shaders/godrays.fsh",
             "shaders/ssao.fsh"
         };
 
@@ -135,8 +136,10 @@ namespace OptiTime.Tests
                 session1.Boot();
                 Assert.True(IsOptiTimeShaderActive(session1.Assets, "shaders/blur.fsh"));
                 Assert.True(IsOptiTimeShaderActive(session1.Assets, "shaders/blur.vsh"));
-                Assert.False(IsOptiTimeShaderActive(session1.Assets, "shaders/chunkliquid.fsh"));
-                Assert.False(IsOptiTimeShaderActive(session1.Assets, "shaders/chunkshadowmap.fsh"));
+                foreach (string worldShader in OptiTimeShaderPaths.Where(p => !p.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase)))
+                {
+                    Assert.False(IsOptiTimeShaderActive(session1.Assets, worldShader), $"{worldShader} should be hidden under CoriaenderShaders.");
+                }
                 Assert.True(OptiTimeMod.Config.IsConflictDisabled(nameof(OptiTimeConfig.ShaderOptimizations)));
             }
 
@@ -150,8 +153,10 @@ namespace OptiTime.Tests
                 session2.Boot();
                 Assert.True(IsOptiTimeShaderActive(session2.Assets, "shaders/blur.fsh"));
                 Assert.True(IsOptiTimeShaderActive(session2.Assets, "shaders/blur.vsh"));
-                Assert.False(IsOptiTimeShaderActive(session2.Assets, "shaders/chunkliquid.fsh"));
-                Assert.False(IsOptiTimeShaderActive(session2.Assets, "shaders/chunkshadowmap.fsh"));
+                foreach (string worldShader in OptiTimeShaderPaths.Where(p => !p.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase)))
+                {
+                    Assert.False(IsOptiTimeShaderActive(session2.Assets, worldShader), $"{worldShader} should stay hidden on Launch 2 under CoriaenderShaders.");
+                }
             }
 
             // Launch 3: CoriaenderShaders removed, loading the same OptiTime.json
@@ -333,6 +338,7 @@ namespace OptiTime.Tests
                 string modShaderPath = Path.Combine(FindRepositoryRoot(), "assets", "game", path);
                 optitimeOrigin.AddShader(path, File.ReadAllBytes(modShaderPath));
             }
+            vanillaOrigin.AddShader("shaders/chunkshadowmap.vsh", File.ReadAllBytes(Path.Combine(gameDir, "assets", "game", "shaders", "chunkshadowmap.vsh")));
 
             var origins = new List<IAssetOrigin> { vanillaOrigin };
             origins.AddRange(extraOrigins);
@@ -340,6 +346,7 @@ namespace OptiTime.Tests
 
             var assetManager = new FakeAssetManager(origins);
             assetManager.Reload(AssetCategory.shaders);
+            assetManager.Reload(AssetCategory.shaderincludes);
 
             var logger = new NullLogger();
             if (!Lang.AvailableLanguages.ContainsKey("en"))
@@ -472,13 +479,17 @@ namespace OptiTime.Tests
 
             public List<IAsset> GetAssets(AssetCategory category, bool shouldLoad = true)
             {
-                if (category != AssetCategory.shaders)
+                if (category != AssetCategory.shaders && category != AssetCategory.shaderincludes)
                     return new List<IAsset>();
 
                 var list = new List<IAsset>(shaders.Count);
                 foreach ((string path, byte[] data) in shaders)
                 {
-                    list.Add(new FakeAsset(new AssetLocation("game", path), this, shouldLoad ? data : null));
+                    var loc = new AssetLocation("game", path);
+                    if (loc.Category == category)
+                    {
+                        list.Add(new FakeAsset(loc, this, shouldLoad ? data : null));
+                    }
                 }
                 return list;
             }
