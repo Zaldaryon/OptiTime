@@ -1,17 +1,20 @@
 using System;
+using System.Collections.Generic;
+using Vintagestory.API.MathTools;
 
 namespace OptiTime
 {
     /// <summary>
-    /// Flat-grid conservative breadth-first chunk visibility flood for ChunkCuller.
+    /// Flat-grid shell raycaster for ChunkCuller.
     ///
     /// Snapshots per-chunk traversability bits into a pre-sized 3D array centered on the
-    /// camera chunk, then floods monotonically outward using a 6-face entry mask so every
-    /// cell is enqueued at most once and steady-state passes allocate zero bytes.
+    /// camera chunk, then traces vanilla-equivalent straight shell rays outside chunksLock
+    /// with O(1) per-step axis-slab stepping so occlusion stays as tight as vanilla without
+    /// lock contention, dictionary lookups, or steady-state allocations.
     ///
     /// Cell encoding: bit 15 marks a loaded chunk; bits 0-14 hold the 15 vanilla
     /// ClientChunk.traversability face-pair bits. Unloaded cells and chunks whose
-    /// traversability data is not fresh are stored as AllPass and never block the flood.
+    /// traversability data is not fresh are stored as AllPass and never block rays.
     /// Faces follow BlockFacing.Index order: N=0, E=1, S=2, W=3, U=4, D=5.
     /// </summary>
     public sealed class ChunkVisibilityGrid
@@ -40,9 +43,6 @@ namespace OptiTime
         public const int SignificantQueueDelta = 10;
 
         internal static readonly int[] PairBit = new int[36];
-
-        // Precomputed lookup [exitFace * 64 + entryFaceMask]: OR of pair bits connecting any entered face to exitFace.
-        private static readonly ushort[] EntryMask = new ushort[6 * 64];
 
         private static readonly int[] FaceDx = { 0, 1, 0, -1, 0, 0 };
         private static readonly int[] FaceDy = { 0, 0, 0, 0, 1, -1 };
@@ -73,23 +73,6 @@ namespace OptiTime
             SetPair(3, 5, 13); // W-D
             SetPair(4, 5, 14); // U-D
 
-            for (int f = 0; f < 6; f++)
-            {
-                for (int entries = 0; entries < 64; entries++)
-                {
-                    ushort mask = 0;
-                    for (int e = 0; e < 6; e++)
-                    {
-                        if ((entries & (1 << e)) != 0 && e != f)
-                        {
-                            mask |= (ushort)(1 << PairBit[e * 6 + f]);
-                        }
-                    }
-
-                    EntryMask[f * 64 + entries] = mask;
-                }
-            }
-
             static void SetPair(int a, int b, int bit)
             {
                 PairBit[a * 6 + b] = bit;
@@ -107,6 +90,10 @@ namespace OptiTime
         internal ushort[] Cells = Array.Empty<ushort>();
         internal int[] Queue = Array.Empty<int>();
         private byte[] state = Array.Empty<byte>();
+        private int[] shellOffsets = Array.Empty<int>();
+        private int shellPointCount;
+        private int cachedShellRadius = -1;
+        private int cachedShellMapY = -1;
 
         /// <summary>
         /// Sizes backing buffers for the current pass and clears the snapshot array.
@@ -154,9 +141,10 @@ namespace OptiTime
             => (ushort)(LoadedBit | (fresh ? (traversability & AllPass) : AllPass));
 
         /// <summary>
-        /// Floods outward monotonically from the camera cell and records every reached grid
-        /// index in Queue. Passing dimension-local camY ensures floor and ceiling bounds match
-        /// world height inside extra dimensions as well as the main dimension.
+        /// Traces straight shell rays over the flat snapshot grid centered on the camera cell
+        /// and records every reached grid index once in Queue. Passing dimension-local camY
+        /// ensures floor and ceiling bounds match world height inside extra dimensions as well
+        /// as the main dimension.
         /// </summary>
         public void Run(int camX, int camY, int camZ, int mapSizeX, int mapSizeY, int mapSizeZ, bool useOcclusion)
         {
@@ -165,6 +153,9 @@ namespace OptiTime
                 QueueLength = 0;
                 return;
             }
+
+            int shellRadius = Math.Max(1, RadiusXZ - 3);
+            EnsureShellPoints(shellRadius, mapSizeY);
 
             int w = Width;
             int h = Height;
@@ -177,89 +168,207 @@ namespace OptiTime
 
             Array.Clear(st, 0, CellCount);
 
-            int cx = r;
-            int cy = ry;
-            int cz = r;
-            int head = 0;
             int tail = 0;
-            int start = (cy * w + cz) * w + cx;
-            st[start] = ReachedBit;
-            queue[tail++] = start;
+            int startIdx = (ry * w + r) * w + r;
+            st[startIdx] = ReachedBit;
+            queue[tail++] = startIdx;
 
-            while (head < tail)
+            int[] offsets = shellOffsets;
+            int count = shellPointCount;
+            for (int i = 0; i < count; i++)
             {
-                int idx = queue[head++];
-                int lx = idx % w;
-                int rest = idx / w;
-                int lz = rest % w;
-                int ly = rest / w;
+                int baseOff = i * 3;
+                int relX = offsets[baseOff];
+                int relY = offsets[baseOff + 1];
+                int relZ = offsets[baseOff + 2];
 
-                int ox = lx - cx;
-                int oy = ly - cy;
-                int oz = lz - cz;
-                int dist = (ox < 0 ? -ox : ox) + (oy < 0 ? -oy : oy) + (oz < 0 ? -oz : oz);
-
-                int cell = cells[idx];
-                int trav = cell & AllPass;
-                int entries = st[idx] & 63;
-
-                // Matches vanilla: traversability only blocks loaded chunks beyond the first ring.
-                bool check = useOcclusion && dist > 1 && (cell & LoadedBit) != 0;
-
-                for (int f = 0; f < 6; f++)
-                {
-                    int fdx = FaceDx[f];
-                    int fdy = FaceDy[f];
-                    int fdz = FaceDz[f];
-
-                    if (fdx != 0 && ox != 0 && ((ox > 0) != (fdx > 0)))
-                    {
-                        continue;
-                    }
-
-                    if (fdy != 0 && oy != 0 && ((oy > 0) != (fdy > 0)))
-                    {
-                        continue;
-                    }
-
-                    if (fdz != 0 && oz != 0 && ((oz > 0) != (fdz > 0)))
-                    {
-                        continue;
-                    }
-
-                    int nlx = lx + fdx;
-                    int nly = ly + fdy;
-                    int nlz = lz + fdz;
-                    if ((uint)nlx >= (uint)w || (uint)nlz >= (uint)w || (uint)nly >= (uint)h)
-                    {
-                        continue;
-                    }
-
-                    int wx = camX + (nlx - cx);
-                    int wy = camY + (nly - cy);
-                    int wz = camZ + (nlz - cz);
-                    if (!(wx >= 0 && wy >= 0 && wz >= 0 && wx < mapSizeX && wy < mapSizeY && wz < mapSizeZ)
-                        && !(aboveWorld && wy > 0))
-                    {
-                        continue;
-                    }
-
-                    if (check && (trav & EntryMask[f * 64 + entries]) == 0)
-                    {
-                        continue;
-                    }
-
-                    int nidx = (nly * w + nlz) * w + nlx;
-                    byte mask = st[nidx];
-                    st[nidx] = (byte)(mask | ReachedBit | (1 << FaceOpposite[f]));
-                    if ((mask & ReachedBit) == 0)
-                    {
-                        queue[tail++] = nidx;
-                    }
-                }
+                TraceRay(cells, st, queue, ref tail, w, h, r, ry, camX, camY, camZ, mapSizeX, mapSizeY, mapSizeZ, aboveWorld, useOcclusion, relX, relY, relZ, 0.25, 0.5);
+                TraceRay(cells, st, queue, ref tail, w, h, r, ry, camX, camY, camZ, mapSizeX, mapSizeY, mapSizeZ, aboveWorld, useOcclusion, relX, relY, relZ, 0.75, 0.5);
+                TraceRay(cells, st, queue, ref tail, w, h, r, ry, camX, camY, camZ, mapSizeX, mapSizeY, mapSizeZ, aboveWorld, useOcclusion, relX, relY, relZ, 0.75, 0.0);
             }
 
             QueueLength = tail;
+        }
+
+        private void EnsureShellPoints(int shellRadius, int mapSizeY)
+        {
+            if (cachedShellRadius == shellRadius && cachedShellMapY == mapSizeY)
+            {
+                return;
+            }
+
+            var unique = new HashSet<(int X, int Y, int Z)>();
+            Vec2i[] outer = ShapeUtil.GetOctagonPoints(0, 0, shellRadius);
+            for (int i = 0; i < outer.Length; i++)
+            {
+                Vec2i p = outer[i];
+                for (int j = -mapSizeY; j <= mapSizeY; j++)
+                {
+                    unique.Add((p.X, j, p.Y));
+                }
+            }
+
+            for (int k = 0; k < shellRadius; k++)
+            {
+                Vec2i[] ring = ShapeUtil.GetOctagonPoints(0, 0, k);
+                for (int i = 0; i < ring.Length; i++)
+                {
+                    Vec2i p = ring[i];
+                    unique.Add((p.X, -mapSizeY, p.Y));
+                    unique.Add((p.X, mapSizeY, p.Y));
+                }
+            }
+
+            int[] packed = new int[unique.Count * 3];
+            int idx = 0;
+            foreach (var pt in unique)
+            {
+                packed[idx++] = pt.X;
+                packed[idx++] = pt.Y;
+                packed[idx++] = pt.Z;
+            }
+
+            shellOffsets = packed;
+            shellPointCount = unique.Count;
+            cachedShellRadius = shellRadius;
+            cachedShellMapY = mapSizeY;
+        }
+
+        private static void TraceRay(
+            ushort[] cells,
+            byte[] st,
+            int[] queue,
+            ref int tail,
+            int w,
+            int h,
+            int r,
+            int ry,
+            int camX,
+            int camY,
+            int camZ,
+            int mapSizeX,
+            int mapSizeY,
+            int mapSizeZ,
+            bool aboveWorld,
+            bool useOcclusion,
+            int relX,
+            int relY,
+            int relZ,
+            double yoff,
+            double xoff)
+        {
+            const double DirEps = 1e-5;
+            const double TieEps = 1e-12;
+
+            double dx = relX + xoff;
+            double dy = relY + yoff;
+            double dz = relZ + 0.5;
+
+            int faceX = dx > DirEps ? 1 : (dx < -DirEps ? 3 : -1);
+            int faceY = dy > DirEps ? 4 : (dy < -DirEps ? 5 : -1);
+            int faceZ = dz > DirEps ? 2 : (dz < -DirEps ? 0 : -1);
+
+            double invDx = faceX >= 0 ? 1.0 / dx : 0.0;
+            double invDy = faceY >= 0 ? 1.0 / dy : 0.0;
+            double invDz = faceZ >= 0 ? 1.0 / dz : 0.0;
+
+            double planeOffX = faceX == 1 ? 1.0 : 0.0;
+            double planeOffY = faceY == 4 ? 1.0 : 0.0;
+            double planeOffZ = faceZ == 2 ? 1.0 : 0.0;
+
+            int maxDist = (relX < 0 ? -relX : relX) + (relY < 0 ? -relY : relY) + (relZ < 0 ? -relZ : relZ) + 2;
+
+            int ox = 0;
+            int oy = 0;
+            int oz = 0;
+            int entry = -1;
+
+            while (true)
+            {
+                int dist = (ox < 0 ? -ox : ox) + (oy < 0 ? -oy : oy) + (oz < 0 ? -oz : oz);
+                if (dist > maxDist)
+                {
+                    break;
+                }
+
+                // Pick the earliest exiting slab face, breaking ties in vanilla BlockFacing order (N,E,S,W,U,D).
+                int exit = -1;
+                double bestT = double.PositiveInfinity;
+
+                if (faceZ >= 0)
+                {
+                    double tz = (oz + planeOffZ - 0.5) * invDz;
+                    if (tz >= -TieEps)
+                    {
+                        exit = faceZ;
+                        bestT = tz;
+                    }
+                }
+
+                if (faceX >= 0)
+                {
+                    double tx = (ox + planeOffX - xoff) * invDx;
+                    if (tx >= -TieEps && (exit < 0 || tx < bestT - TieEps || (tx <= bestT + TieEps && faceX < exit)))
+                    {
+                        exit = faceX;
+                        bestT = tx;
+                    }
+                }
+
+                if (faceY >= 0)
+                {
+                    double ty = (oy + planeOffY - yoff) * invDy;
+                    if (ty >= -TieEps && (exit < 0 || ty < bestT - TieEps || (ty <= bestT + TieEps && faceY < exit)))
+                    {
+                        exit = faceY;
+                    }
+                }
+
+                if (exit < 0)
+                {
+                    break;
+                }
+
+                int lx = ox + r;
+                int ly = oy + ry;
+                int lz = oz + r;
+                if ((uint)lx < (uint)w && (uint)lz < (uint)w && (uint)ly < (uint)h)
+                {
+                    int idx = (ly * w + lz) * w + lx;
+                    int cell = cells[idx];
+                    if ((cell & LoadedBit) != 0)
+                    {
+                        if ((st[idx] & ReachedBit) == 0)
+                        {
+                            st[idx] = ReachedBit;
+                            queue[tail++] = idx;
+                        }
+
+                        if (useOcclusion && dist > 1 && entry >= 0 && entry != exit)
+                        {
+                            int pairBit = PairBit[entry * 6 + exit];
+                            if (((cell >> pairBit) & 1) == 0)
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                ox += FaceDx[exit];
+                oy += FaceDy[exit];
+                oz += FaceDz[exit];
+                entry = FaceOpposite[exit];
+
+                int wx = camX + ox;
+                int wy = camY + oy;
+                int wz = camZ + oz;
+                if (!(wx >= 0 && wy >= 0 && wz >= 0 && wx < mapSizeX && wy < mapSizeY && wz < mapSizeZ)
+                    && !(aboveWorld && wy > 0))
+                {
+                    break;
+                }
+            }
         }
 
         public static bool ShouldRecalculate(

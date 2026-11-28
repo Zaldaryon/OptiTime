@@ -494,27 +494,6 @@ namespace OptiTime
                 }
                 frozenHarvestCreaturesCache = harvestCreaturesBuilder.ToFrozenDictionary(StringComparer.Ordinal);
 
-                var storableBuilder = new Dictionary<string, ItemStack[]>(StringComparer.Ordinal);
-                foreach (var entry in storableInCache)
-                {
-                    storableBuilder[entry.Key] = FinalizeItemStackCollection(entry.Value, capi, true);
-                }
-                frozenStorableInCache = storableBuilder.ToFrozenDictionary(StringComparer.Ordinal);
-
-                var storedBuilder = new Dictionary<string, ItemStack[]>(StringComparer.Ordinal);
-                foreach (var entry in storedInCache)
-                {
-                    storedBuilder[entry.Key] = FinalizeItemStackCollection(entry.Value, capi, true);
-                }
-                frozenStoredInCache = storedBuilder.ToFrozenDictionary(StringComparer.Ordinal);
-
-                var groundBuilder = new Dictionary<string, bool>(groundStorableCache.Count, StringComparer.Ordinal);
-                foreach (var entry in groundStorableCache)
-                {
-                    groundBuilder[entry.Key] = entry.Value;
-                }
-                frozenGroundStorableCache = groundBuilder.ToFrozenDictionary(StringComparer.Ordinal);
-
                 frozenContainersCache = RemoveNullsAndSort(capi, containersCache.ToArray());
                 frozenFuelsCache = RemoveNullsAndSort(capi, fuelsCache.ToArray());
                 frozenMoldsCache = RemoveNullsAndSort(capi, moldsCache.ToArray());
@@ -524,6 +503,20 @@ namespace OptiTime
                 {
                     allStacksOrderFrozen = allStacksOrderCache.ToFrozenDictionary(StringComparer.Ordinal);
                 }
+
+                // Release mutable build-phase collections now that frozen snapshots serve all reads.
+                blockDropsCache.Clear();
+                harvestBlocksCache.Clear();
+                killCreaturesCache.Clear();
+                harvestCreaturesCache.Clear();
+                storableInCache.Clear();
+                storedInCache.Clear();
+                groundStorableCache.Clear();
+                containersCache = new ConcurrentQueue<ItemStack>();
+                fuelsCache = new ConcurrentQueue<ItemStack>();
+                moldsCache = new ConcurrentQueue<ItemStack>();
+                anvilsCache = new ConcurrentQueue<ItemStack>();
+                allStacksOrderCache = null;
 
                 if (ProfilingHelper.Enabled)
                 {
