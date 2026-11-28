@@ -52,6 +52,9 @@ namespace OptiTime.Tests
         {
             ShadowPassTransitionOptimization.Cleanup();
             OpaqueShaderOptimization.Cleanup();
+            LiquidShaderOptimization.Cleanup();
+            LumaAndFinalOptimization.Cleanup();
+            ShadowOptimization.Cleanup();
             RenderLoopAllocationOptimization.Cleanup();
         }
 
@@ -170,6 +173,105 @@ namespace OptiTime.Tests
             List<CodeInstruction> finalTranspiled = RenderLoopAllocationOptimization.RenderFinalComposition_Transpiler(
                 PatchProcessor.GetOriginalInstructions(renderFinal)).ToList();
             Assert.Contains(finalTranspiled, ci => ci.operand is FieldInfo fi && fi.Name == "SingleColorAttachment0");
+            Assert.Contains(finalTranspiled, ci => ci.operand is FieldInfo fi && fi.Name == "FourColorAttachments");
+            Assert.Contains(finalTranspiled, ci => ci.operand is FieldInfo fi && fi.Name == "TwoColorAttachments");
+
+            Assert.Contains(modelTranspiled, ci => ci.operand is MethodInfo mi && mi.Name == nameof(RenderLoopAllocationOptimization.ScaleUniform));
+
+            MethodInfo loadFb = AccessTools.Method(typeof(ClientPlatformWindows), "LoadFrameBuffer", new[] { typeof(EnumFrameBuffer) });
+            List<CodeInstruction> loadFbTranspiled = RenderLoopAllocationOptimization.LoadFrameBufferTransparent_Transpiler(
+                PatchProcessor.GetOriginalInstructions(loadFb)).ToList();
+            Assert.Contains(loadFbTranspiled, ci => ci.operand is FieldInfo fi && fi.Name == "ThreeColorAttachments");
+
+            MethodInfo triggerStage = AccessTools.Method(typeof(ClientMain), "TriggerRenderStage", new[] { typeof(EnumRenderStage), typeof(float) });
+            List<CodeInstruction> triggerTranspiled = RenderLoopAllocationOptimization.TriggerRenderStage_Transpiler(
+                PatchProcessor.GetOriginalInstructions(triggerStage)).ToList();
+            Assert.Contains(triggerTranspiled, ci => ci.operand is MethodInfo mi && mi.Name == nameof(RenderLoopAllocationOptimization.GetAfterStageErrorLabel));
+
+            MethodInfo calcFrustum = AccessTools.Method(typeof(FrustumCulling), nameof(FrustumCulling.CalcFrustumEquations),
+                new[] { typeof(BlockPos), typeof(double[]), typeof(double[]) });
+            List<CodeInstruction> frustumTranspiled = RenderLoopAllocationOptimization.CalcFrustumEquations_Transpiler(
+                PatchProcessor.GetOriginalInstructions(calcFrustum)).ToList();
+            Assert.Contains(frustumTranspiled, ci => ci.operand is MethodInfo mi && mi.Name == nameof(RenderLoopAllocationOptimization.GetScratchFrustumMatrix));
+        }
+
+        [Fact]
+        public void NextWaveShadersAndHelpersPreserveInvariantsAndZeroAllocations()
+        {
+            // TopSoil & Haxy lean shader invariants
+            string haxyWet = OpaqueShaderOptimization.BuildLeanHaxyFragmentSource(includeUnderwater: true);
+            string haxyDry = OpaqueShaderOptimization.BuildLeanHaxyFragmentSource(includeUnderwater: false);
+            Assert.Contains("skycolor.fsh", haxyWet);
+            Assert.Contains("getSkyColorAt", haxyWet);
+            Assert.DoesNotContain("applyPsychedelicEffect", haxyWet);
+            Assert.DoesNotContain("underwatereffects.fsh", haxyDry);
+
+            string topSoilVs = OpaqueShaderOptimization.BuildLeanTopSoilVertexSource();
+            string topSoilWet = OpaqueShaderOptimization.BuildLeanTopSoilFragmentSource(includeUnderwater: true);
+            string topSoilDry = OpaqueShaderOptimization.BuildLeanTopSoilFragmentSource(includeUnderwater: false);
+            Assert.Contains("out float nb;", topSoilVs);
+            Assert.Contains("if (nb > minShadowB)", topSoilWet);
+            Assert.DoesNotContain("applyPsychedelicEffect", topSoilWet);
+            Assert.DoesNotContain("applyRustEffect", topSoilWet);
+            Assert.DoesNotContain("underwatereffects.fsh", topSoilDry);
+
+            // Clear-weather liquid shader invariants
+            Assert.True(LiquidShaderOptimization.CanUseClearLiquid(0f, 0f, 0));
+            Assert.False(LiquidShaderOptimization.CanUseClearLiquid(0.2f, 0f, 0));
+            Assert.False(LiquidShaderOptimization.CanUseClearLiquid(0f, 0.1f, 0));
+            Assert.False(LiquidShaderOptimization.CanUseClearLiquid(0f, 0f, 1));
+            string clearLiquid = LiquidShaderOptimization.BuildClearLiquidFragmentSource();
+            Assert.DoesNotContain("dropletnoise", clearLiquid);
+            Assert.Contains("getUnderwaterMurkiness", clearLiquid);
+            Assert.Contains("texelFetch(depthTex,", clearLiquid);
+
+            // Luma / Final invariants & 8-bit Primary format guard
+            Assert.True(LumaAndFinalOptimization.CanUseLeanFinal(0f, 0f, 0f));
+            Assert.False(LumaAndFinalOptimization.CanUseLeanFinal(0.1f, 0f, 0f));
+            Assert.False(LumaAndFinalOptimization.CanUseLeanFinal(0f, 0.1f, 0f));
+            Assert.False(LumaAndFinalOptimization.CanUseLeanFinal(0f, 0f, 0.1f));
+            Assert.True(LumaAndFinalOptimization.IsEightBitRgbaFormat((int)OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba8));
+            Assert.True(LumaAndFinalOptimization.IsEightBitRgbaFormat((int)OpenTK.Graphics.OpenGL.PixelInternalFormat.Srgb8Alpha8));
+            Assert.False(LumaAndFinalOptimization.IsEightBitRgbaFormat((int)OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba16f));
+            Assert.False(LumaAndFinalOptimization.IsEightBitRgbaFormat((int)OpenTK.Graphics.OpenGL.PixelInternalFormat.Rgba32f));
+            string finalGather = LumaAndFinalOptimization.BuildLeanFinalFragmentSource(enableGather4: true);
+            Assert.Contains("GL_ARB_gpu_shader5", finalGather);
+            Assert.DoesNotContain("gnoise", finalGather);
+            Assert.Equal("#define FXAA_GATHER4_ALPHA 1", LumaAndFinalOptimization.ApplyGather4Override("#define FXAA_GATHER4_ALPHA 0", true));
+
+            // Stripped solid shadow VS & Lod 2/3 shadow exclusivity
+            string solidVs = ShadowOptimization.BuildSolidShadowVertexSource(includeVertexWarp: true);
+            string noWarpVs = ShadowOptimization.BuildSolidShadowVertexSource(includeVertexWarp: false);
+            Assert.DoesNotContain("UnpackUv", solidVs);
+            Assert.Contains("applyVertexWarping", solidVs);
+            Assert.DoesNotContain("applyVertexWarping", noWarpVs);
+            Assert.Contains("applyGlobalWarping", noWarpVs);
+            Assert.True(ShadowOptimization.PassesShadowLodExclusivity(2, 100.0, 200.0));
+            Assert.False(ShadowOptimization.PassesShadowLodExclusivity(2, 300.0, 200.0));
+            Assert.False(ShadowOptimization.PassesShadowLodExclusivity(3, 100.0, 200.0));
+            Assert.True(ShadowOptimization.PassesShadowLodExclusivity(3, 300.0, 200.0));
+            Assert.True(ShadowOptimization.PassesShadowLodExclusivity(0, 999.0, 200.0));
+
+            // ScaleUniform matches Mat4f.Scale and allocates 0 bytes
+            float[] expected = Mat4f.Create();
+            Mat4f.Translate(expected, expected, 1f, 2f, 3f);
+            float[] actual = (float[])expected.Clone();
+            Mat4f.Scale(expected, expected, new float[] { 1.5f, 1.5f, 1.5f });
+            RenderLoopAllocationOptimization.ScaleUniform(actual, actual, 1.5f);
+            for (int i = 0; i < 16; i++)
+            {
+                Assert.Equal(expected[i], actual[i], 5);
+            }
+
+            // TriggerRenderStage cached label & FrustumCulling zero-alloc check
+            string label = RenderLoopAllocationOptimization.GetAfterStageErrorLabel(EnumRenderStage.Opaque);
+            Assert.Equal("After render stage Opaque", label);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            string label2 = RenderLoopAllocationOptimization.GetAfterStageErrorLabel(EnumRenderStage.Opaque);
+            RenderLoopAllocationOptimization.ScaleUniform(actual, actual, 1.0f);
+            long after = GC.GetAllocatedBytesForCurrentThread();
+            Assert.Same(label, label2);
+            Assert.Equal(0L, after - before);
         }
     }
 }

@@ -8,6 +8,7 @@ using OpenTK.Graphics.OpenGL;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.MathTools;
+using Vintagestory.Client;
 using Vintagestory.Client.NoObf;
 
 namespace OptiTime
@@ -15,10 +16,11 @@ namespace OptiTime
     /// <summary>
     /// Eliminates verified per-frame managed heap allocations on the client render thread:
     /// - ClientMain.GlTranslate(double, double, double): scalar matrix translation without new double[3].
+    /// - ClientMain.TriggerRenderStage(EnumRenderStage, float): cached stage error strings without enum boxing/concat.
+    /// - FrustumCulling.CalcFrustumEquations(BlockPos, double[], double[]): scratch double[16] instead of Mat4d.Create().
     /// - AnimationManager.OnClientFrame: zero-allocation Dictionary.Values scan instead of LINQ Any().
-    /// - ClientPlatformWindows.ClearFrameBuffer(EnumFrameBuffer): cached static clear-color arrays.
-    /// - ClientPlatformWindows.RenderPostprocessingEffects &amp; RenderFinalComposition: static clear/draw-buffer arrays.
-    /// - EntityShapeRenderer.loadModelMatrix: reusable render-thread scratch quaternion instead of Quaterniond.Create().
+    /// - ClientPlatformWindows.ClearFrameBuffer / LoadFrameBuffer(Transparent) / RenderPostprocessingEffects / RenderFinalComposition: static clear/draw-buffer arrays.
+    /// - EntityShapeRenderer.loadModelMatrix: reusable scratch quaternion and scalar uniform scale without new float[3].
     /// </summary>
     public static class RenderLoopAllocationOptimization
     {
@@ -27,23 +29,62 @@ namespace OptiTime
         private static readonly float[] ClearRedOne = { 1f, 0f, 0f, 0f };
         private static readonly float[] ClearAllOne = { 1f, 1f, 1f, 1f };
         private static readonly DrawBuffersEnum[] SingleColorAttachment0 = { DrawBuffersEnum.ColorAttachment0 };
+        private static readonly DrawBuffersEnum[] TwoColorAttachments =
+        {
+            DrawBuffersEnum.ColorAttachment0,
+            DrawBuffersEnum.ColorAttachment1
+        };
+        private static readonly DrawBuffersEnum[] ThreeColorAttachments =
+        {
+            DrawBuffersEnum.ColorAttachment0,
+            DrawBuffersEnum.ColorAttachment1,
+            DrawBuffersEnum.ColorAttachment2
+        };
+        private static readonly DrawBuffersEnum[] FourColorAttachments =
+        {
+            DrawBuffersEnum.ColorAttachment0,
+            DrawBuffersEnum.ColorAttachment1,
+            DrawBuffersEnum.ColorAttachment2,
+            DrawBuffersEnum.ColorAttachment3
+        };
+
+        private static readonly string[] AfterStageErrorLabels = BuildAfterStageErrorLabels();
 
         [ThreadStatic]
         private static double[] scratchQuaternion;
+
+        [ThreadStatic]
+        private static double[] scratchFrustumMatrix;
 
         private static readonly AccessTools.FieldRef<ClientPlatformWindows, bool> renderSsaoRef;
         private static readonly bool platformAccessorsReady;
 
         private static readonly MethodInfo QuaternionCreateMethod =
             AccessTools.Method(typeof(Quaterniond), nameof(Quaterniond.Create), Type.EmptyTypes);
+        private static readonly MethodInfo Mat4dCreateMethod =
+            AccessTools.Method(typeof(Mat4d), nameof(Mat4d.Create), Type.EmptyTypes);
+        private static readonly MethodInfo Mat4fScaleArrayMethod =
+            AccessTools.Method(typeof(Mat4f), nameof(Mat4f.Scale), new[] { typeof(float[]), typeof(float[]), typeof(float[]) });
         private static readonly MethodInfo ScratchQuaternionMethod =
             AccessTools.Method(typeof(RenderLoopAllocationOptimization), nameof(GetResetScratchQuaternion));
+        private static readonly MethodInfo ScratchFrustumMatrixMethod =
+            AccessTools.Method(typeof(RenderLoopAllocationOptimization), nameof(GetScratchFrustumMatrix));
+        private static readonly MethodInfo AfterStageErrorLabelMethod =
+            AccessTools.Method(typeof(RenderLoopAllocationOptimization), nameof(GetAfterStageErrorLabel));
+        private static readonly MethodInfo ScaleUniformMethod =
+            AccessTools.Method(typeof(RenderLoopAllocationOptimization), nameof(ScaleUniform));
         private static readonly MethodInfo HasAdjustCollisionBoxMethod =
             AccessTools.Method(typeof(RenderLoopAllocationOptimization), nameof(HasAdjustCollisionBox));
         private static readonly FieldInfo ClearAllOneField =
             AccessTools.Field(typeof(RenderLoopAllocationOptimization), nameof(ClearAllOne));
         private static readonly FieldInfo SingleColorAttachment0Field =
             AccessTools.Field(typeof(RenderLoopAllocationOptimization), nameof(SingleColorAttachment0));
+        private static readonly FieldInfo TwoColorAttachmentsField =
+            AccessTools.Field(typeof(RenderLoopAllocationOptimization), nameof(TwoColorAttachments));
+        private static readonly FieldInfo ThreeColorAttachmentsField =
+            AccessTools.Field(typeof(RenderLoopAllocationOptimization), nameof(ThreeColorAttachments));
+        private static readonly FieldInfo FourColorAttachmentsField =
+            AccessTools.Field(typeof(RenderLoopAllocationOptimization), nameof(FourColorAttachments));
 
         private static volatile bool enabled;
 
@@ -70,6 +111,131 @@ namespace OptiTime
         public static void Cleanup()
         {
             enabled = false;
+        }
+
+        private static string[] BuildAfterStageErrorLabels()
+        {
+            Array values = Enum.GetValues(typeof(EnumRenderStage));
+            int max = 0;
+            foreach (object v in values)
+            {
+                int iv = (int)v;
+                if (iv > max)
+                {
+                    max = iv;
+                }
+            }
+
+            string[] labels = new string[max + 1];
+            foreach (object v in values)
+            {
+                int iv = (int)v;
+                if (iv >= 0 && iv < labels.Length)
+                {
+                    labels[iv] = "After render stage " + v.ToString();
+                }
+            }
+
+            return labels;
+        }
+
+        public static string GetAfterStageErrorLabel(EnumRenderStage stage)
+        {
+            int idx = (int)stage;
+            if ((uint)idx < (uint)AfterStageErrorLabels.Length)
+            {
+                string cached = AfterStageErrorLabels[idx];
+                if (cached != null)
+                {
+                    return cached;
+                }
+            }
+
+            return "After render stage " + stage;
+        }
+
+        public static double[] GetScratchFrustumMatrix()
+        {
+            double[] m = scratchFrustumMatrix;
+            if (m == null)
+            {
+                m = new double[16];
+                scratchFrustumMatrix = m;
+            }
+
+            return m;
+        }
+
+        /// <summary>
+        /// Replaces `"After render stage " + stage` inside ClientMain.TriggerRenderStage with a
+        /// cached label lookup, avoiding enum boxing and string allocation without blocking other mods' prefixes.
+        /// </summary>
+        public static IEnumerable<CodeInstruction> TriggerRenderStage_Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var list = new List<CodeInstruction>(instructions);
+            if (AfterStageErrorLabelMethod == null)
+            {
+                return list;
+            }
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].opcode != OpCodes.Ldstr || !Equals(list[i].operand, "After render stage "))
+                {
+                    continue;
+                }
+
+                int concatIdx = -1;
+                for (int j = i + 1; j < Math.Min(list.Count, i + 6); j++)
+                {
+                    if (list[j].opcode == OpCodes.Call &&
+                        list[j].operand is MethodInfo mi &&
+                        mi.DeclaringType == typeof(string) &&
+                        mi.Name == nameof(string.Concat))
+                    {
+                        concatIdx = j;
+                        break;
+                    }
+                }
+
+                if (concatIdx < 0)
+                {
+                    continue;
+                }
+
+                var loadStage = new CodeInstruction(OpCodes.Ldarg_1);
+                loadStage.labels.AddRange(list[i].labels);
+                var callCached = new CodeInstruction(OpCodes.Call, AfterStageErrorLabelMethod);
+                list.RemoveRange(i, concatIdx - i + 1);
+                list.Insert(i, loadStage);
+                list.Insert(i + 1, callCached);
+                break;
+            }
+
+            return list;
+        }
+
+        /// <summary>
+        /// Replaces Mat4d.Create() inside FrustumCulling.CalcFrustumEquations(BlockPos, double[], double[])
+        /// with a render-thread scratch double[16], preserving full composability with other mods.
+        /// </summary>
+        public static IEnumerable<CodeInstruction> CalcFrustumEquations_Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var list = new List<CodeInstruction>(instructions);
+            if (Mat4dCreateMethod == null || ScratchFrustumMatrixMethod == null)
+            {
+                return list;
+            }
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i].Calls(Mat4dCreateMethod))
+                {
+                    list[i].operand = ScratchFrustumMatrixMethod;
+                }
+            }
+
+            return list;
         }
 
         /// <summary>
@@ -186,6 +352,27 @@ namespace OptiTime
             return q;
         }
 
+        public static float[] ScaleUniform(float[] output, float[] a, float s)
+        {
+            output[0] = a[0] * s;
+            output[1] = a[1] * s;
+            output[2] = a[2] * s;
+            output[3] = a[3] * s;
+            output[4] = a[4] * s;
+            output[5] = a[5] * s;
+            output[6] = a[6] * s;
+            output[7] = a[7] * s;
+            output[8] = a[8] * s;
+            output[9] = a[9] * s;
+            output[10] = a[10] * s;
+            output[11] = a[11] * s;
+            output[12] = a[12];
+            output[13] = a[13];
+            output[14] = a[14];
+            output[15] = a[15];
+            return output;
+        }
+
         /// <summary>
         /// Replaces ActiveAnimationsByAnimCode.Any(anim => anim.Value.AdjustCollisionBox) in
         /// AnimationManager.OnClientFrame with a zero-allocation Dictionary.Values loop.
@@ -198,8 +385,6 @@ namespace OptiTime
                 return list;
             }
 
-            // Look for: call Enumerable.Any<KeyValuePair<string, AnimationMetaData>>(source, predicate)
-            // preceded by loading the cached predicate delegate (ldsfld ...; dup; brtrue ...; pop; ldnull; ldftn; newobj; dup; stsfld).
             for (int i = 0; i < list.Count; i++)
             {
                 if (list[i].opcode != OpCodes.Call || !(list[i].operand is MethodInfo mi) ||
@@ -209,7 +394,6 @@ namespace OptiTime
                     continue;
                 }
 
-                // Find the preceding ActiveAnimationsByAnimCode field load within 16 instructions.
                 int dictLoadIdx = -1;
                 for (int j = i - 1; j >= Math.Max(0, i - 18); j--)
                 {
@@ -225,7 +409,6 @@ namespace OptiTime
                     continue;
                 }
 
-                // Replace everything between dictLoadIdx+1 and i (inclusive) with a direct call to HasAdjustCollisionBox.
                 var replacement = new CodeInstruction(OpCodes.Call, HasAdjustCollisionBoxMethod);
                 int removeCount = i - dictLoadIdx;
                 list.RemoveRange(dictLoadIdx + 1, removeCount);
@@ -237,26 +420,61 @@ namespace OptiTime
         }
 
         /// <summary>
-        /// Replaces Quaterniond.Create() inside EntityShapeRenderer.loadModelMatrix with a
-        /// render-thread scratch quaternion, avoiding 56 B/call across Opaque + ShadowFar + ShadowNear.
+        /// Replaces Quaterniond.Create() and `Mat4f.Scale(ModelMat, ModelMat, new float[3] { size, size, size })`
+        /// inside EntityShapeRenderer.loadModelMatrix with zero-allocation helpers.
         /// </summary>
         public static IEnumerable<CodeInstruction> LoadModelMatrix_Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var list = new List<CodeInstruction>(instructions);
-            if (QuaternionCreateMethod == null || ScratchQuaternionMethod == null)
+
+            if (QuaternionCreateMethod != null && ScratchQuaternionMethod != null)
             {
-                return list;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i].Calls(QuaternionCreateMethod))
+                    {
+                        list[i].operand = ScratchQuaternionMethod;
+                    }
+                }
             }
 
-            for (int i = 0; i < list.Count; i++)
+            if (Mat4fScaleArrayMethod != null && ScaleUniformMethod != null)
             {
-                if (list[i].Calls(QuaternionCreateMethod))
+                for (int i = 0; i <= list.Count - 15; i++)
                 {
-                    list[i].operand = ScratchQuaternionMethod;
+                    if (list[i].opcode == OpCodes.Ldc_I4_3 &&
+                        list[i + 1].opcode == OpCodes.Newarr &&
+                        Equals(list[i + 1].operand, typeof(float)) &&
+                        list[i + 2].opcode == OpCodes.Dup &&
+                        list[i + 3].opcode == OpCodes.Ldc_I4_0 &&
+                        list[i + 5].opcode == OpCodes.Stelem_R4 &&
+                        list[i + 6].opcode == OpCodes.Dup &&
+                        list[i + 7].opcode == OpCodes.Ldc_I4_1 &&
+                        list[i + 9].opcode == OpCodes.Stelem_R4 &&
+                        list[i + 10].opcode == OpCodes.Dup &&
+                        list[i + 11].opcode == OpCodes.Ldc_I4_2 &&
+                        list[i + 13].opcode == OpCodes.Stelem_R4 &&
+                        list[i + 14].Calls(Mat4fScaleArrayMethod) &&
+                        SameLocalLoad(list[i + 4], list[i + 8]) &&
+                        SameLocalLoad(list[i + 4], list[i + 12]))
+                    {
+                        var loadScale = new CodeInstruction(list[i + 4].opcode, list[i + 4].operand);
+                        loadScale.labels.AddRange(list[i].labels);
+                        var callScale = new CodeInstruction(OpCodes.Call, ScaleUniformMethod);
+                        list.RemoveRange(i, 15);
+                        list.Insert(i, loadScale);
+                        list.Insert(i + 1, callScale);
+                        break;
+                    }
                 }
             }
 
             return list;
+        }
+
+        private static bool SameLocalLoad(CodeInstruction a, CodeInstruction b)
+        {
+            return a.opcode == b.opcode && Equals(a.operand, b.operand);
         }
 
         /// <summary>
@@ -294,20 +512,56 @@ namespace OptiTime
         }
 
         /// <summary>
-        /// Replaces the per-frame `new DrawBuffersEnum[1] { ColorAttachment0 }` in
-        /// ClientPlatformWindows.RenderFinalComposition with a static readonly array.
+        /// Replaces the per-frame `new DrawBuffersEnum[3] { CA0, CA1, CA2 }` in
+        /// ClientPlatformWindows.LoadFrameBuffer(EnumFrameBuffer.Transparent) with a static readonly array.
         /// </summary>
-        public static IEnumerable<CodeInstruction> RenderFinalComposition_Transpiler(IEnumerable<CodeInstruction> instructions)
+        public static IEnumerable<CodeInstruction> LoadFrameBufferTransparent_Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var list = new List<CodeInstruction>(instructions);
-            if (SingleColorAttachment0Field == null)
+            if (ThreeColorAttachmentsField == null)
             {
                 return list;
             }
 
-            for (int i = 0; i < list.Count - 5; i++)
+            for (int i = 0; i < list.Count - 4; i++)
             {
-                if (list[i].opcode == OpCodes.Ldc_I4_1 &&
+                if (list[i].opcode == OpCodes.Ldc_I4_3 &&
+                    list[i + 1].opcode == OpCodes.Newarr &&
+                    Equals(list[i + 1].operand, typeof(DrawBuffersEnum)) &&
+                    list[i + 2].opcode == OpCodes.Dup &&
+                    list[i + 3].opcode == OpCodes.Ldtoken &&
+                    list[i + 4].opcode == OpCodes.Call &&
+                    list[i + 4].operand is MethodInfo initMi &&
+                    initMi.Name == "InitializeArray")
+                {
+                    var loadStatic = new CodeInstruction(OpCodes.Ldsfld, ThreeColorAttachmentsField);
+                    loadStatic.labels.AddRange(list[i].labels);
+                    list.RemoveRange(i, 5);
+                    list.Insert(i, loadStatic);
+                    break;
+                }
+            }
+
+            return list;
+        }
+
+        /// <summary>
+        /// Replaces all three per-frame DrawBuffersEnum[] allocations ([1], [4], [2]) in
+        /// ClientPlatformWindows.RenderFinalComposition with static readonly arrays.
+        /// </summary>
+        public static IEnumerable<CodeInstruction> RenderFinalComposition_Transpiler(IEnumerable<CodeInstruction> instructions)
+        {
+            var list = new List<CodeInstruction>(instructions);
+            if (SingleColorAttachment0Field == null || TwoColorAttachmentsField == null || FourColorAttachmentsField == null)
+            {
+                return list;
+            }
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                // Pattern 1: new DrawBuffersEnum[1] { ColorAttachment0 } (6 instructions)
+                if (i <= list.Count - 6 &&
+                    list[i].opcode == OpCodes.Ldc_I4_1 &&
                     list[i + 1].opcode == OpCodes.Newarr &&
                     Equals(list[i + 1].operand, typeof(DrawBuffersEnum)) &&
                     list[i + 2].opcode == OpCodes.Dup &&
@@ -320,7 +574,47 @@ namespace OptiTime
                     loadStatic.labels.AddRange(list[i].labels);
                     list.RemoveRange(i, 6);
                     list.Insert(i, loadStatic);
-                    break;
+                    continue;
+                }
+
+                // Pattern 2: new DrawBuffersEnum[4] via InitializeArray (5 instructions)
+                if (i <= list.Count - 5 &&
+                    list[i].opcode == OpCodes.Ldc_I4_4 &&
+                    list[i + 1].opcode == OpCodes.Newarr &&
+                    Equals(list[i + 1].operand, typeof(DrawBuffersEnum)) &&
+                    list[i + 2].opcode == OpCodes.Dup &&
+                    list[i + 3].opcode == OpCodes.Ldtoken &&
+                    list[i + 4].opcode == OpCodes.Call &&
+                    list[i + 4].operand is MethodInfo initMi &&
+                    initMi.Name == "InitializeArray")
+                {
+                    var loadStatic = new CodeInstruction(OpCodes.Ldsfld, FourColorAttachmentsField);
+                    loadStatic.labels.AddRange(list[i].labels);
+                    list.RemoveRange(i, 5);
+                    list.Insert(i, loadStatic);
+                    continue;
+                }
+
+                // Pattern 3: new DrawBuffersEnum[2] { ColorAttachment0, ColorAttachment1 } (10 instructions)
+                if (i <= list.Count - 10 &&
+                    list[i].opcode == OpCodes.Ldc_I4_2 &&
+                    list[i + 1].opcode == OpCodes.Newarr &&
+                    Equals(list[i + 1].operand, typeof(DrawBuffersEnum)) &&
+                    list[i + 2].opcode == OpCodes.Dup &&
+                    list[i + 3].opcode == OpCodes.Ldc_I4_0 &&
+                    list[i + 4].opcode == OpCodes.Ldc_I4 &&
+                    Equals(list[i + 4].operand, (int)DrawBuffersEnum.ColorAttachment0) &&
+                    list[i + 5].opcode == OpCodes.Stelem_I4 &&
+                    list[i + 6].opcode == OpCodes.Dup &&
+                    list[i + 7].opcode == OpCodes.Ldc_I4_1 &&
+                    list[i + 8].opcode == OpCodes.Ldc_I4 &&
+                    Equals(list[i + 8].operand, (int)DrawBuffersEnum.ColorAttachment1) &&
+                    list[i + 9].opcode == OpCodes.Stelem_I4)
+                {
+                    var loadStatic = new CodeInstruction(OpCodes.Ldsfld, TwoColorAttachmentsField);
+                    loadStatic.labels.AddRange(list[i].labels);
+                    list.RemoveRange(i, 10);
+                    list.Insert(i, loadStatic);
                 }
             }
 
