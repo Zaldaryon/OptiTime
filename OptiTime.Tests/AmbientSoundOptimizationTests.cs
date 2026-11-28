@@ -143,29 +143,46 @@ namespace OptiTime.Tests
             (SystemPlayerSounds system, EntityPlayer player, _) = CreateHarness(50.0, 70.0, 80.0);
 
             // Warm up JIT and static initialization on both unthrottled and throttled paths.
-            Assert.True(AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system));
-            Assert.False(AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system));
-            player.Pos.X = 51.0;
+            for (int i = 0; i < 64; i++)
+            {
+                player.Pos.X = 50.0 + i;
+                Assert.True(AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system));
+                Assert.False(AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system));
+            }
+
+            // Reset fallbackCounter to 0 via an unthrottled tick before stationary measurement.
+            player.Pos.X = 200.0;
             Assert.True(AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system));
 
             // Stationary ticks (throttled + periodic fallback): zero bytes allocated.
+            int stationaryUnthrottled = 0;
             long stationaryBefore = GC.GetAllocatedBytesForCurrentThread();
             for (int i = 0; i < 5000; i++)
             {
-                _ = AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system);
+                if (AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system))
+                {
+                    stationaryUnthrottled++;
+                }
             }
             long stationaryAfter = GC.GetAllocatedBytesForCurrentThread();
             Assert.Equal(0L, stationaryAfter - stationaryBefore);
+            Assert.Equal(500, stationaryUnthrottled);
 
             // Moving ticks (unthrottled every tick): zero bytes allocated.
+            int movingUnthrottled = 0;
+            double baseX = player.Pos.X + 1.0;
             long movingBefore = GC.GetAllocatedBytesForCurrentThread();
             for (int i = 0; i < 5000; i++)
             {
-                player.Pos.X = 52.0 + i;
-                Assert.True(AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system));
+                player.Pos.X = baseX + i;
+                if (AmbientSoundOptimization.ThrottleAmbientSoundUpdates(system))
+                {
+                    movingUnthrottled++;
+                }
             }
             long movingAfter = GC.GetAllocatedBytesForCurrentThread();
             Assert.Equal(0L, movingAfter - movingBefore);
+            Assert.Equal(5000, movingUnthrottled);
         }
 
         private static (SystemPlayerSounds System, EntityPlayer Player, RecordingLoadedSound Sound) CreateHarness(double x, double y, double z)
