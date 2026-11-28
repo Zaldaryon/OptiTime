@@ -22,6 +22,8 @@ namespace OptiTime
         private bool externalBlurOverrideDetected = false;
         private bool runtimeUnsupported = false;
         private Action<int> viewDistanceChangedDelegate = null;
+        private OnSettingsChanged<int> shadowMapQualityChangedDelegate = null;
+        private bool entityShadowPatched = false;
         
         // Public accessors for ConfigLib integration
         public static OptiTimeConfig Config { get; private set; }
@@ -46,6 +48,7 @@ namespace OptiTime
             ParticleOptimization.Configure(Config.ParticleOptimizations, Config.ParticleViewDistanceScalingEnabled);
             DynamicLightOptimization.Configure(Config.DynamicLightOptimizations);
             OcclusionCullingOptimization.Configure(Config.OcclusionCullingOptimizations);
+            EntityShadowCullingOptimization.SetEnabled(Config.EntityShadowDistanceCullEnabled);
             GuiManagerOptimization.Configure(Config);
             ProfilingHelper.SetEnabled(Config.EnableProfiling);
         }
@@ -900,41 +903,9 @@ namespace OptiTime
 
             if (config.EntityShadowDistanceCullEnabled)
             {
-                // At shadowQuality=1 the far cascade range is 60 blocks, which is smaller
-                // than our 80-block cull distance — the transpiler would never cull anything.
-                int shadowQ = 0;
-                try
-                {
-                    var csType = AccessTools.TypeByName("Vintagestory.Client.NoObf.ClientSettings");
-                    var prop = csType?.GetProperty("ShadowMapQuality", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    if (prop != null) shadowQ = (int)prop.GetValue(null);
-                }
-                catch { }
-
-                if (shadowQ <= 1)
-                {
-                    config.MarkEntityShadowCullSkipped(shadowQ);
-                    api.Logger.Notification($"[OptiTime] Entity shadow distance cull skipped (shadowQuality={shadowQ}, cascade range below cull distance 80)");
-                }
-                else try
-                {
-                    EntityShadowCullingOptimization.SetLogger(msg => api.Logger.Warning(msg));
-                    var onRenderShadows = AccessTools.Method("Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderFrameShadows", new Type[] { typeof(float) });
-                    if (onRenderShadows == null)
-                        throw new InvalidOperationException("SystemRenderEntities.OnRenderFrameShadows not found");
-
-                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.EntityShadowDistanceCullEnabled), "Entity shadow distance cull", onRenderShadows))
-                    {
-                        harmony.Patch(onRenderShadows,
-                            transpiler: new HarmonyMethod(typeof(EntityShadowCullingOptimization), nameof(EntityShadowCullingOptimization.TranspileOnRenderFrameShadows)));
-                        api.Logger.Notification("[OptiTime] Entity shadow distance cull loaded");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    api.Logger.Warning("[OptiTime] Failed to load entity shadow distance cull: " + ex.Message);
-                    config.EntityShadowDistanceCullEnabled = false;
-                }
+                int shadowQ = api.Settings?.Int?.Get("shadowMapQuality", 0) ?? 0;
+                ApplyEntityShadowQuality(api, shadowQ, isStartup: true);
+                RegisterShadowMapQualityWatcher(api);
             }
 
             if (config.EntityInterpolationOptimizations)
@@ -1001,6 +972,7 @@ namespace OptiTime
         private void OnLeaveWorld()
         {
             DynamicLightOptimization.Cleanup();
+            EntityShadowCullingOptimization.OnLeaveWorld();
         }
 
         private void OnLevelFinalize()
@@ -1046,6 +1018,84 @@ namespace OptiTime
             {
                 api.Logger.Error($"[OptiTime] Failed to initialize handbook optimization: {ex.Message}");
             }
+        }
+
+        private void ApplyEntityShadowQuality(ICoreClientAPI api, int shadowQ, bool isStartup)
+        {
+            EntityShadowCullingOptimization.UpdateShadowMapQuality(shadowQ);
+
+            if (config == null || !config.EntityShadowDistanceCullEnabled ||
+                config.IsConflictDisabled(nameof(OptiTimeConfig.EntityShadowDistanceCullEnabled)))
+            {
+                return;
+            }
+
+            if (shadowQ <= 1)
+            {
+                config.MarkEntityShadowCullSkipped(shadowQ);
+                if (isStartup)
+                {
+                    api.Logger.Notification($"[OptiTime] Entity shadow distance cull skipped (shadowQuality={shadowQ}, cascade range below cull distance 80)");
+                }
+                else
+                {
+                    api.Logger.Notification($"[OptiTime] Entity shadow distance cull paused (shadowQuality={shadowQ}, cascade range below cull distance 80)");
+                }
+                return;
+            }
+
+            config.ClearEntityShadowCullSkipped();
+            if (entityShadowPatched || harmony == null)
+            {
+                return;
+            }
+
+            try
+            {
+                EntityShadowCullingOptimization.SetLogger(msg => api.Logger.Warning(msg));
+                var onRenderShadows = AccessTools.Method("Vintagestory.Client.NoObf.SystemRenderEntities:OnRenderFrameShadows", new Type[] { typeof(float) });
+                if (onRenderShadows == null)
+                    throw new InvalidOperationException("SystemRenderEntities.OnRenderFrameShadows not found");
+
+                if (optimumHostDetected && !OptimumOwnership.IsVanillaBody(onRenderShadows, GameVersion.ShortGameVersion))
+                {
+                    api.Logger.Notification("[OptiTime] Entity shadow distance cull skipped: target is not a vanilla body.");
+                    return;
+                }
+
+                if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.EntityShadowDistanceCullEnabled), "Entity shadow distance cull", onRenderShadows))
+                {
+                    harmony.Patch(
+                        onRenderShadows,
+                        prefix: new HarmonyMethod(typeof(EntityShadowCullingOptimization), nameof(EntityShadowCullingOptimization.OnRenderFrameShadows_Prefix)));
+                    EntityShadowCullingOptimization.SetPatchActive(true);
+                    entityShadowPatched = true;
+                    api.Logger.Notification("[OptiTime] Entity shadow distance cull loaded");
+                }
+            }
+            catch (Exception ex)
+            {
+                api.Logger.Warning("[OptiTime] Failed to load entity shadow distance cull: " + ex.Message);
+                config.EntityShadowDistanceCullEnabled = false;
+            }
+        }
+
+        private void RegisterShadowMapQualityWatcher(ICoreClientAPI api)
+        {
+            if (shadowMapQualityChangedDelegate != null || api?.Settings?.Int == null)
+            {
+                return;
+            }
+
+            shadowMapQualityChangedDelegate = (newShadowQuality) =>
+            {
+                if (capi != null)
+                {
+                    ApplyEntityShadowQuality(capi, newShadowQuality, isStartup: false);
+                }
+            };
+
+            api.Settings.Int.AddWatcher("shadowMapQuality", shadowMapQualityChangedDelegate);
         }
 
         private void RegisterViewDistanceWatcher(ICoreClientAPI api)
@@ -1427,6 +1477,16 @@ namespace OptiTime
                     capi.Event.LeaveWorld -= OnLeaveWorld;
                 }
 
+                if (shadowMapQualityChangedDelegate != null)
+                {
+                    try
+                    {
+                        capi?.Settings?.Int?.RemoveWatcher("shadowMapQuality", shadowMapQualityChangedDelegate);
+                    }
+                    catch { }
+                    shadowMapQualityChangedDelegate = null;
+                }
+
                 // Unregister view distance watcher
                 if (viewDistanceChangedDelegate != null)
                 {
@@ -1448,6 +1508,7 @@ namespace OptiTime
                     catch { }
                     viewDistanceChangedDelegate = null;
                 }
+                entityShadowPatched = false;
 
                 harmony?.UnpatchAll("com.zaldaryon.optitime");
 

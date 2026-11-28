@@ -398,6 +398,95 @@ public class EntityShadowCullTests : OptiTimeScenarioBase
         Assert.Contains("Shadow quality", states["shadowentity"].Conflict ?? "");
         Assert.Contains("above 1", states["shadowentity"].Conflict ?? "");
     }
+
+    [ClientServerScenario(TimeoutMs = 900_000)]
+    public async Task RaisingShadowQualityAtRuntimeActivatesEntityShadowCullingAndRespectsLargeEntityRadius()
+    {
+        await WarmUpAsync();
+
+        int initialQuality = Client!.RunOnClientThread(() => Vintagestory.Client.NoObf.ClientSettings.ShadowMapQuality);
+        ServerTestPlayer other = await CreateTestPlayerAsync("OtShadowSwitch");
+        await other.TeleportTo(8, 70, 8);
+        await Session!.StepFramesAsync(60);
+
+        try
+        {
+            // Ensure we start from quality 1 (skipped) and then raise to quality 3 at runtime.
+            Client.Settings.Set("shadowMapQuality", 1);
+            await Session.StepFramesAsync(30);
+            IReadOnlyDictionary<string, OptionState> lowStates = await ReadStatusAsync();
+            Assert.False(lowStates["shadowentity"].Enabled,
+                "shadowentity should report OFF while shadowMapQuality is 1.");
+
+            Client.Settings.Set("shadowMapQuality", 3);
+            await Session.StepFramesAsync(60);
+
+            IReadOnlyDictionary<string, OptionState> highStates = await ReadStatusAsync();
+            Assert.True(highStates["shadowentity"].Enabled,
+                "Raising shadowMapQuality from 1 to 3 mid-session did not activate shadowentity.");
+
+            DiagCounters counters = await CaptureDiagAsync("shadowentity", frames: 120);
+            Assert.True(counters.Present, "The 'shadowentity' diag module produced no dump after raising shadowMapQuality.");
+            Assert.True(counters.Require(DiagCounter.Entities, "shadowentity") > 0,
+                "Entity shadow culling counted zero entities after raising shadowMapQuality to 3 at runtime.");
+
+            // Verify large-entity FrustumSphereRadius scaling and 1.21x hysteresis on the live client thread.
+            bool radiusChecksPassed = Client.RunOnClientThread(() =>
+            {
+                var optType = HarmonyLib.AccessTools.TypeByName("OptiTime.EntityShadowCullingOptimization");
+                var checkMethod = HarmonyLib.AccessTools.Method(optType, "IsBeyondCullDistance", new[] { typeof(Vintagestory.API.Common.Entities.Entity) });
+                var posBackingField = HarmonyLib.AccessTools.Field(typeof(Vintagestory.API.Common.Entities.Entity), "<Pos>k__BackingField");
+                if (checkMethod is null || posBackingField is null)
+                {
+                    return false;
+                }
+
+                var rawPlayer = ((Zaldaryon.Pharos.Player.ClientTestPlayer)Player!).RawEntity!;
+                var world = rawPlayer.World;
+                double px = rawPlayer.Pos.X;
+                double pz = rawPlayer.Pos.Z;
+
+                var giant = (LiveRadiusProbeEntity)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(LiveRadiusProbeEntity));
+                giant.EntityId = 999901;
+                giant.World = world;
+                giant.RadiusOverride = 6.0;
+                posBackingField.SetValue(giant, new Vintagestory.API.Common.Entities.EntityPos(px + 120.0, rawPlayer.Pos.Y, pz));
+                giant.IsShadowRendered = false;
+
+                bool giantCulledAt120 = (bool)checkMethod.Invoke(null, new object[] { giant })!;
+
+                giant.Pos.X = px + 165.0;
+                giant.IsShadowRendered = false;
+                bool giantCulledAt165WhenOff = (bool)checkMethod.Invoke(null, new object[] { giant })!;
+
+                giant.IsShadowRendered = true;
+                bool giantCulledAt165WhenOn = (bool)checkMethod.Invoke(null, new object[] { giant })!;
+
+                return !giantCulledAt120 && giantCulledAt165WhenOff && !giantCulledAt165WhenOn;
+            });
+
+            Assert.True(radiusChecksPassed,
+                "Large-entity FrustumSphereRadius scaling or 1.21x hysteresis check failed on live client.");
+
+            // Lowering shadowMapQuality back to 1 pauses culling cleanly.
+            Client.Settings.Set("shadowMapQuality", 1);
+            await Session.StepFramesAsync(30);
+            IReadOnlyDictionary<string, OptionState> pausedStates = await ReadStatusAsync();
+            Assert.False(pausedStates["shadowentity"].Enabled,
+                "Lowering shadowMapQuality back to 1 did not pause shadowentity.");
+        }
+        finally
+        {
+            Client.Settings.Set("shadowMapQuality", initialQuality);
+            await Session.StepFramesAsync(30);
+        }
+    }
+
+    private sealed class LiveRadiusProbeEntity : Vintagestory.API.Common.Entities.Entity
+    {
+        public double RadiusOverride;
+        public override double FrustumSphereRadius => RadiusOverride;
+    }
 }
 
     private static Vec3d ToVec(EntityPos? pos) =>

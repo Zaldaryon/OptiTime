@@ -1,10 +1,9 @@
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Vintagestory.API.Client;
+using Vintagestory.API.Common;
 using Vintagestory.API.Common.Entities;
 using Vintagestory.Client.NoObf;
 using OptiTime.Diagnostics;
@@ -13,147 +12,321 @@ namespace OptiTime
 {
     public static class EntityShadowCullingOptimization
     {
-        // Vanilla SystemRenderEntities.OnRenderFrameShadows renders every entity in the shadow
-        // frustum (radius 3.0) regardless of distance. At the default shadow map size
-        // (Math.Max(4, ShadowMapQuality + 2) * 1024, min 4096^2 — verified at
-        // ClientPlatformWindows.cs:1468-1469), an entity beyond ~80 blocks occupies a
-        // sub-pixel area and contributes no visible shadow. This optimization injects a
-        // horizontal squared-distance check into the loop so distant non-player entities
-        // are dropped before IsShadowRendered is set, which also short-circuits the
-        // second (batched) shadow pass that gates on the same flag.
+        // Vanilla SystemRenderEntities.OnRenderFrameShadows runs on both ShadowFar and ShadowNear,
+        // testing every entity with a flat 3.0 frustum sphere and WorldMap.IsChunkRendered, then
+        // unconditionally switching shaders and re-scanning all EntityRenderers a second time for
+        // batched entity shadows. This optimization:
+        // 1. Caches player position and dimension once per pass and short-circuits ShadowNear
+        //    (cascade range <= 58 blocks, well under the 80-block cull floor).
+        // 2. Rejects distant entities by horizontal squared distance BEFORE frustum and chunk-map
+        //    lookups, scaling the cutoff by (max(3.0, FrustumSphereRadius) / 3.0)^2 with a 1.21x
+        //    squared hysteresis band preserved across ShadowNear resets.
+        // 3. Collects shadow-rendered renderers into a dense scratch list so the batched pass only
+        //    iterates active shadow casters and skips the Shadowmapentityanimated shader switch
+        //    entirely when zero entities cast shadows in the cascade.
+        private const double BaseCullDistance = 80.0;
+        private const double BaseCullDistanceSq = BaseCullDistance * BaseCullDistance;
+        private const double DefaultFrustumRadius = 3.0;
+        private const double ScaledBaseCoeffSq = (BaseCullDistance / DefaultFrustumRadius) * (BaseCullDistance / DefaultFrustumRadius);
+        private const double HysteresisMultiplierSq = 1.21;
+        private const double HysteresisTrackMinDistSq = 50.0 * 50.0;
+        private const int MinActiveShadowQuality = 2;
 
-        // 80 blocks horizontal squared. Conservative: even slow-moving large entities are
-        // sub-pixel in the shadow map past this distance. Player and AllowOutsideLoadedRange
-        // entities are always rendered.
-        private const double CullDistanceSq = 80.0 * 80.0;
+        private static readonly AccessTools.FieldRef<ClientSystem, ClientMain> gameRef;
+        private static readonly AccessTools.FieldRef<ClientMain, Dictionary<long, EntityRenderer>> entityRenderersRef;
+        private static readonly AccessTools.FieldRef<ClientMain, float[]> shadowMvpMatrixRef;
+        private static readonly bool accessorsReady;
 
         private static Action<string> logger;
-        private static volatile bool transpilerActive;
+        private static volatile bool patchActive;
+        private static volatile bool enabled = true;
+        private static volatile int currentShadowQuality = MinActiveShadowQuality;
+
+        // Reusable render-thread collections (cleared after every pass and on world leave/cleanup).
+        private static readonly List<EntityRenderer> shadowRenderedList = new List<EntityRenderer>(64);
+        private static HashSet<long> prevFarRendered = new HashSet<long>();
+        private static HashSet<long> currFarRendered = new HashSet<long>();
+
+        static EntityShadowCullingOptimization()
+        {
+            try
+            {
+                gameRef = AccessTools.FieldRefAccess<ClientSystem, ClientMain>("game");
+                entityRenderersRef = AccessTools.FieldRefAccess<ClientMain, Dictionary<long, EntityRenderer>>("EntityRenderers");
+                shadowMvpMatrixRef = AccessTools.FieldRefAccess<ClientMain, float[]>("shadowMvpMatrix");
+                accessorsReady = true;
+            }
+            catch
+            {
+                accessorsReady = false;
+            }
+        }
 
         public static void SetLogger(Action<string> log) => logger = log;
 
-        public static bool TranspilerActive => transpilerActive;
+        public static bool TranspilerActive => patchActive;
 
+        internal static void SetPatchActive(bool active) => patchActive = active;
+
+        public static void SetEnabled(bool isEnabled)
+        {
+            enabled = isEnabled;
+            if (!isEnabled)
+            {
+                prevFarRendered.Clear();
+                currFarRendered.Clear();
+            }
+        }
+
+        public static void UpdateShadowMapQuality(int shadowQuality)
+        {
+            currentShadowQuality = shadowQuality;
+            if (shadowQuality < MinActiveShadowQuality)
+            {
+                prevFarRendered.Clear();
+                currFarRendered.Clear();
+            }
+        }
+
+        public static void OnLeaveWorld()
+        {
+            shadowRenderedList.Clear();
+            prevFarRendered.Clear();
+            currFarRendered.Clear();
+        }
+
+        /// <summary>
+        /// Evaluates whether an entity exceeds its radius-scaled shadow cull distance with 1.21x
+        /// squared hysteresis on <see cref="Entity.IsShadowRendered"/>. Used both directly and
+        /// by live/unit verification probes.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsBeyondCullDistance(Entity entity)
         {
-            if (entity == null) return false;
-            if (entity.AllowOutsideLoadedRange) return false;
+            if (entity == null || entity.AllowOutsideLoadedRange ||
+                !enabled || currentShadowQuality < MinActiveShadowQuality)
+            {
+                return false;
+            }
 
             var clientWorld = entity.World as IClientWorldAccessor;
-            var player = clientWorld?.Player?.Entity;
-            if (player == null || entity == player) return false;
+            EntityPlayer player = clientWorld?.Player?.Entity;
+            if (player == null || ReferenceEquals(entity, player))
+            {
+                return false;
+            }
 
-            var pPos = player.Pos;
-            var ePos = entity.Pos;
-            double dx = ePos.X - pPos.X;
-            double dz = ePos.Z - pPos.Z;
-            bool culled = dx * dx + dz * dz > CullDistanceSq;
+            var playerPos = player.Pos;
+            bool culled = IsBeyondCullDistanceCore(entity, entity.Pos, playerPos.X, playerPos.Z, hasPrevFar: false, out _);
             ModuleShadowEntity.OnEntity(culled);
             return culled;
         }
 
-        public static IEnumerable<CodeInstruction> TranspileOnRenderFrameShadows(IEnumerable<CodeInstruction> instructions, ILGenerator il)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsBeyondCullDistanceCore(
+            Entity entity,
+            EntityPos entityPos,
+            double playerX,
+            double playerZ,
+            bool hasPrevFar,
+            out double distSq)
         {
-            var codes = new List<CodeInstruction>(instructions);
-            var isShadowRenderedField = AccessTools.Field(typeof(Entity), nameof(Entity.IsShadowRendered));
-            var cullCheck = AccessTools.Method(typeof(EntityShadowCullingOptimization), nameof(IsBeyondCullDistance));
+            double dx = entityPos.X - playerX;
+            double dz = entityPos.Z - playerZ;
+            distSq = dx * dx + dz * dz;
 
-            if (isShadowRenderedField == null || cullCheck == null)
+            // Since scale >= 1.0, any entity within BaseCullDistance is guaranteed not culled.
+            if (distSq <= BaseCullDistanceSq)
             {
-                logger?.Invoke("[OptiTime] Entity shadow cull: required members not found, optimization inactive");
-                return codes;
+                return false;
             }
 
-            // Locate the two stfld IsShadowRendered. Vanilla writes `entity.IsShadowRendered = true;` in
-            // the matched branch and `entity.IsShadowRendered = false;` in the else branch. The else
-            // branch's leading instruction carries the brfalse target label from the condition chain.
-            int trueStfldIdx = -1;
-            int elseStfldIdx = -1;
+            double radius = entity.FrustumSphereRadius;
+            double thresholdSq = radius > DefaultFrustumRadius
+                ? ScaledBaseCoeffSq * (radius * radius)
+                : BaseCullDistanceSq;
 
-            for (int i = 1; i < codes.Count; i++)
+            bool wasRendered = entity.IsShadowRendered || (hasPrevFar && prevFarRendered.Contains(entity.EntityId));
+            if (wasRendered)
             {
-                if (codes[i].opcode == OpCodes.Stfld &&
-                    codes[i].operand is FieldInfo fi && fi == isShadowRenderedField)
-                {
-                    var prev = codes[i - 1];
-                    if (prev.opcode == OpCodes.Ldc_I4_1 && trueStfldIdx < 0) trueStfldIdx = i;
-                    else if (prev.opcode == OpCodes.Ldc_I4_0 && elseStfldIdx < 0) elseStfldIdx = i;
-                }
+                thresholdSq *= HysteresisMultiplierSq;
             }
 
-            if (trueStfldIdx < 0 || elseStfldIdx < 0)
-            {
-                logger?.Invoke("[OptiTime] Entity shadow cull: IL anchors not found (stfld IsShadowRendered), optimization inactive");
-                return codes;
-            }
-
-            // True branch entry: `ldloc entity; ldc.i4.1; stfld IsShadowRendered` → entry is at trueStfldIdx-2.
-            // Else branch entry: `ldloc entity; ldc.i4.0; stfld IsShadowRendered` → entry is at elseStfldIdx-2.
-            int trueBranchEntry = trueStfldIdx - 2;
-            int elseBranchEntry = elseStfldIdx - 2;
-            if (trueBranchEntry < 0 || elseBranchEntry < 0)
-            {
-                logger?.Invoke("[OptiTime] Entity shadow cull: IL pattern shorter than expected, optimization inactive");
-                return codes;
-            }
-
-            var entityLoad = codes[trueBranchEntry];
-            if (!IsLdloc(entityLoad.opcode))
-            {
-                logger?.Invoke("[OptiTime] Entity shadow cull: expected ldloc at true-branch entry, optimization inactive");
-                return codes;
-            }
-
-            // Acquire (or create) a label on the else-branch entry instruction.
-            Label elseLabel;
-            var elseEntry = codes[elseBranchEntry];
-            if (elseEntry.labels.Count > 0)
-            {
-                elseLabel = elseEntry.labels[0];
-            }
-            else
-            {
-                elseLabel = il.DefineLabel();
-                elseEntry.labels.Add(elseLabel);
-            }
-
-            // Inject at the true-branch entry:
-            //   ldloc entity
-            //   call EntityShadowCullingOptimization.IsBeyondCullDistance
-            //   brtrue elseLabel
-            // The original `ldloc entity` (which may carry inbound labels from the brfalse chain)
-            // must remain at the same position, so we copy its labels onto the first injected
-            // instruction and clear them from the original.
-            var injected = new List<CodeInstruction>
-            {
-                new CodeInstruction(entityLoad.opcode, entityLoad.operand),
-                new CodeInstruction(OpCodes.Call, cullCheck),
-                new CodeInstruction(OpCodes.Brtrue, elseLabel)
-            };
-
-            if (entityLoad.labels.Count > 0)
-            {
-                injected[0].labels.AddRange(entityLoad.labels);
-                entityLoad.labels.Clear();
-            }
-
-            codes.InsertRange(trueBranchEntry, injected);
-            transpilerActive = true;
-            return codes;
+            return distSq > thresholdSq;
         }
 
-        private static bool IsLdloc(OpCode op)
+        public static bool OnRenderFrameShadows_Prefix(SystemRenderEntities __instance, float dt)
         {
-            return op == OpCodes.Ldloc || op == OpCodes.Ldloc_S ||
-                   op == OpCodes.Ldloc_0 || op == OpCodes.Ldloc_1 ||
-                   op == OpCodes.Ldloc_2 || op == OpCodes.Ldloc_3;
+            if (!enabled || currentShadowQuality < MinActiveShadowQuality || !accessorsReady || __instance == null)
+            {
+                return true;
+            }
+
+            ClientMain game = gameRef(__instance);
+            EntityPlayer player = game?.EntityPlayer;
+            Dictionary<long, EntityRenderer> entityRenderers = game != null ? entityRenderersRef(game) : null;
+            if (player == null || entityRenderers == null || game.frustumCuller == null || game.WorldMap == null)
+            {
+                return true;
+            }
+
+            var chunkShadow = ShaderProgramBase.CurrentShaderProgram as ShaderProgramChunkshadowmap;
+            if (chunkShadow == null)
+            {
+                return true;
+            }
+
+            var playerPos = player.Pos;
+            int dimension = playerPos.Dimension;
+            double playerX = playerPos.X;
+            double playerZ = playerPos.Z;
+
+            FrustumCulling frustum = game.frustumCuller;
+            ClientWorldMap worldMap = game.WorldMap;
+
+            // Near cascade range is 30 + 3 * (quality - 1) + 16 (<= 58 blocks), well below the
+            // 80-block cull floor; skip distance culling and preserve the ShadowFar hysteresis set.
+            bool isFarPass = frustum.shadowRangeZ > BaseCullDistance;
+            bool hasPrevFar = false;
+            if (isFarPass)
+            {
+                (prevFarRendered, currFarRendered) = (currFarRendered, prevFarRendered);
+                currFarRendered.Clear();
+                hasPrevFar = prevFarRendered.Count > 0;
+            }
+
+            if (game.api?.Render?.UseSSBOs == true)
+            {
+                chunkShadow.Stop();
+                chunkShadow = (ShaderProgramChunkshadowmap)game.api.Shader.GetProgram(42);
+                chunkShadow.Use();
+            }
+
+            shadowRenderedList.Clear();
+            try
+            {
+                foreach (KeyValuePair<long, EntityRenderer> pair in entityRenderers)
+                {
+                    EntityRenderer renderer = pair.Value;
+                    Entity entity = renderer.entity;
+                    EntityPos entityPos = entity.Pos;
+
+                    if (entityPos.Dimension != dimension)
+                    {
+                        entity.IsShadowRendered = false;
+                        continue;
+                    }
+
+                    bool isPlayer = ReferenceEquals(entity, player);
+                    double distSq = 0.0;
+                    if (isFarPass && !isPlayer && !entity.AllowOutsideLoadedRange)
+                    {
+                        if (IsBeyondCullDistanceCore(entity, entityPos, playerX, playerZ, hasPrevFar, out distSq))
+                        {
+                            ModuleShadowEntity.OnEntity(true);
+                            entity.IsShadowRendered = false;
+                            continue;
+                        }
+                    }
+
+                    double frustumRadius = entity.FrustumSphereRadius;
+                    if (!(frustumRadius > DefaultFrustumRadius))
+                    {
+                        frustumRadius = DefaultFrustumRadius;
+                    }
+
+                    if (frustum.SphereInFrustum((float)entityPos.X, (float)entityPos.InternalY, (float)entityPos.Z, frustumRadius)
+                        && (isPlayer || (worldMap.IsValidPos((int)entityPos.X, (int)entityPos.InternalY, (int)entityPos.Z) && worldMap.IsChunkRendered(entityPos))))
+                    {
+                        entity.IsShadowRendered = true;
+                        if (isFarPass && !isPlayer)
+                        {
+                            ModuleShadowEntity.OnEntity(false);
+                            if (distSq > HysteresisTrackMinDistSq)
+                            {
+                                currFarRendered.Add(entity.EntityId);
+                            }
+                        }
+
+                        renderer.DoRender3DOpaque(dt, isShadowPass: true);
+                        shadowRenderedList.Add(renderer);
+                    }
+                    else
+                    {
+                        entity.IsShadowRendered = false;
+                    }
+                }
+
+                // Skip the Shadowmapentityanimated shader switch and second pass entirely when
+                // zero entities rendered shadows in this cascade.
+                int count = shadowRenderedList.Count;
+                if (count > 0)
+                {
+                    chunkShadow.Stop();
+                    ShaderProgramShadowmapentityanimated animShader = ShaderPrograms.Shadowmapentityanimated;
+                    animShader.Use();
+                    try
+                    {
+                        animShader.ProjectionMatrix = game.CurrentProjectionMatrix;
+                        animShader.EntityTex2D = game.EntityAtlasManager.AtlasTextures[0].TextureId;
+                        for (int i = 0; i < count; i++)
+                        {
+                            shadowRenderedList[i].DoRender3DOpaqueBatched(dt, isShadowPass: true);
+                        }
+                    }
+                    finally
+                    {
+                        animShader.Stop();
+                        chunkShadow.Use();
+                        chunkShadow.MvpMatrix = shadowMvpMatrixRef(game);
+                    }
+                }
+            }
+            finally
+            {
+                shadowRenderedList.Clear();
+            }
+
+            return false;
+        }
+
+        internal static bool EvaluateFarShadowStepForTest(
+            Entity entity,
+            double playerX,
+            double playerZ,
+            bool isFarPass,
+            bool beginNewPass)
+        {
+            if (beginNewPass && isFarPass)
+            {
+                (prevFarRendered, currFarRendered) = (currFarRendered, prevFarRendered);
+                currFarRendered.Clear();
+            }
+
+            if (!enabled || currentShadowQuality < MinActiveShadowQuality || !isFarPass ||
+                entity == null || entity.AllowOutsideLoadedRange)
+            {
+                return false;
+            }
+
+            bool culled = IsBeyondCullDistanceCore(entity, entity.Pos, playerX, playerZ, prevFarRendered.Count > 0, out double distSq);
+            if (!culled && distSq > HysteresisTrackMinDistSq)
+            {
+                currFarRendered.Add(entity.EntityId);
+            }
+
+            return culled;
         }
 
         public static void Cleanup()
         {
             logger = null;
-            transpilerActive = false;
+            patchActive = false;
+            enabled = true;
+            currentShadowQuality = MinActiveShadowQuality;
+            shadowRenderedList.Clear();
+            prevFarRendered.Clear();
+            currFarRendered.Clear();
         }
     }
 }

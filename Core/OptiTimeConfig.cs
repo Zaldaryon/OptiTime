@@ -51,9 +51,16 @@ namespace OptiTime
         // (for example because Optimum already provides them). They are written back by Save.
         private readonly Dictionary<string, bool> sessionStoredValues = new Dictionary<string, bool>();
 
+        internal int? EntityShadowSkippedQuality => entityShadowSkippedQuality;
+
         internal void MarkEntityShadowCullSkipped(int shadowQuality)
         {
             entityShadowSkippedQuality = shadowQuality;
+        }
+
+        internal void ClearEntityShadowCullSkipped()
+        {
+            entityShadowSkippedQuality = null;
         }
 
         public OptiTimeConfig()
