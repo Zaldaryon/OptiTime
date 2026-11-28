@@ -1,5 +1,7 @@
 using HarmonyLib;
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using Vintagestory.API.Client;
 using Vintagestory.API.MathTools;
 using Vintagestory.Client;
@@ -11,6 +13,7 @@ namespace OptiTime
     public static class ShadowOptimization
     {
         private const string SolidShadowProgramName = "optitime_chunkshadowmap_solid";
+        private const string SolidShadowNoWarpProgramName = "optitime_chunkshadowmap_solid_nowarp";
 
         private const string SolidShadowFragmentSource =
             "#version 330 core\n" +
@@ -36,40 +39,69 @@ namespace OptiTime
         private static readonly AccessTools.FieldRef<ClientMain, float[]> shadowMvpMatrixRef =
             AccessTools.FieldRefAccess<ClientMain, float[]>("shadowMvpMatrix");
 
+        private static readonly AccessTools.FieldRef<FrustumCulling, BlockPos> cullerPlayerPosRef;
+        private static readonly MethodInfo handleIncludesMethod;
+
         private static Action<string> logger;
         private static bool farVegetationCullEnabled;
         private static bool solidDepthPassEnabled;
+        private static volatile bool shadowLodDedupeEnabled;
         private static ShaderProgram solidShadowProgram;
+        private static ShaderProgram solidShadowNoWarpProgram;
+
+        static ShadowOptimization()
+        {
+            try
+            {
+                cullerPlayerPosRef = AccessTools.FieldRefAccess<FrustumCulling, BlockPos>("playerPos");
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                handleIncludesMethod = AccessTools.Method(
+                    typeof(ShaderRegistry),
+                    "HandleIncludes",
+                    new[] { typeof(ShaderProgram), typeof(string), typeof(HashSet<string>) });
+            }
+            catch
+            {
+            }
+        }
 
         public static void SetLogger(Action<string> log) => logger = log;
 
-        public static void Configure(bool farVegetationCull, bool solidDepthPass)
+        public static void Configure(bool farVegetationCull, bool solidDepthPass, bool lodDedupe = true)
         {
             farVegetationCullEnabled = farVegetationCull;
             solidDepthPassEnabled = solidDepthPass;
+            shadowLodDedupeEnabled = lodDedupe;
         }
 
         public static bool IsSolidShadowShaderReady =>
             solidDepthPassEnabled &&
-            solidShadowProgram != null &&
-            !solidShadowProgram.Disposed &&
-            !solidShadowProgram.LoadError &&
-            solidShadowProgram.ProgramId > 0;
+            IsProgramUsable(solidShadowProgram);
+
+        public static bool IsSolidShadowNoWarpReady =>
+            solidDepthPassEnabled &&
+            IsProgramUsable(solidShadowNoWarpProgram);
 
         /// <summary>
-        /// Compiles or recompiles the depth-only shadow shader used for solid terrain passes
-        /// (Opaque and TopSoil), cloning Chunkshadowmap's expanded vertex shader so SSBO and
-        /// vertex-warping behavior stay identical to vanilla without texture fetches or discard.
+        /// Compiles or recompiles stripped depth-only shadow shaders for solid terrain passes:
+        /// - Pass 0 (Opaque): strips uv unpacking and uv interpolator output while preserving vertex/global warping.
+        /// - Pass 5 (TopSoil): additionally strips applyVertexWarping (topsoil never vertex-warps in chunktopsoil.vsh).
+        /// Falls back cleanly to cloning Chunkshadowmap's vertex shader if include expansion is unavailable.
         /// </summary>
         public static bool RebuildSolidShadowShader(ICoreClientAPI api)
         {
-            DisposeSolidShadowProgram(api);
+            DisposeSolidShadowPrograms(api);
             if (!solidDepthPassEnabled || api?.Shader == null)
             {
                 return false;
             }
 
-            ShaderProgram program = null;
             try
             {
                 ShaderProgramChunkshadowmap baseProgram = ShaderPrograms.Chunkshadowmap;
@@ -78,46 +110,140 @@ namespace OptiTime
                     return false;
                 }
 
-                string vertexCode = baseProgram.VertexShader?.Code;
-                if (string.IsNullOrEmpty(vertexCode))
-                {
-                    return false;
-                }
+                solidShadowProgram = BuildSolidShadowVariant(api, baseProgram, SolidShadowProgramName, includeVertexWarp: true);
+                solidShadowNoWarpProgram = BuildSolidShadowVariant(api, baseProgram, SolidShadowNoWarpProgramName, includeVertexWarp: false);
 
-                program = new ShaderProgram
+                if (!IsProgramUsable(solidShadowProgram))
                 {
-                    LoadFromFile = false,
-                    Oit = false,
-                    VertexShader = new Shader(EnumShaderType.VertexShader, vertexCode, "chunkshadowmapsolid.vsh"),
-                    FragmentShader = new Shader(EnumShaderType.FragmentShader, SolidShadowFragmentSource, "chunkshadowmapsolid.fsh")
-                };
-
-                if (baseProgram.includes != null)
-                {
-                    foreach (string inc in baseProgram.includes)
+                    // Fallback to cloning baseProgram.VertexShader.Code verbatim.
+                    string fallbackCode = baseProgram.VertexShader?.Code;
+                    if (!string.IsNullOrEmpty(fallbackCode))
                     {
-                        program.includes.Add(inc);
+                        var fallback = new ShaderProgram
+                        {
+                            LoadFromFile = false,
+                            Oit = false,
+                            VertexShader = new Shader(EnumShaderType.VertexShader, fallbackCode, "chunkshadowmapsolid.vsh"),
+                            FragmentShader = new Shader(EnumShaderType.FragmentShader, SolidShadowFragmentSource, "chunkshadowmapsolid.fsh")
+                        };
+
+                        if (baseProgram.includes != null)
+                        {
+                            foreach (string inc in baseProgram.includes)
+                            {
+                                fallback.includes.Add(inc);
+                            }
+                        }
+
+                        api.Shader.RegisterMemoryShaderProgram(SolidShadowProgramName, fallback);
+                        if (fallback.Compile() && !fallback.LoadError && fallback.ProgramId > 0)
+                        {
+                            solidShadowProgram = fallback;
+                        }
+                        else
+                        {
+                            TryDisposeProgram(fallback);
+                        }
                     }
                 }
 
-                api.Shader.RegisterMemoryShaderProgram(SolidShadowProgramName, program);
-                if (!program.Compile() || program.LoadError || program.ProgramId <= 0)
-                {
-                    TryDisposeProgram(program);
-                    logger?.Invoke("[OptiTime] Solid shadow depth shader failed to compile; falling back to vanilla shadow shader");
-                    return false;
-                }
-
-                solidShadowProgram = program;
-                return true;
+                return IsSolidShadowShaderReady;
             }
             catch (Exception ex)
             {
-                TryDisposeProgram(program);
-                solidShadowProgram = null;
+                DisposeSolidShadowPrograms(api);
                 logger?.Invoke("[OptiTime] Solid shadow depth shader setup failed: " + ex.Message);
                 return false;
             }
+        }
+
+        internal static string BuildSolidShadowVertexSource(bool includeVertexWarp)
+        {
+            string warpLine = includeVertexWarp
+                ? "#if USESSBO > 0\n    worldPos = applyVertexWarping(vdata.flags[vIndex], worldPos);\n#else\n    worldPos = applyVertexWarping(renderFlagsIn, worldPos);\n#endif\n"
+                : string.Empty;
+
+            return
+                "#version 330 core\n" +
+                "#extension GL_ARB_explicit_attrib_location: enable\n" +
+                "#if USESSBO > 0\n" +
+                "layout(location = 0) in vec4 rgbaLightIn;\n" +
+                "#else\n" +
+                "layout(location = 0) in vec3 xyz;\n" +
+                "layout(location = 1) in vec2 uvIn;\n" +
+                "layout(location = 2) in vec4 rgbaLightIn;\n" +
+                "layout(location = 3) in int renderFlagsIn;\n" +
+                "#endif\n" +
+                "uniform vec3 origin;\n" +
+                "uniform mat4 mvpMatrix;\n" +
+                "#include vertexflagbits.ash\n" +
+                "#include vertexwarp.vsh\n" +
+                "#if USESSBO > 0\n" +
+                "layout(binding = 3, std430) readonly buffer faceDataBuf { FaceData faces[]; };\n" +
+                "#endif\n" +
+                "void main(void)\n" +
+                "{\n" +
+                "#if USESSBO > 0\n" +
+                "    FaceData vdata = faces[gl_VertexID / 4];\n" +
+                "    int vIndex = gl_VertexID & 0x03;\n" +
+                "    vec3 xyz = vdata.xyz + ((vIndex + 1) & 2) * vdata.xyzA + (vIndex & 2) * vdata.xyzB;\n" +
+                "#endif\n" +
+                "    vec4 worldPos = vec4(xyz + origin, 1.0);\n" +
+                warpLine +
+                "    worldPos = applyGlobalWarping(worldPos);\n" +
+                "    gl_Position = mvpMatrix * worldPos;\n" +
+                "}\n";
+        }
+
+        internal static bool PassesShadowLodExclusivity(int lodLevel, double horDistSq, double lod2BiasSq)
+        {
+            if (lodLevel == 2)
+            {
+                return horDistSq <= lod2BiasSq;
+            }
+
+            if (lodLevel == 3)
+            {
+                return horDistSq > lod2BiasSq;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Enforces LodLevel 2 / LodLevel 3 mutual exclusion during shadow passes as a non-blocking
+        /// Postfix, matching FrustumCulling.InFrustumAndRange so blocks with Lod2Mesh are not drawn
+        /// twice into ShadowmapNear and ShadowmapFar without overriding other mods' prefixes.
+        /// </summary>
+        public static void IsVisible_Postfix(ModelDataPoolLocation __instance, EnumFrustumCullMode mode, FrustumCulling culler, ref bool __result)
+        {
+            if (!__result || !shadowLodDedupeEnabled || cullerPlayerPosRef == null || __instance == null || culler == null)
+            {
+                return;
+            }
+
+            if (mode != EnumFrustumCullMode.CullInstantShadowPassNear &&
+                mode != EnumFrustumCullMode.CullInstantShadowPassFar)
+            {
+                return;
+            }
+
+            int lod = __instance.LodLevel;
+            if (lod != 2 && lod != 3)
+            {
+                return;
+            }
+
+            double lod2BiasSq = culler.lod2BiasSq;
+            BlockPos playerPos = cullerPlayerPosRef(culler);
+            if (playerPos == null || lod2BiasSq <= 1.0)
+            {
+                return;
+            }
+
+            Sphere sphere = __instance.FrustumCullSphere;
+            double horDistSq = playerPos.HorDistanceSqTo(sphere.x, sphere.z);
+            __result = PassesShadowLodExclusivity(lod, horDistSq, lod2BiasSq);
         }
 
         public static bool ShouldCullVegetation(int currentRenderStage)
@@ -172,12 +298,10 @@ namespace OptiTime
                 : EnumFrustumCullMode.CullInstantShadowPassNear;
 
             ShaderProgram solidProgram = solidShadowProgram;
+            ShaderProgram noWarpProgram = solidShadowNoWarpProgram;
             bool useSolidDepth = solidDepthPassEnabled &&
                 shadowMvpMatrix != null &&
-                solidProgram != null &&
-                !solidProgram.Disposed &&
-                !solidProgram.LoadError &&
-                solidProgram.ProgramId > 0;
+                IsProgramUsable(solidProgram);
 
             if (useSolidDepth)
             {
@@ -195,9 +319,22 @@ namespace OptiTime
                     ScreenManager.FrameProfiler.Mark("rend3D-rets-op");
 
                     MeshDataPoolManager[] topSoilPools = poolsByRenderPass[5];
-                    for (int j = 0; j < textureIds.Length; j++)
+                    if (IsProgramUsable(noWarpProgram))
                     {
-                        topSoilPools[j].Render(cameraPos, "origin", frustumCullMode);
+                        solidProgram.Stop();
+                        noWarpProgram.Use();
+                        noWarpProgram.UniformMatrix("mvpMatrix", shadowMvpMatrix);
+                        for (int j = 0; j < textureIds.Length; j++)
+                        {
+                            topSoilPools[j].Render(cameraPos, "origin", frustumCullMode);
+                        }
+                    }
+                    else
+                    {
+                        for (int j = 0; j < textureIds.Length; j++)
+                        {
+                            topSoilPools[j].Render(cameraPos, "origin", frustumCullMode);
+                        }
                     }
                     ScreenManager.FrameProfiler.Mark("rend3D-rets-tpp");
                 }
@@ -206,6 +343,10 @@ namespace OptiTime
                     if (ShaderProgramBase.CurrentShaderProgram == solidProgram)
                     {
                         solidProgram.Stop();
+                    }
+                    else if (noWarpProgram != null && ShaderProgramBase.CurrentShaderProgram == noWarpProgram)
+                    {
+                        noWarpProgram.Stop();
                     }
 
                     if (ShaderProgramBase.CurrentShaderProgram != chunkshadowmap && !chunkshadowmap.Disposed)
@@ -267,17 +408,70 @@ namespace OptiTime
             return false;
         }
 
-        private static void DisposeSolidShadowProgram(ICoreClientAPI api)
+        private static ShaderProgram BuildSolidShadowVariant(
+            ICoreClientAPI api,
+            ShaderProgramChunkshadowmap baseProgram,
+            string programName,
+            bool includeVertexWarp)
         {
-            ShaderProgram existing = solidShadowProgram;
-            solidShadowProgram = null;
+            if (handleIncludesMethod == null)
+            {
+                return null;
+            }
+
+            var program = new ShaderProgram
+            {
+                LoadFromFile = false,
+                Oit = false
+            };
+
+            string expandedVert = (string)handleIncludesMethod.Invoke(
+                null,
+                new object[] { program, BuildSolidShadowVertexSource(includeVertexWarp), null });
+            if (string.IsNullOrEmpty(expandedVert))
+            {
+                return null;
+            }
+
+            // Vertex filename MUST start with "chunk" so Shader.UsesSSBOs() promotes #version 430.
+            string vshName = includeVertexWarp ? "chunkshadowmapsolid.vsh" : "chunkshadowmapsolidnowarp.vsh";
+            string fshName = includeVertexWarp ? "chunkshadowmapsolid.fsh" : "chunkshadowmapsolidnowarp.fsh";
+
+            program.VertexShader = new Shader(EnumShaderType.VertexShader, expandedVert, vshName);
+            program.FragmentShader = new Shader(EnumShaderType.FragmentShader, SolidShadowFragmentSource, fshName);
+
+            api.Shader.RegisterMemoryShaderProgram(programName, program);
+            if (!program.Compile() || program.LoadError || program.ProgramId <= 0)
+            {
+                TryDisposeProgram(program);
+                return null;
+            }
+
+            return program;
+        }
+
+        private static bool IsProgramUsable(ShaderProgram program)
+        {
+            return program != null && !program.Disposed && !program.LoadError && program.ProgramId > 0;
+        }
+
+        private static void DisposeSolidShadowPrograms(ICoreClientAPI api)
+        {
+            DisposeOne(api, ref solidShadowProgram, SolidShadowProgramName);
+            DisposeOne(api, ref solidShadowNoWarpProgram, SolidShadowNoWarpProgramName);
+        }
+
+        private static void DisposeOne(ICoreClientAPI api, ref ShaderProgram field, string name)
+        {
+            ShaderProgram existing = field;
+            field = null;
             TryDisposeProgram(existing);
 
             if (api?.Shader != null)
             {
                 try
                 {
-                    if (api.Shader.GetProgramByName(SolidShadowProgramName) is ShaderProgram registered &&
+                    if (api.Shader.GetProgramByName(name) is ShaderProgram registered &&
                         !ReferenceEquals(registered, existing))
                     {
                         TryDisposeProgram(registered);
@@ -307,9 +501,10 @@ namespace OptiTime
 
         public static void Cleanup()
         {
-            DisposeSolidShadowProgram(null);
+            DisposeSolidShadowPrograms(null);
             farVegetationCullEnabled = false;
             solidDepthPassEnabled = false;
+            shadowLodDedupeEnabled = false;
             logger = null;
         }
     }

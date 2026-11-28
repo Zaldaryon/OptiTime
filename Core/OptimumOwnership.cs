@@ -47,7 +47,9 @@ namespace OptiTime
         /// <summary>Methods OptiTime patches whatever the configuration says.</summary>
         internal static readonly string[] AlwaysOnTargets =
         {
+            "Vintagestory.API.Client.FrustumCulling:CalcFrustumEquations",
             "Vintagestory.API.Client.FrustumCulling:InFrustumAndRange",
+            "Vintagestory.API.Client.ModelDataPoolLocation:IsVisible",
             "Vintagestory.API.Common.AnimatableRenderer:Dispose",
             "Vintagestory.API.Common.AnimatableRenderer:OnRenderFrame",
             "Vintagestory.API.Common.AnimatableRenderer:mainThreadInit",
@@ -58,9 +60,11 @@ namespace OptiTime
             "Vintagestory.API.Config.TranslationService:HasTranslation",
             "Vintagestory.Client.ScreenManager:OnNewFrame",
             "Vintagestory.Client.NoObf.ChunkRenderer:OnRenderBefore",
+            "Vintagestory.Client.NoObf.ChunkRenderer:RenderOIT",
             "Vintagestory.Client.NoObf.ChunkRenderer:RenderOpaque",
             "Vintagestory.Client.NoObf.ChunkTesselatorManager:OnBeforeFrame",
             "Vintagestory.Client.NoObf.ClientMain:GlTranslate",
+            "Vintagestory.Client.NoObf.ClientMain:TriggerRenderStage",
             "Vintagestory.Client.NoObf.ClientPlatformWindows:ClearFrameBuffer",
             "Vintagestory.Client.NoObf.ClientPlatformWindows:LoadFrameBuffer",
             "Vintagestory.Client.NoObf.ClientPlatformWindows:RenderFinalComposition",

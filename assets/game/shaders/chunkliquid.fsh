@@ -170,30 +170,30 @@ void main()
 #if FOAMEFFECT > 0
 	if (rgbaFinal.a > 0) {
 	
-		// Water edge + shinyness shading effect (9-tap symmetric kernel replacing 25-tap 5x5)
+		// Water edge + shinyness shading effect (9-tap symmetric kernel with integer texelFetch)
 		float ownDepth = linearDepth(gl_FragCoord.z);
-		vec2 invFrame = 1.0 / frameSize;
-		vec2 baseUV = vec2(x, y);
+		ivec2 fragPx = ivec2(gl_FragCoord.xy);
+		ivec2 maxPx = max(ivec2(0), ivec2(frameSize) - ivec2(1));
 		float diffTotal = 0.0;
 		float d;
 
-		d = ownDepth - linearDepth(texture(depthTex, baseUV).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx, ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(-invFrame.x, -invFrame.y)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2(-1, -1), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2( invFrame.x, -invFrame.y)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2( 1, -1), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(-invFrame.x,  invFrame.y)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2(-1,  1), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2( invFrame.x,  invFrame.y)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2( 1,  1), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(-2.0 * invFrame.x, 0.0)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2(-2,  0), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2( 2.0 * invFrame.x, 0.0)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2( 2,  0), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(0.0, -2.0 * invFrame.y)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2( 0, -2), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
-		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(0.0,  2.0 * invFrame.y)).x);
+		d = ownDepth - linearDepth(texelFetch(depthTex, clamp(fragPx + ivec2( 0,  2), ivec2(0), maxPx), 0).x);
 		if (d < 0.001) diffTotal += abs(d);
 
 		diffTotal /= 5.76;

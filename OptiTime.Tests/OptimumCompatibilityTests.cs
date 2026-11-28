@@ -127,14 +127,22 @@ public class OptimumCompatibilityTests
         var actual = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (string path in new[]
         {
+            "shaderincludes/fogandlight.fsh",
+            "shaderincludes/underwatereffects.fsh",
             "shaders/bilateralblur.fsh",
             "shaders/blur.fsh",
             "shaders/blur.vsh",
             "shaders/chunkliquid.fsh",
+            "shaders/chunkliquid.vsh",
             "shaders/chunkopaque.fsh",
             "shaders/chunkopaque.vsh",
             "shaders/chunkshadowmap.fsh",
             "shaders/chunkshadowmap.vsh",
+            "shaders/chunktopsoil.fsh",
+            "shaders/chunktopsoil.vsh",
+            "shaders/cloudvolumetric.fsh",
+            "shaders/final.fsh",
+            "shaders/final.vsh",
             "shaders/godrays.fsh",
             "shaders/ssao.fsh"
         })
