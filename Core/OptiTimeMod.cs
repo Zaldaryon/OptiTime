@@ -21,6 +21,7 @@ namespace OptiTime
         private bool externalWorldShaderOverrideDetected = false;
         private bool externalBlurOverrideDetected = false;
         private bool chunkShadowMapOverrideActive = false;
+        private bool chunkOpaqueOverrideActive = false;
         private bool runtimeUnsupported = false;
         private Action<int> viewDistanceChangedDelegate = null;
         private OnSettingsChanged<int> shadowMapQualityChangedDelegate = null;
@@ -29,6 +30,8 @@ namespace OptiTime
         private System.Reflection.MethodBase guiItemRenderTarget;
         private System.Reflection.MethodBase guiItemRenderInfoTarget;
         private System.Reflection.MethodBase renderShadowTarget;
+        private System.Reflection.MethodBase renderOpaqueTarget;
+        private System.Reflection.MethodBase onRenderBeforeTarget;
         
         // Public accessors for ConfigLib integration
         public static OptiTimeConfig Config { get; private set; }
@@ -151,6 +154,7 @@ namespace OptiTime
             {
                 string reason = ancestralBlissDetected ? "Ancestral Bliss" : "config";
                 chunkShadowMapOverrideActive = false;
+                chunkOpaqueOverrideActive = false;
                 TryDisableOptiTimeShaders(clientApi, reason, OptiTimeShaderPaths);
             }
             else
@@ -225,6 +229,12 @@ namespace OptiTime
                     !shadersToDisable.Contains("shaders/chunkshadowmap.fsh") &&
                     !supersededPaths.Contains("shaders/chunkshadowmap.fsh") &&
                     IsUnderlyingShaderVanilla(clientApi, "shaders/chunkshadowmap.vsh", vanillaHashes);
+
+                chunkOpaqueOverrideActive =
+                    !coriaenderDetected &&
+                    !shadersToDisable.Contains("shaders/chunkopaque.fsh") &&
+                    !supersededPaths.Contains("shaders/chunkopaque.fsh") &&
+                    IsUnderlyingShaderVanilla(clientApi, "shaders/chunkopaque.vsh", vanillaHashes);
 
                 if (shadersToDisable.Count > 0)
                 {
@@ -1031,12 +1041,6 @@ namespace OptiTime
                         if (wantSolidShadowDepthPass)
                         {
                             ShadowOptimization.RebuildSolidShadowShader(api);
-                            reloadShaderDelegate = () =>
-                            {
-                                ShadowOptimization.RebuildSolidShadowShader(api);
-                                return true;
-                            };
-                            api.Event.ReloadShader += reloadShaderDelegate;
                         }
 
                         api.Logger.Notification(
@@ -1052,6 +1056,178 @@ namespace OptiTime
                     if (config.ShadowFarVegetationCullEnabled)
                         config.ForceOffForSession(nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), "Failed to patch ChunkRenderer.RenderShadow");
                 }
+            }
+
+            // Skip redundant Primary FBO bounce between ShadowFar and ShadowNear when ShadowQuality > 1.
+            try
+            {
+                var shadowFarDoneTarget = AccessTools.Method(
+                    "Vintagestory.Client.NoObf.SystemRenderShadowMap:OnRenderShadowFarDone",
+                    new Type[] { typeof(float) });
+                if (shadowFarDoneTarget != null &&
+                    !HasAnyConflictingPatches(shadowFarDoneTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(shadowFarDoneTarget, GameVersion.ShortGameVersion)))
+                {
+                    ShadowPassTransitionOptimization.Configure(true);
+                    harmony.Patch(shadowFarDoneTarget,
+                        prefix: new HarmonyMethod(typeof(ShadowPassTransitionOptimization), nameof(ShadowPassTransitionOptimization.OnRenderShadowFarDone_Prefix)));
+                    api.Logger.Notification("[OptiTime] Shadow cascade transition optimization loaded");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShadowPassTransitionOptimization.Cleanup();
+                api.Logger.Warning("[OptiTime] Shadow cascade transition optimization failed: " + ex.Message);
+            }
+
+            // Compile-time lean chunkopaque shader variants stripping unused sky/effect/underwater paths.
+            bool leanOpaquePatched = false;
+            bool wantLeanOpaque =
+                chunkOpaqueOverrideActive &&
+                config.ShaderOptimizations &&
+                !ancestralBlissDetected &&
+                !coriaenderDetected &&
+                !optimumHostDetected;
+            if (wantLeanOpaque)
+            {
+                try
+                {
+                    var opaqueMethod = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.ChunkRenderer:RenderOpaque",
+                        new Type[] { typeof(float) });
+                    var beforeMethod = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.ChunkRenderer:OnRenderBefore",
+                        new Type[] { typeof(float) });
+                    if (opaqueMethod != null &&
+                        beforeMethod != null &&
+                        !HasAnyConflictingPatches(opaqueMethod) &&
+                        !HasAnyConflictingPatches(beforeMethod))
+                    {
+                        OpaqueShaderOptimization.Configure(true, api.Logger);
+                        harmony.Patch(beforeMethod,
+                            postfix: new HarmonyMethod(typeof(OpaqueShaderOptimization), nameof(OpaqueShaderOptimization.OnRenderBefore_Postfix)));
+                        harmony.Patch(opaqueMethod,
+                            prefix: new HarmonyMethod(typeof(OpaqueShaderOptimization), nameof(OpaqueShaderOptimization.RenderOpaque_Prefix)));
+                        renderOpaqueTarget = opaqueMethod;
+                        onRenderBeforeTarget = beforeMethod;
+                        bool ok = OpaqueShaderOptimization.RebuildShaders(api);
+                        leanOpaquePatched = true;
+                        api.Logger.Notification(
+                            "[OptiTime] Lean compile-time chunkopaque optimization loaded (wet={0}, dry={1})",
+                            OpaqueShaderOptimization.IsLeanWetReady,
+                            OpaqueShaderOptimization.IsLeanDryReady);
+                        if (!ok)
+                        {
+                            api.Logger.Warning("[OptiTime] Lean chunkopaque shader failed to compile; falling back to vanilla chunkopaque");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    OpaqueShaderOptimization.Cleanup(api);
+                    api.Logger.Warning("[OptiTime] Lean compile-time chunkopaque optimization failed: " + ex.Message);
+                }
+            }
+
+            // Single shader-reload hook rebuilding all active OptiTime memory shaders.
+            if (wantSolidShadowDepthPass || leanOpaquePatched)
+            {
+                reloadShaderDelegate = () =>
+                {
+                    if (renderShadowTarget != null)
+                        ShadowOptimization.RebuildSolidShadowShader(api);
+                    if (renderOpaqueTarget != null)
+                        OpaqueShaderOptimization.RebuildShaders(api);
+                    return true;
+                };
+                api.Event.ReloadShader += reloadShaderDelegate;
+            }
+
+            // Render-thread zero-allocation optimizations (GlTranslate, AnimationManager, GL clear/draw buffers, entity quaternion).
+            try
+            {
+                RenderLoopAllocationOptimization.Configure(true);
+                int allocPatches = 0;
+
+                var glTranslateTarget = AccessTools.Method(
+                    "Vintagestory.Client.NoObf.ClientMain:GlTranslate",
+                    new Type[] { typeof(double), typeof(double), typeof(double) });
+                if (glTranslateTarget != null &&
+                    !HasAnyConflictingPatches(glTranslateTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(glTranslateTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(glTranslateTarget,
+                        prefix: new HarmonyMethod(typeof(RenderLoopAllocationOptimization), nameof(RenderLoopAllocationOptimization.GlTranslate_Prefix)));
+                    allocPatches++;
+                }
+
+                var animClientFrameTarget = AccessTools.Method(
+                    typeof(AnimationManager),
+                    nameof(AnimationManager.OnClientFrame),
+                    new Type[] { typeof(float) });
+                if (animClientFrameTarget != null &&
+                    !HasAnyConflictingPatches(animClientFrameTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(animClientFrameTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(animClientFrameTarget,
+                        transpiler: new HarmonyMethod(typeof(RenderLoopAllocationOptimization), nameof(RenderLoopAllocationOptimization.AnimationManagerOnClientFrame_Transpiler)));
+                    allocPatches++;
+                }
+
+                var clearFboTarget = AccessTools.Method(
+                    "Vintagestory.Client.NoObf.ClientPlatformWindows:ClearFrameBuffer",
+                    new Type[] { typeof(EnumFrameBuffer) });
+                if (clearFboTarget != null &&
+                    !HasAnyConflictingPatches(clearFboTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(clearFboTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(clearFboTarget,
+                        prefix: new HarmonyMethod(typeof(RenderLoopAllocationOptimization), nameof(RenderLoopAllocationOptimization.ClearFrameBuffer_Prefix)));
+                    allocPatches++;
+                }
+
+                var renderPostClearTarget = AccessTools.Method(
+                    "Vintagestory.Client.NoObf.ClientPlatformWindows:RenderPostprocessingEffects",
+                    new Type[] { typeof(float[]) });
+                if (renderPostClearTarget != null &&
+                    !HasAnyConflictingPatches(renderPostClearTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(renderPostClearTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(renderPostClearTarget,
+                        transpiler: new HarmonyMethod(typeof(RenderLoopAllocationOptimization), nameof(RenderLoopAllocationOptimization.RenderPostprocessingEffectsClear_Transpiler)));
+                    allocPatches++;
+                }
+
+                var renderFinalTarget = AccessTools.Method(
+                    "Vintagestory.Client.NoObf.ClientPlatformWindows:RenderFinalComposition",
+                    Type.EmptyTypes);
+                if (renderFinalTarget != null &&
+                    !HasAnyConflictingPatches(renderFinalTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(renderFinalTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(renderFinalTarget,
+                        transpiler: new HarmonyMethod(typeof(RenderLoopAllocationOptimization), nameof(RenderLoopAllocationOptimization.RenderFinalComposition_Transpiler)));
+                    allocPatches++;
+                }
+
+                var loadModelMatrixTarget = AccessTools.Method(
+                    "Vintagestory.GameContent.EntityShapeRenderer:loadModelMatrix",
+                    new Type[] { typeof(Entity), typeof(float), typeof(bool) });
+                if (loadModelMatrixTarget != null &&
+                    !HasAnyConflictingPatches(loadModelMatrixTarget) &&
+                    (!optimumHostDetected || OptimumOwnership.IsVanillaBody(loadModelMatrixTarget, GameVersion.ShortGameVersion)))
+                {
+                    harmony.Patch(loadModelMatrixTarget,
+                        transpiler: new HarmonyMethod(typeof(RenderLoopAllocationOptimization), nameof(RenderLoopAllocationOptimization.LoadModelMatrix_Transpiler)));
+                    allocPatches++;
+                }
+
+                api.Logger.Notification("[OptiTime] Render-loop allocation optimization loaded ({0} patch(es))", allocPatches);
+            }
+            catch (Exception ex)
+            {
+                RenderLoopAllocationOptimization.Cleanup();
+                api.Logger.Warning("[OptiTime] Render-loop allocation optimization failed: " + ex.Message);
             }
 
             if (config.EntityShadowDistanceCullEnabled)
@@ -1134,6 +1310,7 @@ namespace OptiTime
         {
             VerifyGuiItemRenderInfoPatches(capi);
             VerifyShadowPatches(capi);
+            VerifyLeanOpaquePatches(capi);
             capi?.Event.RegisterCallback((dt) =>
             {
                 RecipeLookupCacheOptimization.Cleanup();
@@ -1171,11 +1348,6 @@ namespace OptiTime
             if (HasAnyConflictingPatches(renderShadowTarget))
             {
                 harmony.Unpatch(renderShadowTarget, HarmonyPatchType.All, harmony.Id);
-                if (reloadShaderDelegate != null && api?.Event != null)
-                {
-                    try { api.Event.ReloadShader -= reloadShaderDelegate; } catch { }
-                    reloadShaderDelegate = null;
-                }
                 ShadowOptimization.Cleanup();
                 renderShadowTarget = null;
                 if (config != null && config.ShadowFarVegetationCullEnabled)
@@ -1183,6 +1355,28 @@ namespace OptiTime
                     config.ForceOffForSession(nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), "Yielded to late-loaded mod patch on ChunkRenderer.RenderShadow");
                 }
                 api?.Logger?.Notification("[OptiTime] Shadow optimization yielded to a late-loaded mod patch.");
+            }
+        }
+
+        private void VerifyLeanOpaquePatches(ICoreClientAPI api)
+        {
+            if (harmony == null || renderOpaqueTarget == null)
+            {
+                return;
+            }
+
+            if (HasAnyConflictingPatches(renderOpaqueTarget) ||
+                (onRenderBeforeTarget != null && HasAnyConflictingPatches(onRenderBeforeTarget)))
+            {
+                harmony.Unpatch(renderOpaqueTarget, HarmonyPatchType.All, harmony.Id);
+                if (onRenderBeforeTarget != null)
+                {
+                    harmony.Unpatch(onRenderBeforeTarget, HarmonyPatchType.All, harmony.Id);
+                }
+                OpaqueShaderOptimization.Cleanup(api);
+                renderOpaqueTarget = null;
+                onRenderBeforeTarget = null;
+                api?.Logger?.Notification("[OptiTime] Lean chunkopaque optimization yielded to a late-loaded mod patch.");
             }
         }
 
@@ -1753,6 +1947,9 @@ namespace OptiTime
                 RecipeLookupCacheOptimization.Cleanup();
                 WeatherWindOptimization.Cleanup();
                 ShadowOptimization.Cleanup();
+                ShadowPassTransitionOptimization.Cleanup();
+                OpaqueShaderOptimization.Cleanup(capi);
+                RenderLoopAllocationOptimization.Cleanup();
                 EntityShadowCullingOptimization.Cleanup();
                 OcclusionCullingOptimization.Cleanup();
                 FrustumCullingOptimization.Cleanup();
@@ -1779,6 +1976,7 @@ namespace OptiTime
                 externalWorldShaderOverrideDetected = false;
                 externalBlurOverrideDetected = false;
                 chunkShadowMapOverrideActive = false;
+                chunkOpaqueOverrideActive = false;
                 runtimeUnsupported = false;
                 harmony = null;
                 guiItemRenderTarget = null;

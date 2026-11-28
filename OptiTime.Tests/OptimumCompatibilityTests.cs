@@ -132,6 +132,7 @@ public class OptimumCompatibilityTests
             "shaders/blur.vsh",
             "shaders/chunkliquid.fsh",
             "shaders/chunkopaque.fsh",
+            "shaders/chunkopaque.vsh",
             "shaders/chunkshadowmap.fsh",
             "shaders/chunkshadowmap.vsh",
             "shaders/godrays.fsh",
