@@ -20,12 +20,15 @@ namespace OptiTime
         private bool optimumHostDetected = false;
         private bool externalWorldShaderOverrideDetected = false;
         private bool externalBlurOverrideDetected = false;
+        private bool chunkShadowMapOverrideActive = false;
         private bool runtimeUnsupported = false;
         private Action<int> viewDistanceChangedDelegate = null;
         private OnSettingsChanged<int> shadowMapQualityChangedDelegate = null;
+        private ActionBoolReturn reloadShaderDelegate = null;
         private bool entityShadowPatched = false;
         private System.Reflection.MethodBase guiItemRenderTarget;
         private System.Reflection.MethodBase guiItemRenderInfoTarget;
+        private System.Reflection.MethodBase renderShadowTarget;
         
         // Public accessors for ConfigLib integration
         public static OptiTimeConfig Config { get; private set; }
@@ -63,8 +66,14 @@ namespace OptiTime
             "shaders/chunkliquid.fsh",
             "shaders/chunkopaque.fsh",
             "shaders/chunkshadowmap.fsh",
+            "shaders/godrays.fsh",
             "shaders/ssao.fsh"
         };
+
+        private static bool IsWorldShaderPath(string path)
+        {
+            return !path.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase);
+        }
         private static readonly Dictionary<string, string> OptimizationMap = new Dictionary<string, string>
         {
             ["shaders"] = "ShaderOptimizations",
@@ -141,6 +150,7 @@ namespace OptiTime
             if (!config.ShaderOptimizations || ancestralBlissDetected)
             {
                 string reason = ancestralBlissDetected ? "Ancestral Bliss" : "config";
+                chunkShadowMapOverrideActive = false;
                 TryDisableOptiTimeShaders(clientApi, reason, OptiTimeShaderPaths);
             }
             else
@@ -148,14 +158,14 @@ namespace OptiTime
                 var shadersToDisable = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var supersededPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                // Coriaender patches world and post-process shaders at runtime; keep only blur independent
+                // Coriaender patches world and post-process shaders at runtime; keep only blur independent.
                 if (coriaenderDetected)
                 {
-                    shadersToDisable.Add("shaders/bilateralblur.fsh");
-                    shadersToDisable.Add("shaders/chunkliquid.fsh");
-                    shadersToDisable.Add("shaders/chunkopaque.fsh");
-                    shadersToDisable.Add("shaders/chunkshadowmap.fsh");
-                    shadersToDisable.Add("shaders/ssao.fsh");
+                    foreach (string path in OptiTimeShaderPaths)
+                    {
+                        if (IsWorldShaderPath(path))
+                            shadersToDisable.Add(path);
+                    }
                 }
 
                 if (!config.BlurOptimizationEnabled)
@@ -205,11 +215,16 @@ namespace OptiTime
                 }
 
                 if (!coriaenderDetected &&
-                    (shadersToDisable.Contains("shaders/chunkliquid.fsh") || supersededPaths.Contains("shaders/chunkliquid.fsh")) &&
-                    (shadersToDisable.Contains("shaders/chunkshadowmap.fsh") || supersededPaths.Contains("shaders/chunkshadowmap.fsh")))
+                    OptiTimeShaderPaths.Where(IsWorldShaderPath).All(p => shadersToDisable.Contains(p) || supersededPaths.Contains(p)))
                 {
                     externalWorldShaderOverrideDetected = true;
                 }
+
+                chunkShadowMapOverrideActive =
+                    !coriaenderDetected &&
+                    !shadersToDisable.Contains("shaders/chunkshadowmap.fsh") &&
+                    !supersededPaths.Contains("shaders/chunkshadowmap.fsh") &&
+                    IsUnderlyingShaderVanilla(clientApi, "shaders/chunkshadowmap.vsh", vanillaHashes);
 
                 if (shadersToDisable.Count > 0)
                 {
@@ -944,7 +959,14 @@ namespace OptiTime
                 }
             }
 
-            if (config.ShadowFarVegetationCullEnabled)
+            bool wantSolidShadowDepthPass =
+                chunkShadowMapOverrideActive &&
+                config.ShaderOptimizations &&
+                !ancestralBlissDetected &&
+                !coriaenderDetected &&
+                !optimumHostDetected;
+
+            if (config.ShadowFarVegetationCullEnabled || wantSolidShadowDepthPass)
             {
                 try
                 {
@@ -953,17 +975,48 @@ namespace OptiTime
                     if (renderShadow == null)
                         throw new InvalidOperationException("ChunkRenderer.RenderShadow not found");
 
-                    if (!DisableIfConflictingPatches(api, nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), "Shadow far vegetation cull", renderShadow))
+                    bool canPatchShadow;
+                    if (config.ShadowFarVegetationCullEnabled)
                     {
+                        canPatchShadow = !DisableIfConflictingPatches(api, nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), "Shadow far vegetation cull", renderShadow);
+                    }
+                    else
+                    {
+                        canPatchShadow = !HasAnyConflictingPatches(renderShadow);
+                        if (!canPatchShadow)
+                            api.Logger.Warning("[OptiTime] Solid shadow depth pass skipped: conflicting patch detected on ChunkRenderer.RenderShadow");
+                    }
+
+                    if (canPatchShadow)
+                    {
+                        ShadowOptimization.Configure(config.ShadowFarVegetationCullEnabled, wantSolidShadowDepthPass);
                         harmony.Patch(renderShadow,
-                            transpiler: new HarmonyMethod(typeof(ShadowOptimization), nameof(ShadowOptimization.TranspileRenderShadow)));
-                        api.Logger.Notification("[OptiTime] Shadow far vegetation cull loaded");
+                            prefix: new HarmonyMethod(typeof(ShadowOptimization), nameof(ShadowOptimization.RenderShadow_Prefix)));
+                        renderShadowTarget = renderShadow;
+
+                        if (wantSolidShadowDepthPass)
+                        {
+                            ShadowOptimization.RebuildSolidShadowShader(api);
+                            reloadShaderDelegate = () =>
+                            {
+                                ShadowOptimization.RebuildSolidShadowShader(api);
+                                return true;
+                            };
+                            api.Event.ReloadShader += reloadShaderDelegate;
+                        }
+
+                        api.Logger.Notification(
+                            "[OptiTime] Shadow optimization loaded (farVegCull={0}, solidDepthPass={1})",
+                            config.ShadowFarVegetationCullEnabled,
+                            ShadowOptimization.IsSolidShadowShaderReady);
                     }
                 }
                 catch (Exception ex)
                 {
-                    api.Logger.Warning("[OptiTime] Failed to load shadow far vegetation cull: " + ex.Message);
-                    config.ShadowFarVegetationCullEnabled = false;
+                    api.Logger.Warning("[OptiTime] Failed to load shadow optimization: " + ex.Message);
+                    ShadowOptimization.Configure(false, false);
+                    if (config.ShadowFarVegetationCullEnabled)
+                        config.ForceOffForSession(nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), "Failed to patch ChunkRenderer.RenderShadow");
                 }
             }
 
@@ -1046,6 +1099,7 @@ namespace OptiTime
         private void OnLevelFinalize()
         {
             VerifyGuiItemRenderInfoPatches(capi);
+            VerifyShadowPatches(capi);
             capi?.Event.RegisterCallback((dt) =>
             {
                 RecipeLookupCacheOptimization.Cleanup();
@@ -1070,6 +1124,31 @@ namespace OptiTime
                 guiItemRenderTarget = null;
                 guiItemRenderInfoTarget = null;
                 api?.Logger?.Notification("[OptiTime] GUI ItemRenderInfo scratch reuse yielded to a late-loaded mod patch.");
+            }
+        }
+
+        private void VerifyShadowPatches(ICoreClientAPI api)
+        {
+            if (harmony == null || renderShadowTarget == null)
+            {
+                return;
+            }
+
+            if (HasAnyConflictingPatches(renderShadowTarget))
+            {
+                harmony.Unpatch(renderShadowTarget, HarmonyPatchType.All, harmony.Id);
+                if (reloadShaderDelegate != null && api?.Event != null)
+                {
+                    try { api.Event.ReloadShader -= reloadShaderDelegate; } catch { }
+                    reloadShaderDelegate = null;
+                }
+                ShadowOptimization.Cleanup();
+                renderShadowTarget = null;
+                if (config != null && config.ShadowFarVegetationCullEnabled)
+                {
+                    config.ForceOffForSession(nameof(OptiTimeConfig.ShadowFarVegetationCullEnabled), "Yielded to late-loaded mod patch on ChunkRenderer.RenderShadow");
+                }
+                api?.Logger?.Notification("[OptiTime] Shadow optimization yielded to a late-loaded mod patch.");
             }
         }
 
@@ -1609,6 +1688,16 @@ namespace OptiTime
                     catch { }
                     viewDistanceChangedDelegate = null;
                 }
+                if (reloadShaderDelegate != null)
+                {
+                    try
+                    {
+                        if (capi?.Event != null)
+                            capi.Event.ReloadShader -= reloadShaderDelegate;
+                    }
+                    catch { }
+                    reloadShaderDelegate = null;
+                }
                 entityShadowPatched = false;
 
                 harmony?.UnpatchAll("com.zaldaryon.optitime");
@@ -1654,10 +1743,12 @@ namespace OptiTime
                 optimumHostDetected = false;
                 externalWorldShaderOverrideDetected = false;
                 externalBlurOverrideDetected = false;
+                chunkShadowMapOverrideActive = false;
                 runtimeUnsupported = false;
                 harmony = null;
                 guiItemRenderTarget = null;
                 guiItemRenderInfoTarget = null;
+                renderShadowTarget = null;
                 config = null;
                 Config = null;
                 staticCapi = null;
@@ -1763,7 +1854,7 @@ namespace OptiTime
                     continue;
 
                 bool wanted = config.ShaderOptimizations && !ancestralBlissDetected;
-                if (coriaenderDetected && !path.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase))
+                if (coriaenderDetected && IsWorldShaderPath(path))
                     wanted = false;
                 if (!config.BlurOptimizationEnabled && path.StartsWith("shaders/blur.", StringComparison.OrdinalIgnoreCase))
                     wanted = false;
@@ -1856,7 +1947,7 @@ namespace OptiTime
 
         /// <summary>
         /// Hides the given OptiTime shader files and reloads the shader category, so the shaders underneath
-        /// (Optimum's own) are used again. Only the named files are hidden, the other overrides stay.
+        /// are used again. Only the named files are hidden, the other overrides stay.
         /// </summary>
         private void HideOptiTimeShaders(ICoreClientAPI api, List<string> paths, string reason)
         {
@@ -2015,7 +2106,7 @@ namespace OptiTime
             {
                 api.Logger.Warning("═══════════════════════════════════════════════════════");
                 api.Logger.Warning("[OptiTime] CoriaenderShaders detected");
-                api.Logger.Warning("[OptiTime] Disabling shader file replacements (chunkliquid, chunkshadowmap)");
+                api.Logger.Warning("[OptiTime] Disabling world shader file replacements for CoriaenderShaders compatibility");
                 api.Logger.Warning("[OptiTime] VBAO and blur optimizations remain independent");
                 api.Logger.Warning("[OptiTime] All code optimizations remain active");
                 api.Logger.Warning("═══════════════════════════════════════════════════════");

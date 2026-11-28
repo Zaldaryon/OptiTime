@@ -133,6 +133,8 @@ public class OptimumCompatibilityTests
             "shaders/chunkliquid.fsh",
             "shaders/chunkopaque.fsh",
             "shaders/chunkshadowmap.fsh",
+            "shaders/chunkshadowmap.vsh",
+            "shaders/godrays.fsh",
             "shaders/ssao.fsh"
         })
         {

@@ -30,8 +30,8 @@ void main()
 	vec3 fragPos = posVal.xyz;
 	float distanceFade = clamp(1.2 - (-fragPos.z) * 0.004, 0.0, 1.0);
 
-	// Skip sky and distant fragments before reading gNormal, revealage, or noise textures.
-	if (fragPos.x == 0.0 || distanceFade == 0.0) {
+	// Skip cleared sky pixels (0, 0, 0) and distant fragments before reading gNormal, revealage, or noise textures.
+	if ((fragPos.x == 0.0 && fragPos.z == 0.0) || distanceFade == 0.0) {
 		outOcclusion = vec4(1.0);
 		return;
 	}
@@ -52,7 +52,7 @@ void main()
 
 	vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
 	vec3 bitangent = cross(normal, tangent);
-	mat3 TBN = mat3(tangent, bitangent, normal);
+	mat3 TBNr = mat3(tangent * radius, bitangent * radius, normal * radius);
 
 	// Perspective projection only needs rows 0, 1, and 3 to project sample positions into screen UV.
 	vec2 projXY = vec2(projection[0][0], projection[1][1]);
@@ -66,7 +66,7 @@ void main()
 
 	if (leavesHack) {
 		for (int i = 0; i < kernelSize; ++i) {
-			vec3 samplePos = fragPos + (TBN * samples[i]) * radius;
+			vec3 samplePos = fragPos + TBNr * samples[i];
 			float invW = 0.5 / (samplePos.z * projW2 + projW3);
 			vec2 offsetUV = clamp((samplePos.xy * projXY + samplePos.z * projZ) * invW + 0.5, uvMin, uvMax);
 
@@ -78,7 +78,7 @@ void main()
 		}
 	} else {
 		for (int i = 0; i < kernelSize; ++i) {
-			vec3 samplePos = fragPos + (TBN * samples[i]) * radius;
+			vec3 samplePos = fragPos + TBNr * samples[i];
 			float invW = 0.5 / (samplePos.z * projW2 + projW3);
 			vec2 offsetUV = clamp((samplePos.xy * projXY + samplePos.z * projZ) * invW + 0.5, uvMin, uvMax);
 
