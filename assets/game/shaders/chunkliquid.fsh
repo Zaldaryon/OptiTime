@@ -170,20 +170,33 @@ void main()
 #if FOAMEFFECT > 0
 	if (rgbaFinal.a > 0) {
 	
-		// Water edge + shinyness shading effect, kinda nice
+		// Water edge + shinyness shading effect (9-tap symmetric kernel replacing 25-tap 5x5)
 		float ownDepth = linearDepth(gl_FragCoord.z);
-		float diffTotal = 0;
-		int range = 2;
-		for (int dx = -range; dx <= range; dx++) {
-			for (int dy = -range; dy <= range; dy++) {
-				float diff = ownDepth - linearDepth(texture(depthTex, vec2(x + dx/frameSize.x, y + dy/frameSize.y)).x);
-				if (diff < 0.001) { // This check prevents foam not rendered when looking through grass at distant water
-					diffTotal += abs(diff);
-				}
-			}
-		}
-		
-		diffTotal /= (4*range * range);
+		vec2 invFrame = 1.0 / frameSize;
+		vec2 baseUV = vec2(x, y);
+		float diffTotal = 0.0;
+		float d;
+
+		d = ownDepth - linearDepth(texture(depthTex, baseUV).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(-invFrame.x, -invFrame.y)).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2( invFrame.x, -invFrame.y)).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(-invFrame.x,  invFrame.y)).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2( invFrame.x,  invFrame.y)).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(-2.0 * invFrame.x, 0.0)).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2( 2.0 * invFrame.x, 0.0)).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(0.0, -2.0 * invFrame.y)).x);
+		if (d < 0.001) diffTotal += abs(d);
+		d = ownDepth - linearDepth(texture(depthTex, baseUV + vec2(0.0,  2.0 * invFrame.y)).x);
+		if (d < 0.001) diffTotal += abs(d);
+
+		diffTotal /= 5.76;
 		diffTotal = min(diffTotal, -vn/10 + 0.05);
 		
 		if (isLava) {
@@ -219,7 +232,7 @@ void main()
 			float noise2 = gnoise(vec3(a, b, wfc));
 			
 			float diff = intensity * clamp(1 - diffTotal*1500 - noise1/2 + noise2/2, 0, 1);
-			float noise = intensity * (gnoise(vec3(a * 0.4, b * 0.4, wfc))/2 + gnoise(vec3(a, b, wfc))/2 + 0.5) / 2;
+			float noise = intensity * (gnoise(vec3(a * 0.4, b * 0.4, wfc))/2 + noise2/2 + 0.5) / 2;
 			
 			float rgbAdd = max(0, bright*(diff * 0.3 + noise/10));
 			if (doLightFoam) {

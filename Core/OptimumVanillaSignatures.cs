@@ -74,10 +74,13 @@ namespace OptiTime
 
         private static readonly Dictionary<string, string> Shaders1227 = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["shaders/bilateralblur.fsh"] = "7ac33c2370fe02f4e629ae9594e2cc6bf8c673b23e1f39c11c4d5c2f53ef7f41",
             ["shaders/blur.fsh"] = "43a89306bb418f4fdd044a1f63f78c3f5f1c08256f81231ed4357d80cc08ce21",
             ["shaders/blur.vsh"] = "27fbfd27a799f59919a93b84ecfc9900efd228af000f1eac9d5ba08d52529f17",
             ["shaders/chunkliquid.fsh"] = "ce805570dd44781a8dcf306efe2f5ae618667055779f7592c78c8c328c6ce694",
+            ["shaders/chunkopaque.fsh"] = "546a8bce43b0e4032399cea9e18e6b1659df521dc4daf77176b7c13949605175",
             ["shaders/chunkshadowmap.fsh"] = "a96252453f35c30a7df5f2f0d4e174f4f01fb02a0037aaa1b1fb75d09028ef8a",
+            ["shaders/ssao.fsh"] = "9f4b5a1a3c0fb5b76202c948c9d1369aaf2d532bdf967a3204d1dc96a2310a4d",
         };
 
         internal static IReadOnlyDictionary<string, string> ForGameVersion(string gameVersion)
