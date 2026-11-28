@@ -24,6 +24,8 @@ namespace OptiTime
         private Action<int> viewDistanceChangedDelegate = null;
         private OnSettingsChanged<int> shadowMapQualityChangedDelegate = null;
         private bool entityShadowPatched = false;
+        private System.Reflection.MethodBase guiItemRenderTarget;
+        private System.Reflection.MethodBase guiItemRenderInfoTarget;
         
         // Public accessors for ConfigLib integration
         public static OptiTimeConfig Config { get; private set; }
@@ -470,6 +472,64 @@ namespace OptiTime
                 {
                     SunMoonOptimization.Cleanup();
                     api.Logger.Warning("[OptiTime] Sun/moon optimization failed: " + ex.Message);
+                }
+
+                try
+                {
+                    GuiItemRenderInfoOptimization.SetLogger(msg => api.Logger.Warning(msg));
+                    var renderItemstackTarget = AccessTools.Method(
+                        "Vintagestory.Client.NoObf.InventoryItemRenderer:RenderItemstackToGui",
+                        new Type[]
+                        {
+                            typeof(ItemSlot), typeof(double), typeof(double), typeof(double),
+                            typeof(float), typeof(int), typeof(float),
+                            typeof(bool), typeof(bool), typeof(bool)
+                        });
+                    var getItemRenderInfoTarget = AccessTools.Method(
+                        typeof(Vintagestory.Client.NoObf.InventoryItemRenderer),
+                        nameof(Vintagestory.Client.NoObf.InventoryItemRenderer.GetItemStackRenderInfo),
+                        new Type[]
+                        {
+                            typeof(Vintagestory.Client.NoObf.ClientMain),
+                            typeof(ItemSlot),
+                            typeof(EnumItemRenderTarget),
+                            typeof(float)
+                        });
+
+                    if (renderItemstackTarget != null &&
+                        getItemRenderInfoTarget != null &&
+                        !HasAnyConflictingPatches(renderItemstackTarget) &&
+                        !HasAnyForeignPatches(getItemRenderInfoTarget) &&
+                        (!optimumHostDetected ||
+                            (OptimumOwnership.IsVanillaBody(renderItemstackTarget, GameVersion.ShortGameVersion) &&
+                             OptimumOwnership.IsVanillaBody(getItemRenderInfoTarget, GameVersion.ShortGameVersion))))
+                    {
+                        GuiItemRenderInfoOptimization.ResetTranspilerApplied();
+                        harmony.Patch(
+                            renderItemstackTarget,
+                            prefix: new HarmonyMethod(typeof(GuiItemRenderInfoOptimization), nameof(GuiItemRenderInfoOptimization.RenderItemstackToGui_Prefix)),
+                            transpiler: new HarmonyMethod(typeof(GuiItemRenderInfoOptimization), nameof(GuiItemRenderInfoOptimization.TranspileRenderItemstackToGui)),
+                            finalizer: new HarmonyMethod(typeof(GuiItemRenderInfoOptimization), nameof(GuiItemRenderInfoOptimization.RenderItemstackToGui_Finalizer)));
+
+                        if (GuiItemRenderInfoOptimization.TranspilerApplied)
+                        {
+                            GuiItemRenderInfoOptimization.SetClientActive(true);
+                            guiItemRenderTarget = renderItemstackTarget;
+                            guiItemRenderInfoTarget = getItemRenderInfoTarget;
+                            api.Logger.Notification("[OptiTime] GUI ItemRenderInfo scratch reuse loaded");
+                        }
+                        else
+                        {
+                            harmony.Unpatch(renderItemstackTarget, HarmonyPatchType.All, harmony.Id);
+                            GuiItemRenderInfoOptimization.Cleanup();
+                            api.Logger.Warning("[OptiTime] GUI ItemRenderInfo scratch reuse skipped: transpiler did not match expected call site.");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    GuiItemRenderInfoOptimization.Cleanup();
+                    api.Logger.Warning("[OptiTime] GUI ItemRenderInfo scratch reuse failed: " + ex.Message);
                 }
             }
 
@@ -973,10 +1033,12 @@ namespace OptiTime
         {
             DynamicLightOptimization.Cleanup();
             EntityShadowCullingOptimization.OnLeaveWorld();
+            GuiItemRenderInfoOptimization.ResetSessionState();
         }
 
         private void OnLevelFinalize()
         {
+            VerifyGuiItemRenderInfoPatches(capi);
             capi?.Event.RegisterCallback((dt) =>
             {
                 RecipeLookupCacheOptimization.Cleanup();
@@ -985,6 +1047,23 @@ namespace OptiTime
                 InitializeHandbookOptimization(capi);
                 RegisterDiagModules();
             }, 100);
+        }
+
+        private void VerifyGuiItemRenderInfoPatches(ICoreClientAPI api)
+        {
+            if (harmony == null || guiItemRenderTarget == null || guiItemRenderInfoTarget == null)
+            {
+                return;
+            }
+
+            if (HasAnyConflictingPatches(guiItemRenderTarget) || HasAnyForeignPatches(guiItemRenderInfoTarget))
+            {
+                harmony.Unpatch(guiItemRenderTarget, HarmonyPatchType.All, harmony.Id);
+                GuiItemRenderInfoOptimization.Cleanup();
+                guiItemRenderTarget = null;
+                guiItemRenderInfoTarget = null;
+                api?.Logger?.Notification("[OptiTime] GUI ItemRenderInfo scratch reuse yielded to a late-loaded mod patch.");
+            }
         }
 
         private void InitializeHandbookOptimization(ICoreClientAPI api)
@@ -1229,6 +1308,18 @@ namespace OptiTime
             // Net effect: a mod that adds telemetry/HUD via postfix on a method we also
             // patch with a postfix no longer forces our optimization off. Transpilers and
             // prefix-skip patterns remain treated as conflicts.
+            return HasForeignPatch(method, includePostfixesAndFinalizers: false);
+        }
+
+        // Rejects all foreign patch kinds (including postfixes and finalizers) on methods
+        // whose call site is bypassed by a transpiler, so third-party hooks are never skipped.
+        private bool HasAnyForeignPatches(System.Reflection.MethodBase method)
+        {
+            return HasForeignPatch(method, includePostfixesAndFinalizers: true);
+        }
+
+        private bool HasForeignPatch(System.Reflection.MethodBase method, bool includePostfixesAndFinalizers)
+        {
             try
             {
                 if (method == null)
@@ -1249,8 +1340,11 @@ namespace OptiTime
                     return false;
                 }
 
-                return HasOtherOwner(patchInfo.Prefixes) ||
-                       HasOtherOwner(patchInfo.Transpilers);
+                if (HasOtherOwner(patchInfo.Prefixes) || HasOtherOwner(patchInfo.Transpilers))
+                    return true;
+
+                return includePostfixesAndFinalizers &&
+                       (HasOtherOwner(patchInfo.Postfixes) || HasOtherOwner(patchInfo.Finalizers));
             }
             catch { }
             return false;
@@ -1534,6 +1628,7 @@ namespace OptiTime
                 FrustumCullingOptimization.Cleanup();
                 AnimatableOptimization.Cleanup();
                 SunMoonOptimization.Cleanup();
+                GuiItemRenderInfoOptimization.Cleanup();
                 ConfigLibIntegration.Cleanup();
                 TranslationServicePatch.Cleanup();
                 SafeCatalogIsolation.Cleanup();
@@ -1554,6 +1649,8 @@ namespace OptiTime
                 externalBlurOverrideDetected = false;
                 runtimeUnsupported = false;
                 harmony = null;
+                guiItemRenderTarget = null;
+                guiItemRenderInfoTarget = null;
                 config = null;
                 Config = null;
                 staticCapi = null;
